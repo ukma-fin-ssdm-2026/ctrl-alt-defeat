@@ -1,0 +1,13 @@
+*.obj
+*.OBJ
+*.exe
+*.EXE
+*.com
+*.COM
+*.map
+*.MAP
+*.lst
+*.LST
+*.tr
+*.TR
+*.DS_Store
