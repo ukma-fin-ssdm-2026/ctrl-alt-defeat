@@ -1,0 +1,9 @@
+name: CI Test
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Run Team Name
+      run: echo "CTRL-ALT-DEFEAT"
