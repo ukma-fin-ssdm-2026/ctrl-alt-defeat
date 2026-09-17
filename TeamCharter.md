@@ -46,6 +46,6 @@
 ## 9. Підписи
 - [ ] Юлія Галка (GitHub: @YuliiaHalka)
 - [X] Іван Ліфєнцєв (GitHub: @Lifencev)
-- [ ] Михайло Крилов (GitHub: @krylov-mykhailo)
+- [X] Михайло Крилов (GitHub: @krylov-mykhailo)
 - [ ] Владислав Виговський (GitHub: @vyhovskyi-v)
 - [ ] Максим Годік (GitHub: @f1orevita)
