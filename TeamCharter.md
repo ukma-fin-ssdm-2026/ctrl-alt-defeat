@@ -61,4 +61,4 @@
 - [X] Іван Ліфєнцєв (GitHub: @Lifencev)
 - [X] Михайло Крилов (GitHub: @krylov-mykhailo)
 - [X] Владислав Виговський (GitHub: @vyhovskyi-v)
-- [ ] Максим Годік (GitHub: @f1orevita)
+- [X] Максим Годік (GitHub: @f1orevita)
