@@ -17,6 +17,12 @@
 - Владислав Виговський 
 - Максим Годік
 
+## Артефакти вимог
+- [Вимоги до системи](./docs/requirements/requirements.md)
+- [Користувацькі історії](./docs/requirements/user-stories.md)
+- [Матриця простежуваності](./docs/requirements/rtm.md)
+- [Cценарій користування](./docs/requirements/use-cases.md)
+
 ## Документація
 - [Опис проєкту](Project-Description.md)
 - [Командний статут](TeamCharter.md)
