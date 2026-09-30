@@ -1,46 +1,41 @@
 @startuml
 skinparam componentStyle uml2
 
-actor "User" as User
-
 package "Three-Tier Architecture" {
     
-    component "Frontend (React)" as UI
+    [React Frontend] as UI
     note right of UI
-      UI / Components
-      State management
-      User interactions
-      Search & filtering
+      UI / Components, 
+      State management, 
+      User interactions, 
+      Search & filtering.
     end note
 
-    component "FastAPI (REST)" as API
+    [FastAPI (REST) Backend] as API
     note right of API
-      Handles REST API requests
-      Business logic (movies, ratings, users, etc.)
-      Authentication & authorization
-      Integrates with PostgreSQL
-      External services (e.g., background jobs)
+      Handles REST API requests,
+      Business logic,
+      Authentication & authorization.
     end note
 
     database "PostgreSQL" as DB
     note bottom of DB
-      Relational database
-      Movies, Users, Ratings
-      Genres, Favorites, etc.
+      Relational database for:
+      Movies, Users, Ratings,
+      Genres, Favorites.
     end note
 
     database "Redis (Optional)" as Cache
     note bottom of Cache
-      In-memory data store
-      Caching (frequently accessed data)
-      User sessions & tokens
-      Rate limiting
+      In-memory data store for:
+      Caching, User sessions,
+      Rate limiting, Background tasks.
     end note
 
 }
 
-User --> UI : Interaction (Browser)
-UI --> API : HTTP / REST API
-API --> DB : SQL Queries (Read/Write)
-API ..> Cache : Read/Write cache
+UI --> API : HTTP/REST (JSON)
+API --> DB : SQL / TCP
+API ..> Cache : TCP (Optional)
+
 @enduml
