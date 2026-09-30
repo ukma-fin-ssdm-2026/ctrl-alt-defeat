@@ -23,7 +23,7 @@ node "Cache Server" <<Memory>> {
     }
 }
 
-"Web Browser" -- "Application Server" : HTTPS (REST API)
-"Application Server" -- "Database Server" : TCP (Port 5432)
-"Application Server" .. "Cache Server" : TCP (Port 6379)
+"Web Browser" --> "Web Server (Uvicorn)" : HTTPS (REST API)
+"Web Server (Uvicorn)" --> "PostgreSQL Instance" : TCP (Port 5432)
+"Web Server (Uvicorn)" ..> "Redis Instance" : TCP (Port 6379)
 @enduml
