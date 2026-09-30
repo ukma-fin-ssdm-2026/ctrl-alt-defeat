@@ -8,25 +8,24 @@ participant "PostgreSQL\n(Database)" as DB
 User -> UI : Submits movie rating
 activate UI
 
-UI -> API : POST /api/ratings (JSON payload)
+UI -> API : POST /api/ratings (JSON)
 activate API
 
-API -> Cache : Validate auth token
+API -> Cache : Check authorization (User sessions & tokens)
 activate Cache
-Cache --> API : Token valid (Returns User ID)
+Cache --> API : Session valid (User ID)
 deactivate Cache
 
-API -> API : Validate rating value (1-10)
-activate API
-deactivate API
+API -> API : Validate rating value (e.g., 1-10)
 
-API -> DB : INSERT rating (user_id, movie_id, value)
+API -> DB : Save rating (Ratings: user_id, movie_id, rating)
 activate DB
 DB --> API : Record confirmed
 deactivate DB
 
-API ->> Cache : [Async Task] Update movie cache
+API -> Cache : Update movie cache (Temporary data)
 activate Cache
+Cache --> API : Cache updated
 deactivate Cache
 
 API --> UI : 201 Created (Success)
