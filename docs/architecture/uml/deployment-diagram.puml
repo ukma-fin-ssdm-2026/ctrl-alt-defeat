@@ -1,0 +1,29 @@
+@startuml
+node "Client Device" <<Desktop/Mobile>> {
+    node "Web Browser" {
+        artifact "React Application" <<Frontend>>
+    }
+}
+
+node "Application Server" <<VPS / Docker Container>> {
+    node "Web Server (Uvicorn)" {
+        artifact "FastAPI Application" <<Backend>>
+    }
+}
+
+node "Database Server" <<Managed DB>> {
+    database "PostgreSQL Instance" {
+        artifact "Persistent Data"
+    }
+}
+
+node "Cache Server" <<Memory>> {
+    database "Redis Instance" {
+        artifact "Cached Data & Sessions"
+    }
+}
+
+"Web Browser" -- "Application Server" : HTTPS (REST API)
+"Application Server" -- "Database Server" : TCP (Port 5432)
+"Application Server" .. "Cache Server" : TCP (Port 6379)
+@enduml
