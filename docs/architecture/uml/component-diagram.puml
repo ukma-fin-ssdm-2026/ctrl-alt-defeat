@@ -34,8 +34,15 @@ package "Three-Tier Architecture" {
 
 }
 
+cloud "TMDB API" as TMDB
+note right of TMDB
+  External service for
+  movie metadata.
+end note
+
 UI --> API : HTTP/REST (JSON)
 API --> DB : SQL / TCP
 API ..> Cache : TCP (Optional)
+API --> TMDB : HTTPS
 
 @enduml
