@@ -1,0 +1,41 @@
+@startuml
+skinparam componentStyle uml2
+
+package "Modern Web Application Architecture" {
+    
+    [React Frontend] as UI
+    note right of UI
+      UI / Components, 
+      State management, 
+      User interactions, 
+      Search & filtering.
+    end note
+
+    [FastAPI (REST) Backend] as API
+    note right of API
+      Handles REST API requests,
+      Business logic,
+      Authentication & authorization.
+    end note
+
+    database "PostgreSQL" as DB
+    note bottom of DB
+      Relational database for:
+      Movies, Users, Ratings,
+      Genres, Favorites.
+    end note
+
+    database "Redis (Optional)" as Cache
+    note bottom of Cache
+      In-memory data store for:
+      Caching, User sessions,
+      Rate limiting, Background tasks.
+    end note
+
+}
+
+UI <--> API : HTTP/REST (JSON)
+API <--> DB : SQL / TCP
+API <..> Cache : TCP (Optional)
+
+@enduml
