@@ -23,7 +23,12 @@ node "Cache Server" <<Memory>> {
     }
 }
 
+node "TMDB API" <<External Service>> {
+    artifact "External Metadata"
+}
+
 "Web Browser" --> "Web Server (Uvicorn)" : HTTPS (REST API)
 "Web Server (Uvicorn)" --> "PostgreSQL Instance" : TCP (Port 5432)
 "Web Server (Uvicorn)" ..> "Redis Instance" : TCP (Port 6379)
+"Web Server (Uvicorn)" --> "TMDB API" : HTTPS
 @enduml
