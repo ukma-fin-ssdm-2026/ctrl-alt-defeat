@@ -1,0 +1,21 @@
+@startuml
+start
+
+:User enters search query;
+:React (Frontend) sends GET request to FastAPI;
+
+:FastAPI checks data availability;
+if (Data in Redis (Caching)?) then (Yes)
+  :Retrieve results from In-memory data store;
+else (No)
+  :Query PostgreSQL (Relational database);
+  :Retrieve search results (Movies, Genres);
+  :Save results to Redis for future queries;
+endif
+
+:FastAPI generates JSON response;
+:React updates UI (Search & filtering);
+:User views results;
+
+stop
+@enduml
