@@ -1,20 +1,31 @@
 @startuml
+skinparam swimlaneWidth same
+
+|Client|
 start
-
 :User enters search query;
-:React (Frontend) sends GET request to FastAPI;
+:Send search request;
 
-:FastAPI checks data availability;
-if (Data in Redis (Caching)?) then (Yes)
-  :Retrieve results from In-memory data store;
+|API Server|
+:Check cache for data;
+
+if (Data in Cache?) then (Yes)
+  |Cache|
+  :Retrieve results;
 else (No)
-  :Query PostgreSQL (Relational database);
-  :Retrieve search results (Movies, Genres);
-  :Save results to Redis for future queries;
+  |Database|
+  :Query Database;
+  :Retrieve search results;
+  
+  |API Server|
+  :Save results to Cache;
 endif
 
-:FastAPI generates JSON response;
-:React updates UI (Search & filtering);
+|API Server|
+:Generate API response;
+
+|Client|
+:Update User Interface;
 :User views results;
 
 stop
