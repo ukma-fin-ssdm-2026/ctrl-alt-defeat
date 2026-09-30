@@ -22,6 +22,7 @@
 - [Користувацькі історії](./docs/requirements/user-stories.md)
 - [Матриця простежуваності](./docs/requirements/rtm.md)
 - [Cценарій користування](./docs/requirements/use-cases.md)
+- [Архітектура](./docs/architecture)
 
 ## Документація
 - [Опис проєкту](Project-Description.md)
