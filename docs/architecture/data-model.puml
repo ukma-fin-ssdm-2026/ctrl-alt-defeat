@@ -1,0 +1,158 @@
+@startuml
+hide circle
+skinparam linetype ortho
+
+entity "User" as User {
+  * user_id : UUID <<PK>>
+  --
+  email : varchar <<PERSONAL, UNIQUE>>
+  password_hash : varchar <<SENSITIVE>>
+  nickname : varchar <<PERSONAL, UNIQUE>>
+  role : enum
+  email_verified : boolean
+  status : enum
+  created_at : datetime
+}
+
+entity "Content" as Content {
+  * content_id : UUID <<PK>>
+  --
+  tmdb_id : integer
+  title : varchar
+  content_type : enum
+  release_year : integer
+  synopsis : text
+  poster_url : varchar
+  popularity : decimal
+  average_rating : decimal
+  rating_count : integer
+  last_synced_at : datetime
+}
+
+entity "Genre" as Genre {
+  * genre_id : integer <<PK>>
+  --
+  name : varchar
+}
+
+entity "ContentGenre" as ContentGenre {
+  * content_id : UUID <<PK, FK>>
+  * genre_id : integer <<PK, FK>>
+}
+
+entity "WatchlistItem" as WatchlistItem {
+  * watchlist_item_id : UUID <<PK>>
+  --
+  user_id : UUID <<FK, PERSONAL>>
+  content_id : UUID <<FK>>
+  added_at : datetime <<PERSONAL>>
+}
+
+entity "WatchedItem" as WatchedItem {
+  * watched_item_id : UUID <<PK>>
+  --
+  user_id : UUID <<FK, PERSONAL>>
+  content_id : UUID <<FK>>
+  watched_at : datetime <<PERSONAL>>
+}
+
+entity "Review" as Review {
+  * review_id : UUID <<PK>>
+  --
+  user_id : UUID <<FK, PERSONAL>>
+  content_id : UUID <<FK>>
+  rating : integer
+  review_text : text <<PERSONAL>>
+  contains_spoilers : boolean
+  status : enum
+  created_at : datetime
+}
+
+entity "Comment" as Comment {
+  * comment_id : UUID <<PK>>
+  --
+  review_id : UUID <<FK>>
+  user_id : UUID <<FK, PERSONAL>>
+  comment_text : text <<PERSONAL>>
+  created_at : datetime
+}
+
+entity "Recommendation" as Recommendation {
+  * recommendation_id : UUID <<PK>>
+  --
+  user_id : UUID <<FK, PERSONAL>>
+  content_id : UUID <<FK>>
+  score : decimal
+  reason : varchar <<PERSONAL>>
+  algorithm_version : varchar
+  generated_at : datetime
+}
+
+entity "Ban" as Ban {
+  * ban_id : UUID <<PK>>
+  --
+  user_id : UUID <<FK, PERSONAL>>
+  admin_id : UUID <<FK, PERSONAL>>
+  ban_type : enum
+  reason : text <<SENSITIVE>>
+  starts_at : datetime
+  ends_at : datetime
+  is_active : boolean
+}
+
+entity "ModerationReport" as ModerationReport {
+  * report_id : UUID <<PK>>
+  --
+  review_id : UUID <<FK>>
+  reporter_user_id : UUID <<FK, PERSONAL>>
+  reason : text <<SENSITIVE>>
+  status : enum
+  created_at : datetime
+}
+
+User ||--o{ WatchlistItem : has
+Content ||--o{ WatchlistItem : included_in
+
+User ||--o{ WatchedItem : has
+Content ||--o{ WatchedItem : marked_as
+
+User ||--o{ Review : writes
+Content ||--o{ Review : receives
+
+Review ||--o{ Comment : has
+User ||--o{ Comment : writes
+
+Content ||--o{ ContentGenre : classified_as
+Genre ||--o{ ContentGenre : includes
+
+User ||--o{ Recommendation : receives
+Content ||--o{ Recommendation : recommended_as
+
+User ||--o{ Ban : subject
+User ||--o{ Ban : issued_by
+
+Review ||--o{ ModerationReport : reported_in
+User ||--o{ ModerationReport : submits
+
+note right of User
+  PERSONAL:
+  email, nickname
+
+  SENSITIVE:
+  password_hash
+
+  UNIQUE:
+  email, nickname
+end note
+
+note bottom of WatchedItem
+  Viewing history is personal
+  behavioral data.
+end note
+
+note bottom of Recommendation
+  Recommendation profile may reveal
+  user preferences and interests.
+end note
+
+@enduml
