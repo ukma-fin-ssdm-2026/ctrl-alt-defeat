@@ -5,9 +5,9 @@ skinparam linetype ortho
 entity "User" as User {
   * user_id : UUID <<PK>>
   --
-  email : varchar <<PERSONAL>>
+  email : varchar <<PERSONAL, UNIQUE>>
   password_hash : varchar <<SENSITIVE>>
-  nickname : varchar <<PERSONAL>>
+  nickname : varchar <<PERSONAL, UNIQUE>>
   role : enum
   email_verified : boolean
   status : enum
@@ -26,6 +26,7 @@ entity "Content" as Content {
   popularity : decimal
   average_rating : decimal
   rating_count : integer
+  last_synced_at : datetime
 }
 
 entity "Genre" as Genre {
@@ -44,7 +45,7 @@ entity "WatchlistItem" as WatchlistItem {
   --
   user_id : UUID <<FK, PERSONAL>>
   content_id : UUID <<FK>>
-  added_at : datetime
+  added_at : datetime <<PERSONAL>>
 }
 
 entity "WatchedItem" as WatchedItem {
@@ -83,6 +84,7 @@ entity "Recommendation" as Recommendation {
   content_id : UUID <<FK>>
   score : decimal
   reason : varchar <<PERSONAL>>
+  algorithm_version : varchar
   generated_at : datetime
 }
 
@@ -138,6 +140,9 @@ note right of User
 
   SENSITIVE:
   password_hash
+
+  UNIQUE:
+  email, nickname
 end note
 
 note bottom of WatchedItem
