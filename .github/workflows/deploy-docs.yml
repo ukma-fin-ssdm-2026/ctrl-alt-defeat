@@ -24,7 +24,9 @@ jobs:
         run: pip install fastapi pydantic uvicorn pyyaml
 
       - name: Generate OpenAPI YAML on the fly
-        run: python -c "from main import app, save_openapi_spec; save_openapi_spec(app)"
+        env:
+          PYTHONPATH: .
+        run: python -c "from src.api.main import app, save_openapi_spec; save_openapi_spec(app)"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
