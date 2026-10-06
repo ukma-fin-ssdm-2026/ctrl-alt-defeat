@@ -4,6 +4,7 @@ import yaml
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status, Query, Path, Request
 from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, UUID4
 from typing import List, Optional, Any
@@ -17,7 +18,6 @@ def save_openapi_spec(app: FastAPI):
     
     os.makedirs("docs/api", exist_ok=True)
     
-    # Save as YAML
     with open("docs/api/openapi-generated.yaml", "w", encoding="utf-8") as f:
         yaml.dump(openapi_schema, f, sort_keys=False, allow_unicode=True)
     
@@ -107,11 +107,20 @@ class PaginatedReviewsResponse(BaseModel):
     limit: int = Field(..., description="Limit used for pagination")
     has_more: bool = Field(..., description="Flag indicating if there are more items available")
 
-class ErrorResponse(BaseModel):
+class ErrorDetail(BaseModel):
+    field: str = Field(..., description="Name of the field with the error")
+    message: str = Field(..., description="Error description for this field")
+    provided_value: Optional[Any] = Field(None, description="Value provided by the client")
+
+class ErrorPayload(BaseModel):
     code: str = Field(..., description="Machine-readable error code")
     message: str = Field(..., description="Human-readable error message")
-    details: Optional[Any] = Field(None, description="Detailed validation or contextual errors")
+    details: Optional[List[ErrorDetail]] = Field(None, description="Details about specific fields")
     request_id: str = Field(..., description="Unique request identifier for tracing")
+    documentation: str = Field(..., description="Link to the documentation")
+
+class ErrorResponse(BaseModel):
+    error: ErrorPayload
 
 STANDARD_ERRORS = {
     400: {"model": ErrorResponse, "description": "Validation Error (Bad Request)"},
@@ -121,21 +130,51 @@ STANDARD_ERRORS = {
 # In-memory database mock
 mock_db = {}
 
-# Global Exception Handler for consistent validation errors
+# GLOBAL EXCEPTION HANDLERS
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    error_response = ErrorResponse(
-        code="VALIDATION_ERROR",
-        message="Input data validation failed",
-        details={"errors": exc.errors()},
-        request_id=str(uuid.uuid4())
+    details = []
+    for err in exc.errors():
+        field_path = ".".join(str(x) for x in err.get("loc", []) if x not in ("body", "query", "path"))
+        details.append(ErrorDetail(
+            field=field_path or "unknown",
+            message=err.get("msg", "Invalid value"),
+            provided_value=err.get("input", None)
+        ))
+        
+    error_content = ErrorResponse(
+        error=ErrorPayload(
+            code="VALIDATION_ERROR",
+            message="Request contains invalid fields",
+            details=details,
+            request_id=str(uuid.uuid4()),
+            documentation="https://api.our-movie-platform.com/docs/errors#validation"
+        )
     )
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content=error_response.model_dump()
-    )
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=error_content.model_dump())
 
-# 4. Endpoints
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if isinstance(exc.detail, dict):
+        code = exc.detail.get("code", "API_ERROR")
+        message = exc.detail.get("message", "An error occurred")
+    else:
+        code = "NOT_FOUND" if exc.status_code == 404 else "API_ERROR"
+        message = str(exc.detail)
+
+    error_content = ErrorResponse(
+        error=ErrorPayload(
+            code=code,
+            message=message,
+            request_id=str(uuid.uuid4()),
+            documentation=f"https://api.our-movie-platform.com/docs/errors#{code.lower().replace('_', '-')}"
+        )
+    )
+    return JSONResponse(status_code=exc.status_code, content=error_content.model_dump())
+
+# ENDPOINTS
+
 @app.post(
     "/api/v1/reviews",
     response_model=ReviewResponse,
@@ -192,7 +231,7 @@ async def get_review(review_id: UUID4 = Path(..., description="ID of the review"
     if str(review_id) not in mock_db:
         raise HTTPException(
             status_code=404, 
-            detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found", "request_id": str(uuid.uuid4())}
+            detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"}
         )
     return mock_db[str(review_id)]
 
@@ -210,7 +249,7 @@ async def update_review(
     if str(review_id) not in mock_db:
         raise HTTPException(
             status_code=404, 
-            detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found", "request_id": str(uuid.uuid4())}
+            detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"}
         )
     
     existing_review = mock_db[str(review_id)]
@@ -231,7 +270,7 @@ async def delete_review(review_id: UUID4 = Path(..., description="ID of the revi
     if str(review_id) not in mock_db:
         raise HTTPException(
             status_code=404, 
-            detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found", "request_id": str(uuid.uuid4())}
+            detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"}
         )
     del mock_db[str(review_id)]
     return None
