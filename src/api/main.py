@@ -1,15 +1,16 @@
 import os
 import uuid
 import yaml
-import json
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, status, Query, Path
+from fastapi import FastAPI, HTTPException, status, Query, Path, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, UUID4
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime
 from enum import Enum
 
-# 1. Логіка автогенерації OpenAPI
+# 1. OpenAPI auto-generation logic
 def save_openapi_spec(app: FastAPI):
     """Save auto-generated OpenAPI spec to file"""
     openapi_schema = app.openapi()
@@ -28,28 +29,28 @@ async def lifespan(app: FastAPI):
     save_openapi_spec(app)  
     yield
 
-# 2. Ініціалізація додатку
+# 2. App initialization
 app = FastAPI(
     title="Movie Platform API",
-    description="REST API для керування рецензіями.",
+    description="REST API for managing content reviews.",
     version="1.0.0",
     docs_url="/api-docs",  
     redoc_url="/redoc",    
     lifespan=lifespan
 )
 
-# 3. Моделі даних (Pydantic)
+# 3. Pydantic Data Models
 class ReviewStatus(str, Enum):
     published = "published"
     hidden = "hidden"
     deleted = "deleted"
 
 class ReviewBase(BaseModel):
-    user_id: UUID4 = Field(..., description="Ідентифікатор автора (користувача)")
-    content_id: UUID4 = Field(..., description="Ідентифікатор контенту (фільму/серіалу)")
-    rating: int = Field(..., ge=1, le=10, description="Оцінка від 1 до 10")
-    review_text: str = Field(..., min_length=10, max_length=5000, description="Текст рецензії")
-    contains_spoilers: bool = Field(default=False, description="Позначка про спойлери")
+    user_id: UUID4 = Field(..., description="Identifier of the review author")
+    content_id: UUID4 = Field(..., description="Identifier of the content (movie/series)")
+    rating: int = Field(..., ge=1, le=10, description="Rating from 1 to 10")
+    review_text: str = Field(..., min_length=10, max_length=5000, description="Text of the review")
+    contains_spoilers: bool = Field(default=False, description="Flag indicating if review contains spoilers")
 
 class ReviewCreate(ReviewBase):
     model_config = {
@@ -58,31 +59,31 @@ class ReviewCreate(ReviewBase):
                 "user_id": "123e4567-e89b-12d3-a456-426614174000",
                 "content_id": "987e6543-e21b-34c2-b123-526614174111",
                 "rating": 9,
-                "review_text": "Чудовий фільм, дуже глибокий сюжет і неймовірна акторська гра!",
+                "review_text": "Great movie, very deep plot and amazing acting!",
                 "contains_spoilers": False
             }
         }
     }
 
 class ReviewUpdate(BaseModel):
-    rating: Optional[int] = Field(None, ge=1, le=10, description="Оцінка від 1 до 10")
-    review_text: Optional[str] = Field(None, min_length=10, max_length=5000, description="Текст рецензії")
-    contains_spoilers: Optional[bool] = Field(None, description="Позначка про спойлери")
+    rating: Optional[int] = Field(None, ge=1, le=10, description="Rating from 1 to 10")
+    review_text: Optional[str] = Field(None, min_length=10, max_length=5000, description="Text of the review")
+    contains_spoilers: Optional[bool] = Field(None, description="Flag indicating if review contains spoilers")
     
     model_config = {
         "json_schema_extra": {
             "example": {
                 "rating": 10,
-                "review_text": "Оновлений відгук: після другого перегляду фільм сподобався ще більше!",
+                "review_text": "Updated review: loved it even more after the second watch!",
                 "contains_spoilers": True
             }
         }
     }
 
 class ReviewResponse(ReviewBase):
-    review_id: UUID4 = Field(..., description="Унікальний ідентифікатор рецензії")
-    status: ReviewStatus = Field(..., description="Статус рецензії")
-    created_at: datetime = Field(..., description="Дата публікації")
+    review_id: UUID4 = Field(..., description="Unique identifier of the review")
+    status: ReviewStatus = Field(..., description="Current status of the review")
+    created_at: datetime = Field(..., description="Publication date and time")
 
     model_config = {
         "json_schema_extra": {
@@ -91,7 +92,7 @@ class ReviewResponse(ReviewBase):
                 "user_id": "123e4567-e89b-12d3-a456-426614174000",
                 "content_id": "987e6543-e21b-34c2-b123-526614174111",
                 "rating": 9,
-                "review_text": "Чудовий фільм, дуже глибокий сюжет і неймовірна акторська гра!",
+                "review_text": "Great movie, very deep plot and amazing acting!",
                 "contains_spoilers": False,
                 "status": "published",
                 "created_at": "2026-10-05T18:00:00Z"
@@ -99,26 +100,47 @@ class ReviewResponse(ReviewBase):
         }
     }
 
+class PaginatedReviewsResponse(BaseModel):
+    items: List[ReviewResponse] = Field(..., description="List of reviews on the current page")
+    total: int = Field(..., description="Total number of matching reviews")
+    skip: int = Field(..., description="Offset used for pagination")
+    limit: int = Field(..., description="Limit used for pagination")
+    has_more: bool = Field(..., description="Flag indicating if there are more items available")
+
 class ErrorResponse(BaseModel):
-    code: str
-    message: str
-    details: Optional[dict] = None
-    request_id: str
+    code: str = Field(..., description="Machine-readable error code")
+    message: str = Field(..., description="Human-readable error message")
+    details: Optional[Any] = Field(None, description="Detailed validation or contextual errors")
+    request_id: str = Field(..., description="Unique request identifier for tracing")
 
 STANDARD_ERRORS = {
-    400: {"model": ErrorResponse, "description": "Помилка валідації (Bad Request)"},
-    404: {"model": ErrorResponse, "description": "Ресурс не знайдено (Not Found)"},
+    400: {"model": ErrorResponse, "description": "Validation Error (Bad Request)"},
+    404: {"model": ErrorResponse, "description": "Resource Not Found (Not Found)"},
 }
 
-# Заглушка бази даних
+# In-memory database mock
 mock_db = {}
 
-# 4. Кінцеві точки (Endpoints)
+# Global Exception Handler for consistent validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    error_response = ErrorResponse(
+        code="VALIDATION_ERROR",
+        message="Input data validation failed",
+        details={"errors": exc.errors()},
+        request_id=str(uuid.uuid4())
+    )
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content=error_response.model_dump()
+    )
+
+# 4. Endpoints
 @app.post(
     "/api/v1/reviews",
     response_model=ReviewResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Створити нову рецензію",
+    summary="Create a new review",
     responses=STANDARD_ERRORS
 )
 async def create_review(review: ReviewCreate):
@@ -129,58 +151,69 @@ async def create_review(review: ReviewCreate):
         created_at=datetime.utcnow(),
         **review.model_dump()
     )
-    mock_db[review_id] = new_review
+    mock_db[str(review_id)] = new_review
     return new_review
 
 @app.get(
     "/api/v1/reviews",
-    response_model=List[ReviewResponse],
+    response_model=PaginatedReviewsResponse,
     status_code=status.HTTP_200_OK,
-    summary="Отримати список рецензій (з пагінацією)",
+    summary="Get a list of reviews (with pagination)",
 )
 async def get_reviews(
-    content_id: Optional[UUID4] = Query(None, description="Фільтр за контентом"),
-    skip: int = Query(0, ge=0, description="Зсув для пагінації (offset)"),
-    limit: int = Query(10, ge=1, le=100, description="Кількість елементів на сторінку")
+    content_id: Optional[UUID4] = Query(None, description="Filter by content ID"),
+    skip: int = Query(0, ge=0, description="Offset for pagination"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum number of items per page")
 ):
     results = list(mock_db.values())
     if content_id:
-        results = [r for r in results if r.content_id == content_id]
-    return results[skip : skip + limit]
+        results = [r for r in results if str(r.content_id) == str(content_id)]
+    
+    total = len(results)
+    paginated_items = results[skip : skip + limit]
+    has_more = (skip + limit) < total
+
+    return PaginatedReviewsResponse(
+        items=paginated_items,
+        total=total,
+        skip=skip,
+        limit=limit,
+        has_more=has_more
+    )
 
 @app.get(
     "/api/v1/reviews/{review_id}",
     response_model=ReviewResponse,
     status_code=status.HTTP_200_OK,
-    summary="Отримати рецензію за ID",
+    summary="Get a specific review by ID",
     responses=STANDARD_ERRORS
 )
-async def get_review(review_id: UUID4 = Path(..., description="ID рецензії")):
-    if review_id not in mock_db:
+async def get_review(review_id: UUID4 = Path(..., description="ID of the review")):
+    if str(review_id) not in mock_db:
         raise HTTPException(
             status_code=404, 
-            detail={"code": "REVIEW_NOT_FOUND", "message": "Рецензію не знайдено", "request_id": str(uuid.uuid4())}
+            detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found", "request_id": str(uuid.uuid4())}
         )
-    return mock_db[review_id]
+    return mock_db[str(review_id)]
 
-@app.put(
+@app.patch(
     "/api/v1/reviews/{review_id}",
     response_model=ReviewResponse,
     status_code=status.HTTP_200_OK,
-    summary="Оновити рецензію",
+    summary="Partially update a review",
     responses=STANDARD_ERRORS
 )
 async def update_review(
     review_update: ReviewUpdate,
-    review_id: UUID4 = Path(..., description="ID рецензії")
+    review_id: UUID4 = Path(..., description="ID of the review to update")
 ):
-    if review_id not in mock_db:
+    if str(review_id) not in mock_db:
         raise HTTPException(
             status_code=404, 
-            detail={"code": "REVIEW_NOT_FOUND", "message": "Рецензію не знайдено", "request_id": str(uuid.uuid4())}
+            detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found", "request_id": str(uuid.uuid4())}
         )
     
-    existing_review = mock_db[review_id]
+    existing_review = mock_db[str(review_id)]
     update_data = review_update.model_dump(exclude_unset=True)
     
     for key, value in update_data.items():
@@ -191,21 +224,18 @@ async def update_review(
 @app.delete(
     "/api/v1/reviews/{review_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Видалити рецензію",
+    summary="Delete a review",
     responses=STANDARD_ERRORS
 )
-async def delete_review(review_id: UUID4 = Path(..., description="ID рецензії")):
-    if review_id not in mock_db:
+async def delete_review(review_id: UUID4 = Path(..., description="ID of the review to delete")):
+    if str(review_id) not in mock_db:
         raise HTTPException(
             status_code=404, 
-            detail={"code": "REVIEW_NOT_FOUND", "message": "Рецензію не знайдено", "request_id": str(uuid.uuid4())}
+            detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found", "request_id": str(uuid.uuid4())}
         )
-    del mock_db[review_id]
+    del mock_db[str(review_id)]
     return None
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=3000)
-
-
-# [AI-assisted]
