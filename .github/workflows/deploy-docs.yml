@@ -1,0 +1,49 @@
+name: Deploy API Docs
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install backend dependencies
+        run: pip install fastapi pydantic uvicorn pyyaml
+
+      - name: Generate OpenAPI YAML on the fly
+        env:
+          PYTHONPATH: .
+        run: python -c "from src.api.main import app, save_openapi_spec; save_openapi_spec(app)"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Swagger UI HTML
+        run: |
+          mkdir -p public/docs/api
+          cp docs/api/openapi-generated.yaml public/docs/api/
+          npm install swagger-ui-dist
+          cp -r node_modules/swagger-ui-dist/* public/docs/api/
+          sed -i "s|https://petstore.swagger.io/v2/swagger.json|./openapi-generated.yaml|g" public/docs/api/swagger-initializer.js
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          keep_files: false
