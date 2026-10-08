@@ -14,45 +14,19 @@ from enum import Enum
 # 1. OpenAPI auto-generation logic
 def save_openapi_spec(app: FastAPI):
     """Save auto-generated OpenAPI spec to file"""
-    if not app.openapi_schema:
-        openapi_schema = app.openapi()
-
-        for path in openapi_schema.get("paths", {}).values():
-            for method in path.values():
-                if "responses" in method and "422" in method["responses"]:
-                    del method["responses"]["422"]
-        
-        if "components" in openapi_schema and "schemas" in openapi_schema["components"]:
-            schemas = openapi_schema["components"]["schemas"]
-            schemas.pop("HTTPValidationError", None)
-            schemas.pop("ValidationError", None)
-            
-        app.openapi_schema = openapi_schema
-    else:
-        openapi_schema = app.openapi_schema
+    openapi_schema = app.openapi()
     
     os.makedirs("docs/api", exist_ok=True)
-    
     with open("docs/api/openapi-generated.yaml", "w", encoding="utf-8") as f:
         yaml.dump(openapi_schema, f, sort_keys=False, allow_unicode=True)
     
-    print("✅ OpenAPI spec auto-generated (Unified errors enforced)!")
+    print("✅ OpenAPI spec auto-generated (Unified errors enforced natively)!")
     print("📁 Saved to: docs/api/openapi-generated.yaml")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     save_openapi_spec(app)  
     yield
-
-# 2. App initialization
-app = FastAPI(
-    title="Movie Platform API",
-    description="REST API for managing content reviews.",
-    version="1.0.0",
-    docs_url="/api-docs",  
-    redoc_url="/redoc",    
-    lifespan=lifespan
-)
 
 # 3. Pydantic Data Models
 class ReviewStatus(str, Enum):
@@ -138,9 +112,23 @@ class ErrorResponse(BaseModel):
     error: ErrorPayload
 
 STANDARD_ERRORS = {
-    400: {"model": ErrorResponse, "description": "Validation Error (Bad Request)"},
-    404: {"model": ErrorResponse, "description": "Resource Not Found (Not Found)"},
+    400: {"model": ErrorResponse, "description": "Bad Request"},
+    404: {"model": ErrorResponse, "description": "Resource Not Found"},
+    422: {"model": ErrorResponse, "description": "Validation Error (Unprocessable Entity)"},
 }
+
+# 2. App initialization
+app = FastAPI(
+    title="Movie Platform API",
+    description="REST API for managing content reviews.",
+    version="1.0.0",
+    docs_url="/api-docs",  
+    redoc_url="/redoc",    
+    lifespan=lifespan,
+    responses={
+        422: STANDARD_ERRORS[422]
+    }
+)
 
 # In-memory database mock
 mock_db = {}
@@ -167,7 +155,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             documentation="https://api.our-movie-platform.com/docs/errors#validation"
         )
     )
-    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=error_content.model_dump())
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=error_content.model_dump())
 
 @app.exception_handler(StarletteHTTPException)
 async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
