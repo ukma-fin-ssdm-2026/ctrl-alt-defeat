@@ -14,14 +14,29 @@ from enum import Enum
 # 1. OpenAPI auto-generation logic
 def save_openapi_spec(app: FastAPI):
     """Save auto-generated OpenAPI spec to file"""
-    openapi_schema = app.openapi()
+    if not app.openapi_schema:
+        openapi_schema = app.openapi()
+
+        for path in openapi_schema.get("paths", {}).values():
+            for method in path.values():
+                if "responses" in method and "422" in method["responses"]:
+                    del method["responses"]["422"]
+        
+        if "components" in openapi_schema and "schemas" in openapi_schema["components"]:
+            schemas = openapi_schema["components"]["schemas"]
+            schemas.pop("HTTPValidationError", None)
+            schemas.pop("ValidationError", None)
+            
+        app.openapi_schema = openapi_schema
+    else:
+        openapi_schema = app.openapi_schema
     
     os.makedirs("docs/api", exist_ok=True)
     
     with open("docs/api/openapi-generated.yaml", "w", encoding="utf-8") as f:
         yaml.dump(openapi_schema, f, sort_keys=False, allow_unicode=True)
     
-    print("✅ OpenAPI spec auto-generated from code!")
+    print("✅ OpenAPI spec auto-generated (Unified errors enforced)!")
     print("📁 Saved to: docs/api/openapi-generated.yaml")
 
 @asynccontextmanager
