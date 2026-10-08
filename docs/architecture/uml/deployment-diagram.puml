@@ -1,0 +1,56 @@
+@startuml
+package "Зона 1: Недовірена (Public Internet)" {
+    node "Client Device" <<Desktop/Mobile>> {
+        node "Web Browser" {
+            artifact "React Application" <<Frontend>>
+        }
+    }
+}
+
+package "Зона 2: Захищена (Internal VPC)" {
+    node "Application Server" <<VPS / Docker Container>> {
+        node "Web Server (Uvicorn)" {
+            artifact "FastAPI Application" <<Backend>>
+        }
+    }
+
+    node "Database Server" <<Managed DB>> {
+        database "PostgreSQL Instance" {
+            artifact "Persistent Data"
+        }
+    }
+
+    node "Cache Server" <<Memory>> {
+        database "Redis Instance" {
+            artifact "Cached Data & Sessions"
+        }
+    }
+}
+
+package "Зона 3: Зовнішня (Third-Party)" {
+    node "TMDB API" <<External Service>> {
+        artifact "External Metadata"
+    }
+}
+
+' Зв'язки та межі довіри на них
+"Web Browser" --> "Web Server (Uvicorn)" : HTTPS (REST API)
+note on link
+  TB-01: Публічна межа 
+  (Браузер ↔ Сервер)
+end note
+
+"Web Server (Uvicorn)" --> "PostgreSQL Instance" : TCP (Port 5432)
+note on link
+  TB-02: Внутрішня межа 
+  (Сервер ↔ БД / Кеш)
+end note
+
+"Web Server (Uvicorn)" ..> "Redis Instance" : TCP (Port 6379)
+
+"Web Server (Uvicorn)" --> "TMDB API" : HTTPS
+note on link
+  TB-03: Зовнішня межа 
+  (Сервер ↔ Зовнішній API)
+end note
+@enduml

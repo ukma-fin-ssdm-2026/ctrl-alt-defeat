@@ -1,0 +1,32 @@
+@startuml
+skinparam swimlaneWidth same
+
+|Client|
+start
+:User enters search query;
+:Send search request;
+
+|API Server|
+:Check cache for data;
+
+if (Data in Cache?) then (Yes)
+  |Cache|
+  :Retrieve results;
+else (No)
+  |Database|
+  :Query Database;
+  :Retrieve search results;
+  
+  |API Server|
+  :Save results to Cache;
+endif
+
+|API Server|
+:Generate API response;
+
+|Client|
+:Update User Interface;
+:User views results;
+
+stop
+@enduml
