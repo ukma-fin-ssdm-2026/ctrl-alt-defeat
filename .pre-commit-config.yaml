@@ -1,0 +1,31 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+        args: [ --fix ]
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        args: ["-ll"]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.1
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: generate-openapi
+        name: Generate OpenAPI YAML
+        entry: python -c "import sys; sys.path.insert(0, '.'); from src.api.main import app, save_openapi_spec; save_openapi_spec(app)"
+        language: system
+        pass_filenames: false
+        files: ^src/api/.*\.py$

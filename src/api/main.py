@@ -26,11 +26,10 @@ def save_openapi_spec(app: FastAPI):
     openapi_schema = app.openapi()
     
     os.makedirs("docs/api", exist_ok=True)
-    
     with open("docs/api/openapi-generated.yaml", "w", encoding="utf-8") as f:
         yaml.dump(openapi_schema, f, sort_keys=False, allow_unicode=True)
     
-    print("✅ OpenAPI spec auto-generated from code!")
+    print("✅ OpenAPI spec auto-generated (Unified errors enforced natively)!")
     print("📁 Saved to: docs/api/openapi-generated.yaml")
 
 @asynccontextmanager
@@ -66,10 +65,26 @@ class ErrorResponse(BaseModel):
     error: ErrorPayload
 
 STANDARD_ERRORS = {
-    400: {"model": ErrorResponse, "description": "Validation Error (Bad Request)"},
-    404: {"model": ErrorResponse, "description": "Resource Not Found (Not Found)"},
+    400: {"model": ErrorResponse, "description": "Bad Request"},
+    404: {"model": ErrorResponse, "description": "Resource Not Found"},
+    422: {"model": ErrorResponse, "description": "Validation Error (Unprocessable Entity)"},
 }
 
+# 2. App initialization
+app = FastAPI(
+    title="Movie Platform API",
+    description="REST API for managing content reviews.",
+    version="1.0.0",
+    docs_url="/api-docs",  
+    redoc_url="/redoc",    
+    lifespan=lifespan,
+    responses={
+        422: STANDARD_ERRORS[422]
+    }
+)
+
+# In-memory database mock
+mock_db = {}
 
 # GLOBAL EXCEPTION HANDLERS
 
@@ -93,7 +108,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             documentation="https://api.our-movie-platform.com/docs/errors#validation"
         )
     )
-    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=error_content.model_dump())
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=error_content.model_dump())
 
 @app.exception_handler(StarletteHTTPException)
 async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
