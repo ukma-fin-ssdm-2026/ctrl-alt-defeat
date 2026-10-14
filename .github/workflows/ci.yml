@@ -2,7 +2,7 @@ name: CI Test
 on: [push, pull_request]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64]
     steps:
     - uses: actions/checkout@v7
     - name: Run Team Name
