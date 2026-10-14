@@ -7,6 +7,12 @@ from pydantic import UUID4
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
+from schemas.errors import (
+    ErrorDetail,
+    ErrorPayload,
+    ErrorResponse,
+    STANDARD_ERRORS
+)
 from db import models
 from db.database import SessionLocal
 from schemas.review import (
@@ -28,27 +34,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-class ErrorDetail(BaseModel):
-    field: str = Field(..., description="Name of the field with the error")
-    message: str = Field(..., description="Error description for this field")
-    provided_value: Optional[Any] = Field(None, description="Value provided by the client")
-
-class ErrorPayload(BaseModel):
-    code: str = Field(..., description="Machine-readable error code")
-    message: str = Field(..., description="Human-readable error message")
-    details: Optional[List[ErrorDetail]] = Field(None, description="Details about specific fields")
-    request_id: str = Field(..., description="Unique request identifier for tracing")
-    documentation: str = Field(..., description="Link to the documentation")
-
-class ErrorResponse(BaseModel):
-    error: ErrorPayload
-
-STANDARD_ERRORS = {
-    400: {"model": ErrorResponse, "description": "Validation Error (Bad Request)"},
-    404: {"model": ErrorResponse, "description": "Resource Not Found (Not Found)"},
-}
-
 
 @router.post(
     "",

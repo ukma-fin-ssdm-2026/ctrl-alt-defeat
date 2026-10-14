@@ -9,6 +9,13 @@ from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, status
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any
+from pathlib import Path
+from schemas.errors import (
+    ErrorDetail,
+    ErrorPayload,
+    ErrorResponse,
+    STANDARD_ERRORS
+)
 from schemas.review import (
     PaginatedReviewsResponse,
     ReviewCreate,
@@ -26,49 +33,20 @@ def save_openapi_spec(app: FastAPI):
     openapi_schema = app.openapi()
     
     os.makedirs("docs/api", exist_ok=True)
-    with open("docs/api/openapi-generated.yaml", "w", encoding="utf-8") as f:
+
+    openapi_path = Path(__file__).resolve().parents[2] / "docs" / "api" / "openapi-generated.yaml"
+
+    with open(openapi_path, "w", encoding="utf-8") as f:
         yaml.dump(openapi_schema, f, sort_keys=False, allow_unicode=True)
     
     print("✅ OpenAPI spec auto-generated (Unified errors enforced natively)!")
-    print("📁 Saved to: docs/api/openapi-generated.yaml")
+    print(f"📁 Saved to: {openapi_path}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     save_openapi_spec(app)  
     yield
 
-# 2. App initialization
-app = FastAPI(
-    title="Movie Platform API",
-    description="REST API for managing content reviews.",
-    version="1.0.0",
-    docs_url="/api-docs",  
-    redoc_url="/redoc",    
-    lifespan=lifespan
-)
-
-app.include_router(reviews_router)
-
-class ErrorDetail(BaseModel):
-    field: str = Field(..., description="Name of the field with the error")
-    message: str = Field(..., description="Error description for this field")
-    provided_value: Optional[Any] = Field(None, description="Value provided by the client")
-
-class ErrorPayload(BaseModel):
-    code: str = Field(..., description="Machine-readable error code")
-    message: str = Field(..., description="Human-readable error message")
-    details: Optional[List[ErrorDetail]] = Field(None, description="Details about specific fields")
-    request_id: str = Field(..., description="Unique request identifier for tracing")
-    documentation: str = Field(..., description="Link to the documentation")
-
-class ErrorResponse(BaseModel):
-    error: ErrorPayload
-
-STANDARD_ERRORS = {
-    400: {"model": ErrorResponse, "description": "Bad Request"},
-    404: {"model": ErrorResponse, "description": "Resource Not Found"},
-    422: {"model": ErrorResponse, "description": "Validation Error (Unprocessable Entity)"},
-}
 
 # 2. App initialization
 app = FastAPI(
@@ -83,8 +61,7 @@ app = FastAPI(
     }
 )
 
-# In-memory database mock
-mock_db = {}
+app.include_router(reviews_router)
 
 # GLOBAL EXCEPTION HANDLERS
 
