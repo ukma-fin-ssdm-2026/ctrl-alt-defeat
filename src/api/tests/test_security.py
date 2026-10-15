@@ -4,8 +4,8 @@ import os
 
 def test_security_no_public_binding():
     """
-    Регресійний тест для вразливості Bandit B104.
-    Тест падає, якщо у main.py захардкоджено host="0.0.0.0".
+    Regression test for the Bandit B104 vulnerability. 
+    The test fails if host=0.0.0.0 is hardcoded in main.py.
     """
     main_py_path = os.path.join(
         os.path.dirname(__file__), "..", "main.py"
@@ -17,5 +17,5 @@ def test_security_no_public_binding():
     has_vulnerability = re.search(r'host\s*=\s*["\']0\.0\.0\.0["\']', content)
 
     assert not has_vulnerability, (
-        "Вразливість B104: Знайдено жорстку прив'язку до 0.0.0.0 у main.py"
+        "Vulnerability B104: Hard-coded reference to 0.0.0.0 found in main.py"
     )
