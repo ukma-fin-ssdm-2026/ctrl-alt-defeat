@@ -33,7 +33,7 @@ class ReviewUpdate(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=10, description="Rating from 1 to 10")
     review_text: Optional[str] = Field(None, min_length=10, max_length=5000, description="Text of the review")
     contains_spoilers: Optional[bool] = Field(None, description="Flag indicating if review contains spoilers")
-    
+
     model_config = {
         "json_schema_extra": {
             "example": {

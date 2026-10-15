@@ -4,7 +4,7 @@ import os
 
 def test_security_no_public_binding():
     """
-    Regression test for the Bandit B104 vulnerability. 
+    Regression test for the Bandit B104 vulnerability.
     The test fails if host=0.0.0.0 is hardcoded in main.py.
     """
     main_py_path = os.path.join(
