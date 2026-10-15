@@ -7,21 +7,12 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, status
-from pydantic import BaseModel, Field
-from typing import List, Optional, Any
 from pathlib import Path
 from schemas.errors import (
     ErrorDetail,
     ErrorPayload,
     ErrorResponse,
     STANDARD_ERRORS
-)
-from schemas.review import (
-    PaginatedReviewsResponse,
-    ReviewCreate,
-    ReviewResponse,
-    ReviewStatus,
-    ReviewUpdate,
 )
 from routers.reviews import router as reviews_router
 
@@ -31,20 +22,20 @@ Base.metadata.create_all(bind=engine)
 def save_openapi_spec(app: FastAPI):
     """Save auto-generated OpenAPI spec to file"""
     openapi_schema = app.openapi()
-    
+
     os.makedirs("docs/api", exist_ok=True)
 
     openapi_path = Path(__file__).resolve().parents[2] / "docs" / "api" / "openapi-generated.yaml"
 
     with open(openapi_path, "w", encoding="utf-8") as f:
         yaml.dump(openapi_schema, f, sort_keys=False, allow_unicode=True)
-    
+
     print("✅ OpenAPI spec auto-generated (Unified errors enforced natively)!")
     print(f"📁 Saved to: {openapi_path}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    save_openapi_spec(app)  
+    save_openapi_spec(app)
     yield
 
 
@@ -53,8 +44,8 @@ app = FastAPI(
     title="Movie Platform API",
     description="REST API for managing content reviews.",
     version="1.0.0",
-    docs_url="/api-docs",  
-    redoc_url="/redoc",    
+    docs_url="/api-docs",
+    redoc_url="/redoc",
     lifespan=lifespan,
     responses={
         422: STANDARD_ERRORS[422]
@@ -75,7 +66,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             message=err.get("msg", "Invalid value"),
             provided_value=err.get("input", None)
         ))
-        
+
     error_content = ErrorResponse(
         error=ErrorPayload(
             code="VALIDATION_ERROR",

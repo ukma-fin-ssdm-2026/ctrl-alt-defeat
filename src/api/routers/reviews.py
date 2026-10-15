@@ -1,16 +1,12 @@
 import uuid
 from datetime import datetime
-from typing import Optional, Any, List
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, Field
 
 from schemas.errors import (
-    ErrorDetail,
-    ErrorPayload,
-    ErrorResponse,
     STANDARD_ERRORS
 )
 from db import models
@@ -84,7 +80,7 @@ async def get_reviews(
 
     if content_id:
         query = query.filter(models.Review.content_id == content_id)
-    
+
     total = query.count()
     paginated_items = query.offset(skip).limit(limit).all()
     has_more = (skip + limit) < total
@@ -114,7 +110,7 @@ async def get_review(
 
     if db_review is None:
         raise HTTPException(
-            status_code=404, 
+            status_code=404,
             detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"}
         )
     return db_review
@@ -140,9 +136,9 @@ async def update_review(
         status_code=404,
         detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"}
     )
-    
+
     update_data = review_update.model_dump(exclude_unset=True)
-    
+
     for key, value in update_data.items():
         setattr(existing_review, key, value)
 
