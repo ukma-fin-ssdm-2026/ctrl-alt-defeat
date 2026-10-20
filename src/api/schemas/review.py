@@ -4,10 +4,12 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, UUID4
 
+
 class ReviewStatus(str, Enum):
     published = "published"
     hidden = "hidden"
     deleted = "deleted"
+
 
 class ReviewBase(BaseModel):
     user_id: UUID4 = Field(..., description="Identifier of the review author")
@@ -15,6 +17,7 @@ class ReviewBase(BaseModel):
     rating: int = Field(..., ge=1, le=10, description="Rating from 1 to 10")
     review_text: str = Field(..., min_length=10, max_length=5000, description="Text of the review")
     contains_spoilers: bool = Field(default=False, description="Flag indicating if review contains spoilers")
+
 
 class ReviewCreate(ReviewBase):
     model_config = {
@@ -24,10 +27,11 @@ class ReviewCreate(ReviewBase):
                 "content_id": "987e6543-e21b-34c2-b123-526614174111",
                 "rating": 9,
                 "review_text": "Great movie, very deep plot and amazing acting!",
-                "contains_spoilers": False
+                "contains_spoilers": False,
             }
         }
     }
+
 
 class ReviewUpdate(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=10, description="Rating from 1 to 10")
@@ -39,10 +43,11 @@ class ReviewUpdate(BaseModel):
             "example": {
                 "rating": 10,
                 "review_text": "Updated review: loved it even more after the second watch!",
-                "contains_spoilers": True
+                "contains_spoilers": True,
             }
         }
     }
+
 
 class ReviewResponse(ReviewBase):
     review_id: UUID4 = Field(..., description="Unique identifier of the review")
@@ -60,10 +65,11 @@ class ReviewResponse(ReviewBase):
                 "review_text": "Great movie, very deep plot and amazing acting!",
                 "contains_spoilers": False,
                 "status": "published",
-                "created_at": "2026-10-05T18:00:00Z"
+                "created_at": "2026-10-05T18:00:00Z",
             }
-        }
+        },
     }
+
 
 class PaginatedReviewsResponse(BaseModel):
     items: List[ReviewResponse] = Field(..., description="List of reviews on the current page")
@@ -71,4 +77,3 @@ class PaginatedReviewsResponse(BaseModel):
     skip: int = Field(..., description="Offset used for pagination")
     limit: int = Field(..., description="Limit used for pagination")
     has_more: bool = Field(..., description="Flag indicating if there are more items available")
-
