@@ -1,3 +1,4 @@
+.DS_Store
 *.obj
 *.OBJ
 *.exe
@@ -10,4 +11,19 @@
 *.LST
 *.tr
 *.TR
-*.DS_Store
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+.env
+.venv/
+venv/
+env/
+
+.pytest_cache/
+.coverage
+
+.vscode/
+.idea/

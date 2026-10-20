@@ -7,6 +7,7 @@ class ErrorDetail(BaseModel):
     message: str = Field(..., description="Error description for this field")
     provided_value: Optional[Any] = Field(None, description="Value provided by the client")
 
+
 class ErrorPayload(BaseModel):
     code: str = Field(..., description="Machine-readable error code")
     message: str = Field(..., description="Human-readable error message")
@@ -14,8 +15,10 @@ class ErrorPayload(BaseModel):
     request_id: str = Field(..., description="Unique request identifier for tracing")
     documentation: str = Field(..., description="Link to the documentation")
 
+
 class ErrorResponse(BaseModel):
     error: ErrorPayload
+
 
 STANDARD_ERRORS = {
     400: {"model": ErrorResponse, "description": "Bad Request"},

@@ -25,7 +25,8 @@ repos:
     hooks:
       - id: generate-openapi
         name: Generate OpenAPI YAML
-        entry: python -c "import sys; sys.path.insert(0, '.'); from src.api.main import app, save_openapi_spec; save_openapi_spec(app)"
+        entry: >- 
+          python3 -c "import sys; sys.path.insert(0, 'src/api'); sys.path.insert(0, '.'); from src.api.main import app, save_openapi_spec; save_openapi_spec(app)"        language: system
         language: system
         pass_filenames: false
         files: ^src/api/.*\.py$
