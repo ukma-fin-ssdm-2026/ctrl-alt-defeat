@@ -9,8 +9,6 @@ from routers.reviews import get_db
 from db.models import Review
 from schemas.review import ReviewStatus
 
-# --- Фікстури (Заглушки та Моки) ---
-
 
 @pytest.fixture
 def mock_db_session():
@@ -56,122 +54,92 @@ def mock_review(valid_payload):
     )
 
 
-# --- Тести для routers/reviews.py ---
-
-
 def test_create_review_success(client, mock_db_session, valid_payload):
-    # Arrange
     mock_db_session.add.return_value = None
     mock_db_session.commit.return_value = None
 
-    # Act
     response = client.post("/api/v1/reviews", json=valid_payload)
 
-    # Assert
     assert response.status_code == 201
     assert response.json()["rating"] == valid_payload["rating"]
-    mock_db_session.add.assert_called_once()  # Перевірка взаємодії з моком
+    mock_db_session.add.assert_called_once()
 
 
 def test_create_review_edge_case_rating(client, valid_payload):
-    # Arrange: Граничний випадок (рейтинг вище допустимого)
     payload = valid_payload.copy()
     payload["rating"] = 11
 
-    # Act
     response = client.post("/api/v1/reviews", json=payload)
 
-    # Assert
     assert response.status_code == 422
 
 
 def test_get_reviews_pagination(client, mock_db_session, mock_review):
-    # Arrange
     mock_query = mock_db_session.query.return_value
     mock_query.count.return_value = 1
     mock_query.offset.return_value.limit.return_value.all.return_value = [mock_review]
 
-    # Act
     response = client.get("/api/v1/reviews?skip=0&limit=5")
 
-    # Assert
     assert response.status_code == 200
     assert response.json()["total"] == 1
     assert len(response.json()["items"]) == 1
 
 
 def test_get_reviews_with_content_filter(client, mock_db_session, mock_review):
-    # Arrange
     mock_query = mock_db_session.query.return_value
     mock_filter = mock_query.filter.return_value
     mock_filter.count.return_value = 1
     mock_filter.offset.return_value.limit.return_value.all.return_value = [mock_review]
     content_id = str(mock_review.content_id)
 
-    # Act
     response = client.get(f"/api/v1/reviews?content_id={content_id}")
 
-    # Assert
     assert response.status_code == 200
     mock_query.filter.assert_called_once()
 
 
 def test_get_review_by_id_success(client, mock_db_session, mock_review):
-    # Arrange
     mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
 
-    # Act
     response = client.get(f"/api/v1/reviews/{mock_review.review_id}")
 
-    # Assert
     assert response.status_code == 200
     assert response.json()["review_text"] == mock_review.review_text
 
 
 def test_get_review_by_id_not_found(client, mock_db_session):
-    # Arrange: Граничний випадок (неіснуючий ID)
     mock_db_session.query.return_value.filter.return_value.first.return_value = None
 
-    # Act
     response = client.get(f"/api/v1/reviews/{uuid.uuid4()}")
 
-    # Assert
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "REVIEW_NOT_FOUND"
 
 
 def test_update_review_success(client, mock_db_session, mock_review):
-    # Arrange
     mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
     update_payload = {"rating": 5}
 
-    # Act
     response = client.patch(f"/api/v1/reviews/{mock_review.review_id}", json=update_payload)
 
-    # Assert
     assert response.status_code == 200
     assert response.json()["rating"] == 5
     mock_db_session.commit.assert_called_once()
 
 
 def test_delete_review_success(client, mock_db_session, mock_review):
-    # Arrange
     mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
 
-    # Act
     response = client.delete(f"/api/v1/reviews/{mock_review.review_id}")
 
-    # Assert
     assert response.status_code == 204
     mock_db_session.delete.assert_called_once_with(mock_review)
 
 
 def test_delete_review_not_found_edge_case(client, mock_db_session):
-    # Arrange
     mock_db_session.query.return_value.filter.return_value.first.return_value = None
 
-    # Act
     response = client.delete(f"/api/v1/reviews/{uuid.uuid4()}")
 
-    # Assert
     assert response.status_code == 404

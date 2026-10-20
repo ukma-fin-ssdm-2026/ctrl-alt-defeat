@@ -5,10 +5,8 @@ client = TestClient(app)
 
 
 def test_global_404_exception_handler():
-    # Arrange & Act: Звертаємося до неіснуючого маршруту
     response = client.get("/api/v1/this-route-does-not-exist")
 
-    # Assert: Перевіряємо, що спрацював наш кастомний StarletteHTTPException
     assert response.status_code == 404
     data = response.json()
     assert "error" in data
@@ -17,7 +15,6 @@ def test_global_404_exception_handler():
 
 
 def test_global_validation_exception_handler():
-    # Arrange: Передаємо неправильний тип даних (рядок замість UUID)
     bad_payload = {
         "user_id": "not-a-valid-uuid",
         "content_id": "not-a-valid-uuid",
@@ -26,10 +23,8 @@ def test_global_validation_exception_handler():
         "contains_spoilers": False,
     }
 
-    # Act
     response = client.post("/api/v1/reviews", json=bad_payload)
 
-    # Assert: Перевіряємо кастомний RequestValidationError
     assert response.status_code == 422
     data = response.json()
     assert data["error"]["code"] == "VALIDATION_ERROR"
