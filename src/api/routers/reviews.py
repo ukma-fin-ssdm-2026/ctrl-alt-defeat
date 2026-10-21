@@ -6,9 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
-from schemas.errors import (
-    STANDARD_ERRORS
-)
+from schemas.errors import STANDARD_ERRORS
 from db import models
 from db.database import SessionLocal
 from schemas.review import (
@@ -24,6 +22,7 @@ router = APIRouter(
     tags=["reviews"],
 )
 
+
 def get_db():
     db = SessionLocal()
     try:
@@ -31,23 +30,21 @@ def get_db():
     finally:
         db.close()
 
+
 @router.post(
     "",
     response_model=ReviewResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new review",
-    responses=STANDARD_ERRORS
+    responses=STANDARD_ERRORS,
 )
 async def create_review(
     review: ReviewCreate,
     db: Session = Depends(get_db),
- ):
+):
     review_id = uuid.uuid4()
     new_review = ReviewResponse(
-        review_id=review_id,
-        status=ReviewStatus.published,
-        created_at=datetime.utcnow(),
-        **review.model_dump()
+        review_id=review_id, status=ReviewStatus.published, created_at=datetime.utcnow(), **review.model_dump()
     )
     db_review = models.Review(
         review_id=new_review.review_id,
@@ -58,11 +55,12 @@ async def create_review(
         contains_spoilers=new_review.contains_spoilers,
         status=new_review.status.value,
         created_at=new_review.created_at,
-        )
+    )
 
     db.add(db_review)
     db.commit()
     return new_review
+
 
 @router.get(
     "",
@@ -85,57 +83,43 @@ async def get_reviews(
     paginated_items = query.offset(skip).limit(limit).all()
     has_more = (skip + limit) < total
 
-    return PaginatedReviewsResponse(
-        items=paginated_items,
-        total=total,
-        skip=skip,
-        limit=limit,
-        has_more=has_more
-    )
+    return PaginatedReviewsResponse(items=paginated_items, total=total, skip=skip, limit=limit, has_more=has_more)
+
 
 @router.get(
     "/{review_id}",
     response_model=ReviewResponse,
     status_code=status.HTTP_200_OK,
     summary="Get a specific review by ID",
-    responses=STANDARD_ERRORS
+    responses=STANDARD_ERRORS,
 )
 async def get_review(
     review_id: UUID4 = Path(..., description="ID of the review"),
     db: Session = Depends(get_db),
 ):
-    db_review = db.query(models.Review).filter(
-    models.Review.review_id == review_id
-).first()
+    db_review = db.query(models.Review).filter(models.Review.review_id == review_id).first()
 
     if db_review is None:
-        raise HTTPException(
-            status_code=404,
-            detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"}
-        )
+        raise HTTPException(status_code=404, detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"})
     return db_review
+
 
 @router.patch(
     "/{review_id}",
     response_model=ReviewResponse,
     status_code=status.HTTP_200_OK,
     summary="Partially update a review",
-    responses=STANDARD_ERRORS
+    responses=STANDARD_ERRORS,
 )
 async def update_review(
     review_update: ReviewUpdate,
     review_id: UUID4 = Path(..., description="ID of the review to update"),
     db: Session = Depends(get_db),
 ):
-    existing_review = db.query(models.Review).filter(
-    models.Review.review_id == review_id
-).first()
+    existing_review = db.query(models.Review).filter(models.Review.review_id == review_id).first()
 
     if existing_review is None:
-        raise HTTPException(
-        status_code=404,
-        detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"}
-    )
+        raise HTTPException(status_code=404, detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"})
 
     update_data = review_update.model_dump(exclude_unset=True)
 
@@ -147,27 +131,18 @@ async def update_review(
 
     return existing_review
 
+
 @router.delete(
-    "/{review_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete a review",
-    responses=STANDARD_ERRORS
+    "/{review_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a review", responses=STANDARD_ERRORS
 )
 async def delete_review(
     review_id: UUID4 = Path(..., description="ID of the review to delete"),
     db: Session = Depends(get_db),
 ):
-    existing_review = db.query(models.Review).filter(
-    models.Review.review_id == review_id
-).first()
+    existing_review = db.query(models.Review).filter(models.Review.review_id == review_id).first()
 
     if existing_review is None:
-        raise HTTPException(
-        status_code=404,
-        detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"}
-    )
+        raise HTTPException(status_code=404, detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"})
     db.delete(existing_review)
     db.commit()
     return None
-
-
