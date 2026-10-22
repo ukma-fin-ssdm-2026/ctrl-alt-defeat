@@ -143,3 +143,18 @@ def test_delete_review_not_found_edge_case(client, mock_db_session):
     response = client.delete(f"/api/v1/reviews/{uuid.uuid4()}")
 
     assert response.status_code == 404
+
+
+def test_get_reviews_min_rating_filter(client, mock_db_session, mock_review):
+    mock_query = mock_db_session.query.return_value
+    mock_query.count.return_value = 1
+    mock_query.offset.return_value.limit.return_value.all.return_value = [mock_review]
+    
+    mock_filter = mock_query.filter.return_value
+    mock_filter.count.return_value = 1
+    mock_filter.offset.return_value.limit.return_value.all.return_value = [mock_review]
+
+    response = client.get("/api/v1/reviews?min_rating=4")
+
+    assert response.status_code == 200
+    mock_query.filter.assert_called()
