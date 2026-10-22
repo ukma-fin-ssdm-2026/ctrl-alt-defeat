@@ -157,4 +157,4 @@ def test_get_reviews_min_rating_filter(client, mock_db_session, mock_review):
     response = client.get("/api/v1/reviews?min_rating=4")
 
     assert response.status_code == 200
-    mock_query.filter.assert_called()
+    mock_query.filter.assert_called_once()
