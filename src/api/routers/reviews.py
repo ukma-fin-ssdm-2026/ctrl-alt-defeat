@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
@@ -44,7 +44,7 @@ async def create_review(
 ):
     review_id = uuid.uuid4()
     new_review = ReviewResponse(
-        review_id=review_id, status=ReviewStatus.published, created_at=datetime.utcnow(), **review.model_dump()
+        review_id=review_id, status=ReviewStatus.published, created_at=datetime.now(UTC), **review.model_dump()
     )
     db_review = models.Review(
         review_id=new_review.review_id,

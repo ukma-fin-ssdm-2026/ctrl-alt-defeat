@@ -73,7 +73,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             documentation="https://api.our-movie-platform.com/docs/errors#validation",
         )
     )
-    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=error_content.model_dump())
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, content=error_content.model_dump())
 
 
 @app.exception_handler(StarletteHTTPException)
