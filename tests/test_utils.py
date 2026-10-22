@@ -10,3 +10,10 @@ def test_reviews_total_and_average():
     result = generate_review_summary(reviews)
     assert result["total_reviews"] == 2
     assert result["average_rating"] == 4.5
+
+def test_reviews_distribution():
+    reviews = [{"rating": 5}, {"rating": 5}, {"rating": 3}]
+    result = generate_review_summary(reviews)
+    assert result["distribution"][5] == 2
+    assert result["distribution"][3] == 1
+    assert result["distribution"][1] == 0    
