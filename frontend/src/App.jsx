@@ -1,21 +1,24 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import HomePage from './pages/HomePage';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import ReviewsPage from './pages/ReviewsPage';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <nav style={{ padding: '1rem', borderBottom: '1px solid #ccc', marginBottom: '2rem' }}>
-        <Link to="/" style={{ marginRight: '1rem' }}>Головна</Link>
-        <Link to="/reviews">Відгуки</Link>
-      </nav>
-      
-      <main style={{ padding: '0 1rem' }}>
+    <Router>
+      {}
+      <header style={{ padding: '1rem', borderBottom: '1px solid #444', marginBottom: '1rem' }}>
+        <nav style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+          <Link to="/" style={{ textDecoration: 'none', color: '#646cff', fontSize: '18px' }}>Головна</Link>
+          <Link to="/reviews" style={{ textDecoration: 'none', color: '#646cff', fontSize: '18px' }}>Відгуки</Link>
+        </nav>
+      </header>
+
+      {}
+      <main style={{ padding: '0 1rem', maxWidth: '800px', margin: '0 auto' }}>
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<h1 style={{ textAlign: 'center' }}>Головна сторінка проєкту</h1>} />
           <Route path="/reviews" element={<ReviewsPage />} />
         </Routes>
       </main>
-    </BrowserRouter>
+    </Router>
   );
 }
