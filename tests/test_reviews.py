@@ -158,3 +158,8 @@ def test_get_reviews_min_rating_filter(client, mock_db_session, mock_review):
 
     assert response.status_code == 200
     mock_query.filter.assert_called_once()
+
+
+def test_get_reviews_min_rating_validation_error(client):
+    response = client.get("/api/v1/reviews?min_rating=15")
+    assert response.status_code == 422
