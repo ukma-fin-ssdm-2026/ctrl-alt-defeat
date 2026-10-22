@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Optional
+from typing import Optional, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
@@ -70,7 +70,7 @@ async def create_review(
 )
 async def get_reviews(
     content_id: Optional[UUID4] = Query(None, description="Filter by content ID"),
-    min_rating: Optional[int] = Query(None, ge=1, le=10, description="Filter by minimum rating (1-10)"),
+    min_rating: Annotated[Optional[int], Query(ge=1, le=10, description="Filter by minimum rating (1-10)")] = None,
     skip: int = Query(0, ge=0, description="Offset for pagination"),
     limit: int = Query(10, ge=1, le=100, description="Maximum number of items per page"),
     db: Session = Depends(get_db),
