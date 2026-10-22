@@ -1,0 +1,6 @@
+from src.api.utils import generate_review_summary
+
+
+def test_empty_reviews_summary():
+    expected = {"total_reviews": 0, "average_rating": 0.0, "distribution": {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}}
+    assert generate_review_summary([]) == expected
