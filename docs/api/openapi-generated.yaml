@@ -58,6 +58,18 @@ paths:
           description: Filter by content ID
           title: Content Id
         description: Filter by content ID
+      - name: min_rating
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            maximum: 10
+            minimum: 1
+          - type: 'null'
+          description: Filter by minimum rating (1-10)
+          title: Min Rating
+        description: Filter by minimum rating (1-10)
       - name: skip
         in: query
         required: false

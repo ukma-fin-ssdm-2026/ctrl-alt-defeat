@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
-from schemas.errors import STANDARD_ERRORS
-from db import models
-from db.database import SessionLocal
-from schemas.review import (
+from src.api.schemas.errors import STANDARD_ERRORS
+from src.api.db import models
+from src.api.db.database import SessionLocal
+from src.api.schemas.review import (
     PaginatedReviewsResponse,
     ReviewCreate,
     ReviewResponse,
