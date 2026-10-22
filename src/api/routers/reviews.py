@@ -70,6 +70,7 @@ async def create_review(
 )
 async def get_reviews(
     content_id: Optional[UUID4] = Query(None, description="Filter by content ID"),
+    min_rating: Optional[int] = Query(None, description="Filter by minimum rating"),
     skip: int = Query(0, ge=0, description="Offset for pagination"),
     limit: int = Query(10, ge=1, le=100, description="Maximum number of items per page"),
     db: Session = Depends(get_db),
@@ -78,6 +79,9 @@ async def get_reviews(
 
     if content_id:
         query = query.filter(models.Review.content_id == content_id)
+
+    if min_rating:
+        query = query.filter(models.Review.rating >= min_rating)
 
     total = query.count()
     paginated_items = query.offset(skip).limit(limit).all()
