@@ -1,37 +1,48 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
+import ReviewCard from '../components/ReviewCard';
+import ReviewForm from '../components/ReviewForm';
 
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    apiClient.get('/api/v1/reviews') 
+  const fetchReviews = () => {
+    setLoading(true);
+    apiClient.get('/api/v1/reviews')
       .then(response => {
         setReviews(response.data.items || []);
         setLoading(false);
       })
       .catch(error => {
-        console.error('Помилка завантаження відгуків:', error);
-        setLoading(false);
+        if (error.response && error.response.status === 422) {
+          console.error('Помилка валідації від FastAPI:', error.response.data.detail);
+        } else {
+          console.error('Помилка відправки:', error);
+        }
       });
-  }, []);
+  };
 
-  if (loading) return <p>Завантаження відгуків...</p>;
+  useEffect(() => {
+    fetchReviews();
+  }, []);
 
   return (
     <div>
-      <h1>Відгуки</h1>
-      {reviews.length === 0 ? (
-        <p>Немає доступних відгуків.</p>
+      <h1 style={{ textAlign: 'center' }}>Відгуки</h1>
+      
+      <ReviewForm onReviewAdded={fetchReviews} />
+      
+      {loading ? (
+        <p>Завантаження відгуків...</p>
+      ) : reviews.length === 0 ? (
+        <p style={{ textAlign: 'center' }}>Немає доступних відгуків. Будьте першим!</p>
       ) : (
-        <ul>
+        <div>
           {reviews.map((review) => (
-            <li key={review.review_id}>
-              <strong>Оцінка: {review.rating}/10</strong> — {review.review_text}
-            </li>
+            <ReviewCard key={review.review_id} review={review} />
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
