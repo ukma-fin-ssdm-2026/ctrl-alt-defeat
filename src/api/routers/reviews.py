@@ -70,7 +70,7 @@ async def create_review(
 )
 async def get_reviews(
     content_id: Optional[UUID4] = Query(None, description="Filter by content ID"),
-    min_rating: Optional[int] = Query(None, description="Filter by minimum rating"),
+    min_rating: Optional[int] = Query(None, ge=1, le=10, description="Filter by minimum rating (1-10)"),
     skip: int = Query(0, ge=0, description="Offset for pagination"),
     limit: int = Query(10, ge=1, le=100, description="Maximum number of items per page"),
     db: Session = Depends(get_db),
