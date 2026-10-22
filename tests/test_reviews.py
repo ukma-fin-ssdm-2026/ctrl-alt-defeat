@@ -1,6 +1,6 @@
 import pytest
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 
@@ -50,7 +50,7 @@ def mock_review(valid_payload):
         review_text=valid_payload["review_text"],
         contains_spoilers=valid_payload["contains_spoilers"],
         status=ReviewStatus.published.value,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
     )
 
 
