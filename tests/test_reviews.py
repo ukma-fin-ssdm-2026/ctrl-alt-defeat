@@ -163,3 +163,47 @@ def test_get_reviews_min_rating_filter(client, mock_db_session, mock_review):
 def test_get_reviews_min_rating_validation_error(client):
     response = client.get("/api/v1/reviews?min_rating=15")
     assert response.status_code == 422
+
+def test_create_review_short_text(client, valid_payload):
+    """Перевірка валідації мінімальної довжини тексту відгуку."""
+    payload = valid_payload.copy()
+    payload["review_text"] = "Short"  # Менше 10 символів, як ми бачили раніше
+
+    response = client.post("/api/v1/reviews", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_update_review_not_found(client, mock_db_session):
+    """Перевірка помилки 404 при спробі оновити неіснуючий відгук."""
+    mock_db_session.query.return_value.filter.return_value.first.return_value = None
+    update_payload = {"rating": 5}
+
+    response = client.patch(f"/api/v1/reviews/{uuid.uuid4()}", json=update_payload)
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "REVIEW_NOT_FOUND"
+
+
+def test_update_review_invalid_data(client, mock_db_session, mock_review):
+    """Перевірка валідації (422) при передачі некоректних даних для оновлення."""
+    mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
+    update_payload = {"rating": 999}
+
+    response = client.patch(f"/api/v1/reviews/{mock_review.review_id}", json=update_payload)
+
+    assert response.status_code == 422
+
+
+def test_get_reviews_with_user_filter(client, mock_db_session, mock_review):
+    """Перевірка фільтрації списку відгуків за user_id."""
+    mock_query = mock_db_session.query.return_value
+    mock_filter = mock_query.filter.return_value
+    mock_filter.count.return_value = 1
+    mock_filter.offset.return_value.limit.return_value.all.return_value = [mock_review]
+    user_id = str(mock_review.user_id)
+
+    response = client.get(f"/api/v1/reviews?user_id={user_id}")
+
+    assert response.status_code == 200
+    mock_query.filter.assert_called_once()
