@@ -18,7 +18,7 @@ def mock_db_session():
 
 @pytest.fixture
 def client(mock_db_session):
-    """Підробка (Fake) залежності БД для ізоляції тестів."""
+    """Mocking database dependencies for test isolation"""
 
     def override_get_db():
         yield mock_db_session
@@ -41,7 +41,7 @@ def valid_payload():
 
 @pytest.fixture
 def mock_review(valid_payload):
-    """Заглушка (Stub) з даними моделі."""
+    """Stub with model data"""
     return Review(
         review_id=uuid.uuid4(),
         user_id=uuid.UUID(valid_payload["user_id"]),
@@ -163,3 +163,47 @@ def test_get_reviews_min_rating_filter(client, mock_db_session, mock_review):
 def test_get_reviews_min_rating_validation_error(client):
     response = client.get("/api/v1/reviews?min_rating=15")
     assert response.status_code == 422
+
+def test_create_review_short_text(client, valid_payload):
+    """Validation check for the minimum length of the review text."""
+    payload = valid_payload.copy()
+    payload["review_text"] = "Short"  # Less than 10 symbols
+
+    response = client.post("/api/v1/reviews", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_update_review_not_found(client, mock_db_session):
+    """Verification of a 404 error when attempting to update a non-existent review"""
+    mock_db_session.query.return_value.filter.return_value.first.return_value = None
+    update_payload = {"rating": 5}
+
+    response = client.patch(f"/api/v1/reviews/{uuid.uuid4()}", json=update_payload)
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "REVIEW_NOT_FOUND"
+
+
+def test_update_review_invalid_data(client, mock_db_session, mock_review):
+    """Validation check (422) when submitting incorrect data for an update"""
+    mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
+    update_payload = {"rating": 999}
+
+    response = client.patch(f"/api/v1/reviews/{mock_review.review_id}", json=update_payload)
+
+    assert response.status_code == 422
+
+
+def test_get_reviews_with_user_filter(client, mock_db_session, mock_review):
+    """Verifying the filtering of the reviews list by user_id"""
+    mock_query = mock_db_session.query.return_value
+    mock_filter = mock_query.filter.return_value
+    mock_filter.count.return_value = 1
+    mock_filter.offset.return_value.limit.return_value.all.return_value = [mock_review]
+    user_id = str(mock_review.user_id)
+
+    response = client.get(f"/api/v1/reviews?user_id={user_id}")
+
+    assert response.status_code == 200
+    mock_query.filter.assert_called_once()
