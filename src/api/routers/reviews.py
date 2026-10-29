@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from schemas.errors import STANDARD_ERRORS
 from db import models
 from db.database import SessionLocal
+from utils import check_review_policy_violations
 from schemas.review import (
     PaginatedReviewsResponse,
     ReviewCreate,
@@ -42,6 +43,16 @@ async def create_review(
     review: ReviewCreate,
     db: Session = Depends(get_db),
 ):
+    violations = check_review_policy_violations(review.review_text)
+    if violations:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "POLICY_VIOLATION",
+                "message": f"Review contains forbidden content: {', '.join(violations)}"
+            }
+        )
+    
     review_id = uuid.uuid4()
     new_review = ReviewResponse(
         review_id=review_id, status=ReviewStatus.published, created_at=datetime.now(UTC), **review.model_dump()
@@ -130,6 +141,17 @@ async def update_review(
         raise HTTPException(status_code=404, detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"})
 
     update_data = review_update.model_dump(exclude_unset=True)
+
+    if "review_text" in update_data:
+        violations = check_review_policy_violations(update_data["review_text"])
+        if violations:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "POLICY_VIOLATION",
+                    "message": f"Review contains forbidden content: {', '.join(violations)}"
+                }
+            )
 
     for key, value in update_data.items():
         setattr(existing_review, key, value)
