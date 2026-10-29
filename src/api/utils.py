@@ -22,3 +22,12 @@ def generate_review_summary(reviews: List[Dict[str, Any]]) -> Dict[str, Any]:
     summary["average_rating"] = round(total_score / summary["total_reviews"], 2)
     
     return summary
+
+
+def check_review_policy_violations(text: str) -> list[str]:
+    """
+    Analyzes the review text for policy violations.
+    Returns a list of violation codes (e.g., 'profanity', 'spam_links', 'shouting').
+    Returns an empty list if the text is clean.
+    """
+    pass  # AI will implement this
