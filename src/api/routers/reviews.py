@@ -10,6 +10,11 @@ from src.api.schemas.errors import STANDARD_ERRORS
 from src.api.db import models
 from src.api.db.database import SessionLocal
 from src.api.schemas.review import (
+from schemas.errors import STANDARD_ERRORS
+from db import models
+from db.database import SessionLocal
+from utils import check_review_policy_violations
+from schemas.review import (
     PaginatedReviewsResponse,
     ReviewCreate,
     ReviewResponse,
@@ -42,6 +47,16 @@ async def create_review(
     review: ReviewCreate,
     db: Session = Depends(get_db),
 ):
+    violations = check_review_policy_violations(review.review_text)
+    if violations:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "POLICY_VIOLATION",
+                "message": f"Review contains forbidden content: {', '.join(violations)}"
+            }
+        )
+    
     review_id = uuid.uuid4()
     new_review = ReviewResponse(
         review_id=review_id, status=ReviewStatus.published, created_at=datetime.now(UTC), **review.model_dump()
@@ -70,6 +85,7 @@ async def create_review(
 )
 async def get_reviews(
     content_id: Optional[UUID4] = Query(None, description="Filter by content ID"),
+    user_id: Optional[UUID4] = Query(None, description="Filter by user ID"),
     min_rating: Annotated[Optional[int], Query(ge=1, le=10, description="Filter by minimum rating (1-10)")] = None,
     skip: int = Query(0, ge=0, description="Offset for pagination"),
     limit: int = Query(10, ge=1, le=100, description="Maximum number of items per page"),
@@ -79,6 +95,9 @@ async def get_reviews(
 
     if content_id:
         query = query.filter(models.Review.content_id == content_id)
+
+    if user_id:
+        query = query.filter(models.Review.user_id == user_id)
 
     if min_rating:
         query = query.filter(models.Review.rating >= min_rating)
@@ -126,6 +145,17 @@ async def update_review(
         raise HTTPException(status_code=404, detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"})
 
     update_data = review_update.model_dump(exclude_unset=True)
+
+    if "review_text" in update_data:
+        violations = check_review_policy_violations(update_data["review_text"])
+        if violations:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "POLICY_VIOLATION",
+                    "message": f"Review contains forbidden content: {', '.join(violations)}"
+                }
+            )
 
     for key, value in update_data.items():
         setattr(existing_review, key, value)
