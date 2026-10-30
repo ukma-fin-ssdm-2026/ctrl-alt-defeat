@@ -6,21 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
-from src.api.schemas.errors import STANDARD_ERRORS
 from src.api.db import models
 from src.api.db.database import SessionLocal
+from src.api.schemas.errors import STANDARD_ERRORS
 from src.api.schemas.review import (
-from schemas.errors import STANDARD_ERRORS
-from db import models
-from db.database import SessionLocal
-from utils import check_review_policy_violations
-from schemas.review import (
     PaginatedReviewsResponse,
     ReviewCreate,
     ReviewResponse,
     ReviewStatus,
     ReviewUpdate,
 )
+from src.api.utils import check_review_policy_violations
 
 router = APIRouter(
     prefix="/api/v1/reviews",
@@ -53,10 +49,10 @@ async def create_review(
             status_code=400,
             detail={
                 "code": "POLICY_VIOLATION",
-                "message": f"Review contains forbidden content: {', '.join(violations)}"
-            }
+                "message": f"Review contains forbidden content: {', '.join(violations)}",
+            },
         )
-    
+
     review_id = uuid.uuid4()
     new_review = ReviewResponse(
         review_id=review_id, status=ReviewStatus.published, created_at=datetime.now(UTC), **review.model_dump()
@@ -153,8 +149,8 @@ async def update_review(
                 status_code=400,
                 detail={
                     "code": "POLICY_VIOLATION",
-                    "message": f"Review contains forbidden content: {', '.join(violations)}"
-                }
+                    "message": f"Review contains forbidden content: {', '.join(violations)}",
+                },
             )
 
     for key, value in update_data.items():
