@@ -7,8 +7,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, status
 from pathlib import Path
-from schemas.errors import ErrorDetail, ErrorPayload, ErrorResponse, STANDARD_ERRORS
-from routers.reviews import router as reviews_router
+from src.api.schemas.errors import ErrorDetail, ErrorPayload, ErrorResponse, STANDARD_ERRORS
+from src.api.routers.reviews import router as reviews_router
+from fastapi.middleware.cors import CORSMiddleware
 
 # Base.metadata.create_all(bind=engine)
 
@@ -47,6 +48,14 @@ app = FastAPI(
 )
 
 app.include_router(reviews_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # GLOBAL EXCEPTION HANDLERS
 

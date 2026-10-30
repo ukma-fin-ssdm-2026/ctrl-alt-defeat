@@ -4,7 +4,7 @@ from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 
-from db.database import Base
+from src.api.db.database import Base
 
 
 class Review(Base):
