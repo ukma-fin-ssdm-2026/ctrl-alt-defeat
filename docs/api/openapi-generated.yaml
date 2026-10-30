@@ -58,6 +58,17 @@ paths:
           description: Filter by content ID
           title: Content Id
         description: Filter by content ID
+      - name: user_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid4
+          - type: 'null'
+          description: Filter by user ID
+          title: User Id
+        description: Filter by user ID
       - name: min_rating
         in: query
         required: false
