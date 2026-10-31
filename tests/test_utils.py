@@ -96,3 +96,22 @@ def test_policy_false_positives():
     text = "This is a classic movie about a night shift."
     violations = check_review_policy_violations(text)
     assert "profanity" not in violations
+
+
+# Trace: T-007 (SEC-002: Модерація контенту за технікою "Таблиця рішень")
+@pytest.mark.parametrize("rule_id, input_text, expected_violations", [
+    ("DT-01", "This is an extraordinary and beautiful film with deep meaning.", []),
+    ("DT-02", "Watch full movie here: https://free-streaming-site.xyz/watch", ["spam_links"]),
+    ("DT-03", "This movie is terrible and the director is an idiot.", ["profanity"]),
+    ("DT-04", "I LOVED THIS MOVIE SO MUCH IT WAS TOTALLY AMAZING AND BRILLIANT", ["shouting"]),
+    ("DT-05", "Watch this https://scam.org you complete idiot director", ["spam_links", "profanity"]),
+    ("DT-06", "GO TO HTTPS://STREAMING-SPAM.COM RIGHT NOW TO WATCH FREE", ["spam_links", "shouting"]),
+    ("DT-07", "GO TO HTTPS://SCAM.COM RIGHT NOW AND WATCH THIS IDIOTIC MOVIE", ["spam_links", "profanity", "shouting"]),
+])
+def test_decision_table_content_moderation(rule_id, input_text, expected_violations):
+    """
+    Test design technique: Decision Table (Таблиця рішень).
+    Validates all combination rules of moderation condition flags (Spam, Profanity, Shouting).
+    """
+    violations = check_review_policy_violations(input_text)
+    assert set(violations) == set(expected_violations), f"Rule {rule_id} failed"

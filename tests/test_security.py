@@ -7,6 +7,7 @@ def test_security_no_public_binding():
     Regression test for the Bandit B104 vulnerability.
     The test fails if host=0.0.0.0 is hardcoded in main.py.
     """
+    # Trace: NFR-SEC-B104 (Bandit B104: Safe default localhost interface binding)
     main_py_path = os.path.join(os.path.dirname(__file__), "..", "src", "api", "main.py")
 
     with open(main_py_path, "r", encoding="utf-8") as f:

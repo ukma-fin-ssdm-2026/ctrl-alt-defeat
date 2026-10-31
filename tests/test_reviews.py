@@ -55,6 +55,7 @@ def mock_review(valid_payload):
 
 
 def test_create_review_success(client, mock_db_session, valid_payload):
+    # Trace: T-005 (US-002, FR-003, FR-004: Успішне додавання відгуку)
     mock_db_session.add.return_value = None
     mock_db_session.commit.return_value = None
 
@@ -109,6 +110,7 @@ def test_create_review_text_length_boundaries(client, mock_db_session, valid_pay
 
 
 def test_get_reviews_pagination(client, mock_db_session, mock_review):
+    # Trace: T-038 (US-008, FR-003, FR-004: Перегляд списку відгуків з пагінацією)
     mock_query = mock_db_session.query.return_value
     mock_query.count.return_value = 1
     mock_query.offset.return_value.limit.return_value.all.return_value = [mock_review]
@@ -163,6 +165,7 @@ def test_update_review_success(client, mock_db_session, mock_review):
 
 
 def test_delete_review_success(client, mock_db_session, mock_review):
+    # Trace: T-017 (US-006, FR-008: Видалення рецензії)
     mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
 
     response = client.delete(f"/api/v1/reviews/{mock_review.review_id}")
@@ -259,6 +262,7 @@ def test_get_reviews_with_user_filter(client, mock_db_session, mock_review):
 
 def test_create_review_policy_violation(client, valid_payload):
     """Test that creating a review with profanity/spam triggers a 400 POLICY_VIOLATION."""
+    # Trace: T-007 (US-002, SEC-002: Модерація та санітизація вводу)
     payload = valid_payload.copy()
     payload["review_text"] = "This movie is terrible and the director is an idiot."
 

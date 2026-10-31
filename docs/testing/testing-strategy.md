@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
 ## 4. Інтеграція з CI/CD та ворота якості (Quality Gates)
 
-CI/CD конвеєр проєкту повністю налаштований та активний у файлі [`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml). Він автоматично спрацьовує на кожну подію `push` та створення `pull_request` в репозиторії.
+CI/CD конвеєр проєкту повністю налаштований та активний у файлі [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). Він автоматично спрацьовує на кожну подію `push` та створення `pull_request` в репозиторії.
 
 ### Етапи конвеєра:
 1. **Збірка та встановлення:** Інсталяція виробничих та тестових залежностей із `requirements.txt` (`pytest`, `pytest-cov`, `FastAPI`, `SQLAlchemy`, тощо).
