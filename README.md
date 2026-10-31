@@ -30,10 +30,10 @@
 - [Атрибути якості API](./docs/api/quality-attributes.md)
 - [Специфікація API (OpenAPI)](./docs/api/openapi-generated.yaml)
 
-## Інструкція із запуску API (Quickstart)
+## Інструкція із запуску API
 
 ### 1. Вимоги до оточення
-- **Python:** версія 3.11 або новіша
+- **Python:** (версія 3.11+)
 - **Git**
 
 ### 2. Клонування та встановлення залежностей
