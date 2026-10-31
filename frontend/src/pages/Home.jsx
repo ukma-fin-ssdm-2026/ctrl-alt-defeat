@@ -47,7 +47,7 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
     if (filterYear) params.year = filterYear;
 
     setLoading(true);
-    apiClient.get('/api/movies', { params })
+    apiClient.get('/movies', { params })
       .then(response => {
         const data = response.data.items || response.data;
         if (data && data.length > 0) {

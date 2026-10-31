@@ -77,7 +77,7 @@ export default function MovieDetails({
 
   useEffect(() => {
     setLoadingReviews(true);
-    apiClient.get('/api/v1/reviews', {
+    apiClient.get('/reviews', {
       params: { content_id: movie.id || movie.content_id }
     })
       .then(response => {
@@ -96,7 +96,7 @@ export default function MovieDetails({
     e.preventDefault();
     if (!reviewText.trim()) return;
 
-    apiClient.post('/api/v1/reviews', {
+    apiClient.post('/reviews', {
       user_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6", 
       content_id: movie.id || movie.content_id,
       rating: Number(rating),

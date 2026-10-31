@@ -20,7 +20,7 @@ export default function ReviewForm({ contentId, onReviewAdded }) {
       contains_spoilers: containsSpoilers
     };
 
-    apiClient.post('/api/v1/reviews', newReview)
+    apiClient.post('/reviews', newReview)
       .then(() => {
         setReviewText('');
         setRating(10);
