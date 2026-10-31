@@ -9,7 +9,7 @@ export default function ReviewsPage() {
 
   const fetchReviews = () => {
     setLoading(true);
-    apiClient.get('/api/v1/reviews')
+    apiClient.get('/reviews')
       .then(response => {
         setReviews(response.data.items || []);
         setLoading(false);
