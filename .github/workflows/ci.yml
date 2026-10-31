@@ -1,9 +1,37 @@
-name: CI Test
+name: CI Test & Spec Validation
+
 on: [push, pull_request]
+
 jobs:
   build:
+    name: Build, Lint, Test & Validate Spec
     runs-on: [self-hosted, macOS, ARM64]
+
     steps:
-    - uses: actions/checkout@v7
-    - name: Run Team Name
-      run: echo "CTRL-ALT-DEFEAT"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install ruff bandit
+
+      - name: Run Linters & Security Scan
+        run: |
+          ruff check .
+          bandit -r src/api -ll
+
+      - name: Run Unit Tests with Coverage
+        run: |
+          pytest --cov=src.api --cov-report=term tests/
+
+      - name: Verify OpenAPI Specification Sync
+        run: |
+          python3 -c "import sys; sys.path.insert(0, '.'); from src.api.main import app, save_openapi_spec; save_openapi_spec(app)"
+          if [ -n "$(git status --porcelain docs/api/openapi-generated.yaml)" ]; then
+            echo "::error::OpenAPI specification is out of sync with code! Please run the generator and commit docs/api/openapi-generated.yaml"
+            git diff docs/api/openapi-generated.yaml
+            exit 1
+          fi
+          echo "OpenAPI specification is synchronized with application code."

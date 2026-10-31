@@ -9,3 +9,7 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "W"]
 ignore = []
+
+[tool.pytest.ini_options]
+pythonpath = ["src/api", "."]
+testpaths = ["tests"]

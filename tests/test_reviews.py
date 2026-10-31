@@ -4,10 +4,10 @@ from datetime import datetime, UTC
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 
-from main import app
-from routers.reviews import get_db
-from db.models import Review
-from schemas.review import ReviewStatus
+from src.api.main import app
+from src.api.routers.reviews import get_db
+from src.api.db.models import Review
+from src.api.schemas.review import ReviewStatus
 
 
 @pytest.fixture
@@ -149,7 +149,7 @@ def test_get_reviews_min_rating_filter(client, mock_db_session, mock_review):
     mock_query = mock_db_session.query.return_value
     mock_query.count.return_value = 1
     mock_query.offset.return_value.limit.return_value.all.return_value = [mock_review]
-    
+
     mock_filter = mock_query.filter.return_value
     mock_filter.count.return_value = 1
     mock_filter.offset.return_value.limit.return_value.all.return_value = [mock_review]

@@ -16,7 +16,7 @@ def test_reviews_distribution():
     result = generate_review_summary(reviews)
     assert result["distribution"][5] == 2
     assert result["distribution"][3] == 1
-    assert result["distribution"][1] == 0    
+    assert result["distribution"][1] == 0
 
 def test_policy_clean_text():
     text = "This is a wonderful movie. I highly recommend it to everyone!"

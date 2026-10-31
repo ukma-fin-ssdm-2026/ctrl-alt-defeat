@@ -27,3 +27,41 @@
 ## Документація
 - [Опис проєкту](Project-Description.md)
 - [Командний статут](TeamCharter.md)
+- [Атрибути якості API](./docs/api/quality-attributes.md)
+- [Специфікація API (OpenAPI)](./docs/api/openapi-generated.yaml)
+
+## Інструкція із запуску API (Quickstart)
+
+### 1. Вимоги до оточення
+- **Python:** версія 3.11 або новіша
+- **Git**
+
+### 2. Клонування та встановлення залежностей
+Створіть та активуйте віртуальне середовище Python:
+```bash
+git clone https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat.git
+cd ctrl-alt-defeat
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 3. Запуск сервера розробки
+Запустіть ASGI-сервер Uvicorn:
+```bash
+uvicorn src.api.main:app --reload --port 8000
+```
+Після запуску сервер доступний за адресою `http://127.0.0.1:8000`.
+
+### 4. Документація API
+Після запуску локального сервера документація доступна за посиланнями:
+- **Swagger UI:** [http://127.0.0.1:8000/api-docs](http://127.0.0.1:8000/api-docs)
+- **ReDoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+- **GitHub Pages (онлайн-специфікація):** [https://ukma-fin-ssdm-2026.github.io/ctrl-alt-defeat/](https://ukma-fin-ssdm-2026.github.io/ctrl-alt-defeat/)
+
+### 5. Запуск тестів та перевірок
+Для запуску модульних тестів та перевірки покриття коду:
+```bash
+pytest --cov=src.api tests/
+```
