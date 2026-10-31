@@ -22,19 +22,25 @@ package "Зона 2: Захищена (Internal VPC)" {
 
     node "Cache Server" <<Memory>> {
         database "Redis Instance" {
-            artifact "Cached Data & Sessions"
+            artifact "Cached Metadata & Rate Limiting"
         }
     }
 }
 
-package "Зона 3: Зовнішня (Third-Party)" {
+package "Зона 3: Зовнішня (Third-Party Services)" {
     node "TMDB API" <<External Service>> {
         artifact "External Metadata"
+    }
+
+    node "CI/CD Environment" <<GitHub Cloud>> {
+        node "GitHub Actions Runner" {
+            artifact "Automated Tests & Deploy Workflow"
+        }
     }
 }
 
 ' Зв'язки та межі довіри на них
-"Web Browser" --> "Web Server (Uvicorn)" : HTTPS (REST API)
+"Web Browser" --> "Web Server (Uvicorn)" : HTTPS (REST API, HttpOnly Cookie)
 note on link
   TB-01: Публічна межа 
   (Браузер ↔ Сервер)
@@ -53,4 +59,11 @@ note on link
   TB-03: Зовнішня межа 
   (Сервер ↔ Зовнішній API)
 end note
+
+"GitHub Actions Runner" ..> "Application Server" : SSH / Docker Deploy (CI/CD Pipeline)
+note on link
+  Автоматизоване розгортання
+  після успішних перевірок
+end note
+
 @enduml

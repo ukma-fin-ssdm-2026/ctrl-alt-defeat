@@ -6,7 +6,7 @@
 
 Діаграма моделі знаходиться у файлі:
 
-uml/data-model.puml
+[uml/data-model.puml](./uml/data-model.puml)
 
 ## 2. Функції, які покриває модель
 
@@ -16,9 +16,10 @@ uml/data-model.puml
 2. Перегляд, пошук, фільтрація та сортування каталогу — Content, Genre, ContentGenre.
 3. Ведення списку "До перегляду" (Watchlist) — WatchlistItem.
 4. Ведення історії переглянутого контенту (Watched List) — WatchedItem.
-5. Оцінювання та публікація рецензій — Review.
-6. Коментування рецензій — Comment.
-7. Персоналізовані рекомендації та модерація — Recommendation, Ban, ModerationReport.
+5. Оцінювання контенту (FR-003) — Rating.
+6. Публікація рецензій (FR-004) — Review.
+7. Коментування рецензій — Comment.
+8. Персоналізовані рекомендації та модерація — Recommendation, Ban, ModerationReport.
 
 ## 3. Сутності
 
@@ -100,29 +101,49 @@ uml/data-model.puml
 | watched_item_id | UUID, PK | Унікальний ідентифікатор |
 | user_id | UUID, FK | Користувач [PERSONAL] |
 | content_id | UUID, FK | Переглянутий контент |
-| added_at | datetime | Час додавання [PERSONAL] |
+| watched_at | datetime | Час перегляду [PERSONAL] |
 
 Інваріант: пара (user_id, content_id) має бути унікальною.
 
+### Rating
+
+Числова оцінка контенту від користувача (відповідно до вимоги FR-003).
+
+| Атрибут | Тип | Опис |
+|---|---|---|
+| rating_id | UUID, PK | Унікальний ідентифікатор |
+| user_id | UUID, FK | Автор оцінки [PERSONAL] |
+| content_id | UUID, FK | Оцінений контент |
+| score | integer | Оцінка від 1 до 10 |
+| created_at | datetime | Час виставлення оцінки |
+| updated_at | datetime | Час оновлення оцінки |
+
+Інваріанти:
+- score ∈ [1; 10];
+- пара (user_id, content_id) має бути унікальною;
+- виставити оцінку можна лише для контенту, який уже додано до списку переглянутого (WatchedItem, вимога FR-003);
+- виставлення оцінки можливе автономно без необхідності створення текстової рецензії.
+
 ### Review
 
-Оцінка та текстова рецензія користувача.
+Текстова рецензія користувача (відповідно до вимоги FR-004).
 
 | Атрибут | Тип | Опис |
 |---|---|---|
 | review_id | UUID, PK | Унікальний ідентифікатор |
 | user_id | UUID, FK | Автор [PERSONAL] |
 | content_id | UUID, FK | Контент |
-| rating | integer | Оцінка від 1 до 10 |
+| rating | integer | Оцінка від 1 до 10 (опціонально синхронізується з Rating) |
 | review_text | text | Текст рецензії [PERSONAL] |
 | contains_spoilers | boolean | Позначка про спойлери |
 | status | enum | published / hidden / deleted |
 | created_at | datetime | Дата публікації |
+
 Інваріанти:
-- rating ∈ [1; 10];
 - довжина review_text — 10–5000 символів;
 - одна активна рецензія користувача на один об'єкт контенту;
-- залишити рецензію можна лише для контенту, що є у WatchedItem.
+- залишити рецензію можна лише для контенту, що є у WatchedItem (FR-004);
+- користувач має можливість поставити виключно числову оцінку через сутність Rating без обов'язку писати текстовий відгук.
 
 ### Comment
 
