@@ -3,6 +3,7 @@ import os
 
 
 def test_security_no_public_binding():
+    # Trace: T-007
     """
     Regression test for the Bandit B104 vulnerability.
     The test fails if host=0.0.0.0 is hardcoded in main.py.

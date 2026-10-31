@@ -26,6 +26,10 @@ jobs:
         run: |
           pytest --cov=src.api --cov-report=term --cov-fail-under=80 tests/
 
+      - name: Verify RTM <-> Test Traceability
+        run: |
+          python3 scripts/verify_traceability.py
+
       - name: Verify OpenAPI Specification Sync
         run: |
           python3 -c "import sys; sys.path.insert(0, '.'); from src.api.main import app, save_openapi_spec; save_openapi_spec(app)"
