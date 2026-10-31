@@ -108,4 +108,5 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=3000)
+    host = os.getenv("API_HOST", "127.0.0.1")
+    uvicorn.run(app, host=host, port=3000)
