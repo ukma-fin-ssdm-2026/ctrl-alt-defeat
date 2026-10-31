@@ -1,5 +1,7 @@
+from unittest.mock import patch, mock_open
+import pytest
 from fastapi.testclient import TestClient
-from src.api.main import app
+from src.api.main import app, save_openapi_spec, lifespan
 
 client = TestClient(app)
 
@@ -30,3 +32,16 @@ def test_global_validation_exception_handler():
     assert data["error"]["code"] == "VALIDATION_ERROR"
     assert len(data["error"]["details"]) > 0
     assert data["error"]["details"][0]["field"] == "user_id"
+
+
+def test_save_openapi_spec():
+    with patch("builtins.open", mock_open()) as mock_file:
+        save_openapi_spec(app)
+        mock_file.assert_called()
+
+
+@pytest.mark.anyio
+async def test_lifespan():
+    with patch("src.api.main.save_openapi_spec") as mock_save:
+        async with lifespan(app):
+            mock_save.assert_called_once_with(app)

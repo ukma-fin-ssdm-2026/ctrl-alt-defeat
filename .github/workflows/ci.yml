@@ -22,9 +22,9 @@ jobs:
           ruff check .
           bandit -r src/api -ll
 
-      - name: Run Unit Tests with Coverage
+      - name: Run Unit Tests with Coverage Gate
         run: |
-          pytest --cov=src.api --cov-report=term tests/
+          pytest --cov=src.api --cov-report=term --cov-fail-under=80 tests/
 
       - name: Verify OpenAPI Specification Sync
         run: |
