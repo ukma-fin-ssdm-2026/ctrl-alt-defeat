@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, UUID4
+from pydantic import BaseModel, Field, UUID4, field_validator
 
 
 class ReviewStatus(str, Enum):
@@ -11,15 +11,33 @@ class ReviewStatus(str, Enum):
     deleted = "deleted"
 
 
+def _normalize_review_text(value):
+    """Trim whitespace; an empty/blank text means "rating-only review" (None)."""
+    if isinstance(value, str):
+        value = value.strip()
+        return value or None
+    return value
+
+
 class ReviewBase(BaseModel):
     user_id: UUID4 = Field(..., description="Identifier of the review author")
     content_id: UUID4 = Field(..., description="Identifier of the content (movie/series)")
     rating: int = Field(..., ge=1, le=10, description="Rating from 1 to 10")
-    review_text: str = Field(..., min_length=10, max_length=5000, description="Text of the review")
+    review_text: Optional[str] = Field(
+        None,
+        min_length=10,
+        max_length=5000,
+        description="Optional text of the review (10-5000 chars). Omit, null or empty = rating-only review",
+    )
     contains_spoilers: bool = Field(default=False, description="Flag indicating if review contains spoilers")
 
 
 class ReviewCreate(ReviewBase):
+    @field_validator("review_text", mode="before")
+    @classmethod
+    def normalize_review_text(cls, value):
+        return _normalize_review_text(value)
+
     model_config = {
         "json_schema_extra": {
             "example": {
@@ -35,8 +53,18 @@ class ReviewCreate(ReviewBase):
 
 class ReviewUpdate(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=10, description="Rating from 1 to 10")
-    review_text: Optional[str] = Field(None, min_length=10, max_length=5000, description="Text of the review")
+    review_text: Optional[str] = Field(
+        None,
+        min_length=10,
+        max_length=5000,
+        description="Text of the review (10-5000 chars). Send null or empty string to remove the text",
+    )
     contains_spoilers: Optional[bool] = Field(None, description="Flag indicating if review contains spoilers")
+
+    @field_validator("review_text", mode="before")
+    @classmethod
+    def normalize_review_text(cls, value):
+        return _normalize_review_text(value)
 
     model_config = {
         "json_schema_extra": {

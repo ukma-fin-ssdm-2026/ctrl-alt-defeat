@@ -4,6 +4,8 @@ from datetime import datetime, UTC
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 
+from sqlalchemy.exc import IntegrityError
+
 from src.api.main import app
 from src.api.routers.reviews import get_db
 from src.api.db.models import Review
@@ -13,7 +15,10 @@ from src.api.schemas.review import ReviewStatus
 @pytest.fixture
 def mock_db_session():
     """Мок для SQLAlchemy сесії."""
-    return MagicMock()
+    session = MagicMock()
+    # By default the user has no review for this content yet (duplicate check passes)
+    session.query.return_value.filter.return_value.first.return_value = None
+    return session
 
 
 @pytest.fixture
@@ -92,13 +97,16 @@ def test_create_review_invalid_ratings_boundary(client, valid_payload, invalid_s
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
-@pytest.mark.parametrize("text_len, expected_status", [
-    (9, 422),       # Below min 10 chars
-    (10, 201),      # Exact minimum boundary
-    (200, 201),     # Normal text
-    (5000, 201),    # Exact maximum boundary
-    (5001, 422),    # Above max 5000 chars
-])
+@pytest.mark.parametrize(
+    "text_len, expected_status",
+    [
+        (9, 422),  # Below min 10 chars
+        (10, 201),  # Exact minimum boundary
+        (200, 201),  # Normal text
+        (5000, 201),  # Exact maximum boundary
+        (5001, 422),  # Above max 5000 chars
+    ],
+)
 def test_create_review_text_length_boundaries(client, mock_db_session, valid_payload, text_len, expected_status):
     # Trace: T-005
     """Parameterized verification of review text length boundaries (10 to 5000 chars)."""
@@ -225,6 +233,7 @@ def test_get_reviews_min_rating_validation_error(client):
     response = client.get("/api/v1/reviews?min_rating=15")
     assert response.status_code == 422
 
+
 def test_create_review_short_text(client, valid_payload):
     # Trace: T-005
     """Validation check for the minimum length of the review text."""
@@ -296,3 +305,92 @@ def test_update_review_policy_violation(client, mock_db_session, mock_review):
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "POLICY_VIOLATION"
+
+
+# ---------- One review per user per content ----------
+
+
+def test_create_review_duplicate_returns_409(client, mock_db_session, valid_payload, mock_review):
+    # Trace: T-005
+    """A user cannot leave a second review for the same content."""
+    mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
+
+    response = client.post("/api/v1/reviews", json=valid_payload)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "DUPLICATE_REVIEW"
+    mock_db_session.add.assert_not_called()
+
+
+def test_create_review_duplicate_race_condition(client, mock_db_session, valid_payload):
+    # Trace: T-005
+    """If the DB unique constraint fires (concurrent requests), API returns 409 and rolls back."""
+    mock_db_session.commit.side_effect = IntegrityError("INSERT", {}, Exception("uq_reviews_user_content"))
+
+    response = client.post("/api/v1/reviews", json=valid_payload)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "DUPLICATE_REVIEW"
+    mock_db_session.rollback.assert_called_once()
+
+
+# ---------- Rating-only reviews ----------
+
+
+def test_create_review_rating_only(client, mock_db_session, valid_payload):
+    # Trace: T-005
+    """Review without text (rating only) is valid."""
+    payload = valid_payload.copy()
+    del payload["review_text"]
+
+    response = client.post("/api/v1/reviews", json=payload)
+
+    assert response.status_code == 201
+    assert response.json()["review_text"] is None
+    assert response.json()["rating"] == payload["rating"]
+
+
+@pytest.mark.parametrize("empty_text", [None, "", "   ", "\n\t "])
+def test_create_review_empty_text_is_rating_only(client, mock_db_session, valid_payload, empty_text):
+    # Trace: T-005
+    """null / empty / whitespace-only text is treated as a rating-only review."""
+    payload = valid_payload.copy()
+    payload["review_text"] = empty_text
+
+    response = client.post("/api/v1/reviews", json=payload)
+
+    assert response.status_code == 201
+    assert response.json()["review_text"] is None
+
+
+def test_create_review_text_is_trimmed_before_length_check(client, mock_db_session, valid_payload):
+    # Trace: T-005
+    """9 real chars padded with spaces must still be rejected."""
+    payload = valid_payload.copy()
+    payload["review_text"] = "   123456789     "
+
+    response = client.post("/api/v1/reviews", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_create_review_without_rating_rejected(client, valid_payload):
+    # Trace: T-005
+    """Rating is always required, even if text is present."""
+    payload = valid_payload.copy()
+    del payload["rating"]
+
+    response = client.post("/api/v1/reviews", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_update_review_remove_text(client, mock_db_session, mock_review):
+    # Trace: T-005
+    """Sending review_text = null turns the review into a rating-only one."""
+    mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
+
+    response = client.patch(f"/api/v1/reviews/{mock_review.review_id}", json={"review_text": None})
+
+    assert response.status_code == 200
+    assert response.json()["review_text"] is None
