@@ -965,6 +965,246 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/users/me/watched:
+    get:
+      tags:
+      - watched
+      summary: Get user's watched list (FR-006, US-004)
+      description: Returns all movies and series marked as watched by the current
+        user.
+      operationId: get_watched_list_api_v1_users_me_watched_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchedListResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - watched
+      summary: Mark content as watched (FR-006, US-004, T-011)
+      description: Adds a movie or series to the current user's watched list.
+      operationId: mark_as_watched_api_v1_users_me_watched_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchedItemCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchedItemResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/users/me/watched/{content_id}:
+    get:
+      tags:
+      - watched
+      summary: Check if content is in watched list
+      description: Checks whether the specified content has been marked as watched
+        by the current user.
+      operationId: check_is_watched_api_v1_users_me_watched__content_id__get
+      parameters:
+      - name: content_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Content ID to check
+          title: Content Id
+        description: Content ID to check
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchedStatusResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - watched
+      summary: Remove content from watched list (FR-006, US-004, T-012)
+      description: Removes a movie or series from the current user's watched list.
+      operationId: remove_from_watched_api_v1_users_me_watched__content_id__delete
+      parameters:
+      - name: content_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Content ID to remove
+          title: Content Id
+        description: Content ID to remove
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Content not in watched list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     CommentCreate:
@@ -1622,6 +1862,129 @@ components:
       - email
       - status
       title: VerifyEmailResponse
+    WatchedItemCreate:
+      properties:
+        content_id:
+          type: string
+          format: uuid4
+          title: Content Id
+          description: ID of the movie/content to mark as watched
+      type: object
+      required:
+      - content_id
+      title: WatchedItemCreate
+      example:
+        content_id: 550e8400-e29b-41d4-a716-446655440000
+    WatchedItemResponse:
+      properties:
+        id:
+          type: string
+          format: uuid4
+          title: Id
+          description: Watched record ID
+        user_id:
+          type: string
+          format: uuid4
+          title: User Id
+          description: Owner user ID
+        content_id:
+          type: string
+          format: uuid4
+          title: Content Id
+          description: Content ID
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+          description: Timestamp when content was marked as watched
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+          description: Movie Ukrainian title
+        title_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title En
+          description: Movie original title
+        category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Category
+          description: Category (Movie/Series)
+        genre:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Genre
+          description: Primary genre
+        year:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Year
+          description: Release year
+        rating:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Rating
+          description: Average rating
+        img:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Img
+          description: Poster image URL
+      type: object
+      required:
+      - user_id
+      - content_id
+      - created_at
+      title: WatchedItemResponse
+    WatchedListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/WatchedItemResponse'
+          type: array
+          title: Items
+          description: List of watched content items
+        total:
+          type: integer
+          title: Total
+          description: Total count of watched items
+      type: object
+      required:
+      - items
+      - total
+      title: WatchedListResponse
+    WatchedStatusResponse:
+      properties:
+        is_watched:
+          type: boolean
+          title: Is Watched
+          description: Whether this content is in user's watched list
+        content_id:
+          type: string
+          format: uuid4
+          title: Content Id
+          description: Content identifier
+        watched_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Watched At
+          description: Timestamp when it was marked as watched
+      type: object
+      required:
+      - is_watched
+      - content_id
+      title: WatchedStatusResponse
     WatchlistAddRequest:
       properties:
         content_id:

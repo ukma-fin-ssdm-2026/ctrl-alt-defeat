@@ -19,7 +19,7 @@ export default function App() {
 
   const [language, setLanguage] = useState('UKR'); 
   const isUkr = language === 'UKR';
-
+  const [watchedList, setWatchedList] = useState([]);
   const [catalogMovies, setCatalogMovies] = useState(mockMovies);
 
   // Message shown in the login window when a guest uses a members-only feature
@@ -50,16 +50,27 @@ export default function App() {
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null); // Додали стан для року
 
+  const fetchWatchedList = async () => {
+    try {
+      const res = await apiClient.get('/users/me/watched');
+      setWatchedList(res.data.items || []);
+    } catch {
+      setWatchedList([]);
+    }
+  };
+
   useEffect(() => {
     // Validate session on startup with backend via HttpOnly cookie (FR-001, US-011)
     apiClient.get('/auth/me')
       .then(res => {
         setUser(res.data);
         setStoredAuth(null, res.data);
+        fetchWatchedList();
       })
       .catch(() => {
         clearStoredAuth();
         setUser(null);
+        setWatchedList([]);
       });
 
     apiClient.get('/movies', { params: { limit: 100 } })
@@ -97,6 +108,31 @@ export default function App() {
     if (year) setSelectedYear(Number(year));
   };
 
+  const handleToggleWatched = async (movieOrId) => {
+    if (!isLoggedIn) {
+      setIsAuthOpen(true);
+      return;
+    }
+    const movieObj = typeof movieOrId === 'object' ? movieOrId : catalogMovies.find(m => (m.id === movieOrId || m.content_id === movieOrId)) || { content_id: movieOrId };
+    const contentUuid = movieObj.content_id || movieObj.id;
+    const isAlreadyWatched = watchedList.some(item => (item.content_id === contentUuid || item.id === contentUuid));
+
+    if (isAlreadyWatched) {
+      try {
+        await apiClient.delete(`/users/me/watched/${contentUuid}`);
+        setWatchedList(prev => prev.filter(item => item.content_id !== contentUuid && item.id !== contentUuid));
+      } catch (e) {
+        console.warn("Failed to remove from watched list:", e);
+      }
+    } else {
+      try {
+        const res = await apiClient.post('/users/me/watched', { content_id: contentUuid });
+        setWatchedList(prev => [res.data, ...prev.filter(item => item.content_id !== contentUuid)]);
+      } catch (e) {
+        console.warn("Failed to mark as watched:", e);
+      }
+    }
+  };
   const handleLogin = async (email, password) => {
     try {
       const response = await apiClient.post('/auth/login', { email, password });
@@ -104,6 +140,7 @@ export default function App() {
       setStoredAuth(access_token, userData);
       setUser(userData);
       closeAuth();
+      fetchWatchedList();
       return { success: true };
     } catch (err) {
       const errCode = err.response?.data?.error?.code || err.response?.data?.detail?.code;
@@ -120,6 +157,7 @@ export default function App() {
     }
     clearStoredAuth();
     setUser(null);
+    setWatchedList([]);
     handleGoHome();
   };
 
@@ -157,10 +195,12 @@ export default function App() {
             user={user}
             language={language}
             watchlistMovies={watchlistMovies}
+            watchedMovies={watchedList}
             onSelectMovie={(movie) => { setShowProfile(false); setSelectedMovie(movie); }}
             onToggleWatchlist={toggleWatchlist}
+            onToggleWatched={handleToggleWatched}
             onDeleteProfile={() => {
-               setUser(null); handleGoHome(); 
+               setUser(null); setWatchedList([]); handleGoHome(); 
                alert(language === 'UKR' ? 'Профіль видалено' : 'Profile deleted');
             }}
           />
@@ -172,8 +212,10 @@ export default function App() {
             openAuth={() => setIsAuthOpen(true)}
             onBack={() => setSelectedMovie(null)}
             language={language}
-            isWatchlisted={watchlist.includes(selectedMovie.id)}
+            isWatchlisted={watchlist.includes(selectedMovie.id || selectedMovie.content_id)}
             onToggleWatchlist={() => toggleWatchlist(selectedMovie)}
+            isWatched={watchedList.some(item => (item.content_id || item.id) === (selectedMovie.content_id || selectedMovie.id))}
+            onToggleWatched={() => handleToggleWatched(selectedMovie)}
           />
         ) : (
           <>

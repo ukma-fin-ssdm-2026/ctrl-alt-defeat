@@ -4,11 +4,13 @@ export default function UserProfile({
   user, 
   language, 
   watchlistMovies, 
+  watchedMovies = [],
   onSelectMovie, 
   onToggleWatchlist, 
+  onToggleWatched,
   onDeleteProfile 
 }) {
-  const [activeTab, setActiveTab] = useState('general'); // 'general', 'security', 'watchlist', 'reviews', 'achievements'
+  const [activeTab, setActiveTab] = useState('general'); // 'general', 'security', 'watchlist', 'watched', 'reviews', 'achievements'
   
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -142,6 +144,13 @@ export default function UserProfile({
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'watchlist' ? 'bg-yellow-500 text-gray-900 shadow-md' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}
           >
             <span>⭐</span> {isUkr ? 'Обране' : 'Watchlist'} <span className="ml-auto text-xs px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded-full">{watchlistMovies.length}</span>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('watched')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'watched' ? 'bg-yellow-500 text-gray-900 shadow-md' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}
+          >
+            <span>👁️</span> {isUkr ? 'Переглянуто' : 'Watched'} <span className="ml-auto text-xs px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded-full">{watchedMovies.length}</span>
           </button>
 
           <button 
@@ -295,6 +304,55 @@ export default function UserProfile({
                         >
                           {isUkr ? 'Видалити' : 'Remove'}
                         </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* WATCHED LIST (FR-006, US-004) */}
+          {activeTab === 'watched' && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-black text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 pb-4">
+                {isUkr ? 'Історія переглянутого контенту (Watched List)' : 'Watched Movies & Series'}
+              </h2>
+
+              {watchedMovies.length === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400 text-sm py-8 text-center">
+                  {isUkr ? 'Ви ще не позначили жодного фільму чи серіалу як переглянутий.' : 'You have not marked any movies as watched yet.'}
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {watchedMovies.map(movie => (
+                    <div key={movie.content_id || movie.id} className="bg-gray-50 dark:bg-gray-700/40 rounded-2xl p-2 border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
+                      <div>
+                        {movie.img && (
+                          <img 
+                            src={movie.img} 
+                            alt={movie.title || 'Movie'} 
+                            className="w-full h-40 object-cover rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => onSelectMovie && onSelectMovie(movie)}
+                          />
+                        )}
+                        <h4 className="font-bold text-xs text-gray-900 dark:text-white mt-2 truncate">
+                          {isUkr ? movie.title : (movie.title_en || movie.title)}
+                        </h4>
+                        {movie.genre && (
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{movie.genre}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                        <span className="text-[10px] text-gray-400">{movie.year || ''}</span>
+                        {onToggleWatched && (
+                          <button 
+                            onClick={() => onToggleWatched(movie.content_id || movie.id)}
+                            className="text-xs text-red-500 hover:underline font-bold"
+                          >
+                            {isUkr ? 'Зняти позначку' : 'Remove'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
