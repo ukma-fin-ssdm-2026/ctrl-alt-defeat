@@ -61,7 +61,8 @@ export default function useWatchedList({ user, catalog = [], onAuthRequired }) {
 
     try {
       if (watched) {
-        await apiClient.delete(`/users/me/watched/${encodeURIComponent(contentId)}`);
+        // Constant URL: the id travels as a query parameter (no user data in the request path)
+        await apiClient.delete('/users/me/watched', { params: { content_id: contentId } });
       } else {
         const response = await apiClient.post('/users/me/watched', { content_id: contentId });
         // Replace the optimistic item with the server version (has title, poster, dates)

@@ -59,7 +59,7 @@ describe('useWatchedList (FR-006)', () => {
 
     await act(() => result.current.toggleWatched(1));
 
-    expect(apiClient.delete).toHaveBeenCalledWith(`/users/me/watched/${dune.content_id}`);
+    expect(apiClient.delete).toHaveBeenCalledWith('/users/me/watched', { params: { content_id: dune.content_id } });
     expect(result.current.watchedMovies).toEqual([]);
   });
 
