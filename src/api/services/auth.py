@@ -95,3 +95,4 @@ def seed_default_users(db: Session) -> None:
         db.add(demo_user)
 
     db.commit()
+

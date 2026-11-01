@@ -299,3 +299,4 @@ def get_current_user_profile(
 def logout(response: Response):
     response.delete_cookie(key="access_token")
     return {"message": "Successfully logged out"}
+
