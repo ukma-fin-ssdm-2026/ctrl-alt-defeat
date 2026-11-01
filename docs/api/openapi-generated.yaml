@@ -376,6 +376,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/recommendations:
+    get:
+      tags:
+      - Recommendations
+      summary: Get personal recommendations ("Recommended for you")
+      description: Movies and series the user has not reviewed yet, ranked by how
+        well their genres match the user's highly rated titles (FR-007). New users
+        get the best-rated titles.
+      operationId: get_recommendations_api_v1_recommendations_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          minimum: 1
+          description: Maximum number of recommendations
+          default: 10
+          title: Limit
+        description: Maximum number of recommendations
+      - name: user_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid4
+          - type: 'null'
+          description: 'Temporary until authentication (FR-001) is merged: the user
+            to build recommendations for'
+          title: User Id
+        description: 'Temporary until authentication (FR-001) is merged: the user
+          to build recommendations for'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationsResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     ContentResponse:
@@ -598,6 +663,36 @@ components:
       - limit
       - has_more
       title: PaginatedReviewsResponse
+    RecommendationsResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ContentResponse'
+          type: array
+          title: Items
+          description: Recommended movies and series, best match first
+        personalized:
+          type: boolean
+          title: Personalized
+          description: True if based on the user's highly rated titles; False for
+            a new user (best-rated titles)
+        favorite_genres:
+          items:
+            type: string
+          type: array
+          title: Favorite Genres
+          description: User's top genres the recommendations are based on
+      type: object
+      required:
+      - items
+      - personalized
+      title: RecommendationsResponse
+      example:
+        favorite_genres:
+        - Фантастика
+        - Драма
+        items: []
+        personalized: true
     ReviewCreate:
       properties:
         user_id:
