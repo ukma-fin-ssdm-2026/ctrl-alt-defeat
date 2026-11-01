@@ -87,6 +87,8 @@ class ReviewUpdate(BaseModel):
 
 class ReviewResponse(ReviewBase):
     user_id: UUID4 = Field(..., description="Identifier of the review author")
+    author_nickname: Optional[str] = Field(None, description="Nickname of the review author")
+    content_title: Optional[str] = Field(None, description="Title of the reviewed movie or series")
     review_id: UUID4 = Field(..., description="Unique identifier of the review")
     status: ReviewStatus = Field(..., description="Current status of the review")
     created_at: datetime = Field(..., description="Publication date and time")

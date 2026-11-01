@@ -106,6 +106,7 @@ async def create_review(
     new_review = ReviewResponse(
         review_id=review_id,
         user_id=user_id,
+        author_nickname=current_user.nickname,
         status=ReviewStatus.published,
         created_at=datetime.now(UTC),
         **review.model_dump(),
