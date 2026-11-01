@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 
+// TODO: replace with the real user id once authentication is implemented
+const CURRENT_USER_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+const MIN_TEXT = 10;
+const MAX_TEXT = 5000;
+
 function ReviewContent({ text, isSpoiler, language = 'UKR' }) {
   const [revealed, setRevealed] = useState(false);
   const isUkr = language === 'UKR';
+
+  // Rating-only review: nothing to render
+  if (!text) return null;
 
   if (!isSpoiler) {
     return <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">{text}</p>;
@@ -51,9 +59,20 @@ export default function MovieDetails({
   const [reviewText, setReviewText] = useState('');
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [reviews, setReviews] = useState([]);
-  const [loadingReviews, setLoadingReviews] = useState(true);
+  // Loading is derived: reviews are loading until they are fetched for the current movie
+  const reviewsKey = movie.content_id || movie.id;
+  const [loadedReviewsKey, setLoadedReviewsKey] = useState(null);
+  const loadingReviews = loadedReviewsKey !== reviewsKey;
 
+  const [formError, setFormError] = useState('');
   const isUkr = language === 'UKR';
+
+  // Reviews may be loaded without a content filter, so match both user and movie
+  const myReview = reviews.find(
+    r => r.user_id === CURRENT_USER_ID && movie.content_id && r.content_id === movie.content_id
+  );
+  const trimmedLength = reviewText.trim().length;
+  const textTooShort = trimmedLength > 0 && trimmedLength < MIN_TEXT;
 
   const primaryTitle = isUkr ? movie.title : (movie.title_en || movie.titleEn || movie.title);
   const secondaryTitle = isUkr ? (movie.title_en || movie.titleEn || 'Original Title') : movie.title;
@@ -76,7 +95,6 @@ export default function MovieDetails({
   };
 
   useEffect(() => {
-    setLoadingReviews(true);
     const contentUuid = movie.content_id;
     const params = contentUuid ? { content_id: contentUuid } : {};
 
@@ -84,37 +102,54 @@ export default function MovieDetails({
       .then(response => {
         const reviewList = response.data.items ? response.data.items : response.data;
         setReviews(reviewList.length > 0 ? reviewList : (movie.reviews || []));
-        setLoadingReviews(false);
+        setLoadedReviewsKey(reviewsKey);
       })
       .catch(error => {
         console.warn("Бекенд рецензій недоступний, використовуємо приклади:", error);
         setReviews(movie.reviews || []);
-        setLoadingReviews(false);
+        setLoadedReviewsKey(reviewsKey);
       });
-  }, [movie]);
+  }, [movie, reviewsKey]);
 
   const handleSubmitReview = (e) => {
     e.preventDefault();
-    if (!reviewText.trim()) return;
+    setFormError('');
+    const text = reviewText.trim();
+
+    if (text && text.length < MIN_TEXT) {
+      setFormError(isUkr
+        ? `Текст має містити щонайменше ${MIN_TEXT} символів, або залиште поле порожнім, щоб поставити лише оцінку.`
+        : `Text must be at least ${MIN_TEXT} characters, or leave it empty to submit a rating only.`);
+      return;
+    }
+    if (text.length > MAX_TEXT) {
+      setFormError(isUkr ? `Максимум ${MAX_TEXT} символів.` : `Maximum ${MAX_TEXT} characters.`);
+      return;
+    }
 
     const contentUuid = movie.content_id || "11111111-1111-1111-1111-111111111111";
 
     apiClient.post('/reviews', {
-      user_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6", 
+      user_id: CURRENT_USER_ID,
       content_id: contentUuid,
       rating: Number(rating),
-      review_text: reviewText,
-      contains_spoilers: isSpoiler
+      review_text: text || null,
+      contains_spoilers: text ? isSpoiler : false,
     })
-    .then(response => {
-      setReviews([response.data, ...reviews]);
-      setReviewText('');
-      setIsSpoiler(false);
-    })
-    .catch(error => {
-      console.error("Помилка публікації рецензії:", error);
-      alert(isUkr ? 'Не вдалося опублікувати рецензію.' : 'Failed to publish review.');
-    });
+      .then(response => {
+        setReviews([response.data, ...reviews]);
+        setReviewText('');
+        setIsSpoiler(false);
+        setRating(10);
+      })
+      .catch(error => {
+        if (error.response?.status === 409) {
+          setFormError(isUkr ? 'Ви вже залишили рецензію на цей фільм.' : 'You have already reviewed this movie.');
+        } else {
+          setFormError(error.response?.data?.error?.message
+            || (isUkr ? 'Не вдалося опублікувати рецензію.' : 'Failed to publish review.'));
+        }
+      });
   };
 
   const handleLike = (id) => {
@@ -195,6 +230,11 @@ export default function MovieDetails({
               {isUkr ? 'Увійти / Зареєструватися' : 'Login / Register'}
             </button>
           </div>
+        ) : myReview ? (
+          <div className="bg-green-50 dark:bg-gray-700/50 border border-green-200 dark:border-gray-600 rounded-xl p-4 text-sm text-gray-700 dark:text-gray-300">
+            {isUkr ? 'Ви вже оцінили цей фільм: ' : 'You have already rated this movie: '}
+            <b>★ {myReview.rating}/10</b>
+          </div>
         ) : (
           <form onSubmit={handleSubmitReview} className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
@@ -215,20 +255,31 @@ export default function MovieDetails({
             <textarea 
               rows="4"
               value={reviewText}
+              maxLength={MAX_TEXT}
               onChange={(e) => setReviewText(e.target.value)}
-              placeholder={isUkr ? "Напишіть ваші враження від перегляду..." : "Write your thoughts about the movie..."}
-              className="w-full p-3 border rounded-xl dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
+              placeholder={isUkr ? "Ваші враження від перегляду (необов'язково)..." : "Your thoughts about the movie (optional)..."}
+              className={`w-full p-3 border rounded-xl dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 text-sm ${textTooShort ? 'border-red-400 focus:ring-red-400' : 'focus:ring-yellow-500'}`}
             />
+            <div className={`flex justify-between text-xs -mt-2 ${textTooShort ? 'text-red-500' : 'text-gray-400'}`}>
+              <span>{isUkr ? `Необов'язково. Від ${MIN_TEXT} до ${MAX_TEXT} символів` : `Optional. ${MIN_TEXT} to ${MAX_TEXT} characters`}</span>
+              <span>{trimmedLength} / {MAX_TEXT}</span>
+            </div>
 
             <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={isSpoiler} onChange={(e) => setIsSpoiler(e.target.checked)} className="w-4 h-4 text-yellow-500 rounded border-gray-300" />
+              <input type="checkbox" checked={isSpoiler} disabled={trimmedLength === 0} onChange={(e) => setIsSpoiler(e.target.checked)} className="w-4 h-4 text-yellow-500 rounded border-gray-300" />
               <span className="text-sm text-gray-700 dark:text-gray-300">
                 {isUkr ? 'Містить спойлер' : 'Contains spoiler'}
               </span>
             </label>
 
-            <button type="submit" className="self-end px-6 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold rounded-xl text-sm transition-colors shadow">
-              {isUkr ? 'Опублікувати відгук' : 'Publish Review'}
+            {formError && (
+              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 text-sm">{formError}</div>
+            )}
+
+            <button type="submit" disabled={textTooShort} className="self-end px-6 py-2.5 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 font-bold rounded-xl text-sm transition-colors shadow">
+              {trimmedLength > 0
+                ? (isUkr ? 'Опублікувати відгук' : 'Publish Review')
+                : (isUkr ? 'Поставити оцінку' : 'Submit Rating')}
             </button>
           </form>
         )}

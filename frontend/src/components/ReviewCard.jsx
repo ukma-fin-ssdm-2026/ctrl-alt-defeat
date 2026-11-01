@@ -5,7 +5,7 @@ export default function ReviewCard({ review }) {
         <strong>Оцінка: {review.rating}/10</strong>
         {review.contains_spoilers && <span style={{ color: '#ff4a4a', fontSize: '12px', fontWeight: 'bold' }}>Спойлери!</span>}
       </div>
-      <p style={{ margin: 0 }}>{review.review_text}</p>
+      {review.review_text && <p style={{ margin: 0 }}>{review.review_text}</p>}
     </div>
   );
 }

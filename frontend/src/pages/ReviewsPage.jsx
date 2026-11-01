@@ -3,28 +3,33 @@ import apiClient from '../api/client';
 import ReviewCard from '../components/ReviewCard';
 import ReviewForm from '../components/ReviewForm';
 
+// Updates state only after the response arrives (no synchronous setState inside effects)
+function loadReviews(setReviews, setLoading) {
+  return apiClient.get('/reviews')
+    .then(response => {
+      setReviews(response.data.items || []);
+    })
+    .catch(error => {
+      if (error.response && error.response.status === 422) {
+        console.error('Помилка валідації від FastAPI:', error.response.data.error);
+      } else {
+        console.error('Помилка відправки:', error);
+      }
+    })
+    .finally(() => setLoading(false));
+}
+
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchReviews = () => {
     setLoading(true);
-    apiClient.get('/reviews')
-      .then(response => {
-        setReviews(response.data.items || []);
-        setLoading(false);
-      })
-      .catch(error => {
-        if (error.response && error.response.status === 422) {
-          console.error('Помилка валідації від FastAPI:', error.response.data.detail);
-        } else {
-          console.error('Помилка відправки:', error);
-        }
-      });
+    loadReviews(setReviews, setLoading);
   };
 
   useEffect(() => {
-    fetchReviews();
+    loadReviews(setReviews, setLoading);
   }, []);
 
   return (

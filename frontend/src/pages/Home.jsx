@@ -5,10 +5,15 @@ import { mockMovies } from '../data/mockData';
 
 export default function Home({ selectedCategory, selectedGenre, selectedYear, onSelectMovie, language = 'UKR', watchlist = [], onToggleWatchlist }) {
   const [movies, setMovies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  
-  const [filterGenre, setFilterGenre] = useState(selectedGenre || '');
-  const [filterYear, setFilterYear] = useState(selectedYear || '');
+
+  // Filters come straight from props (selected in Header via App)
+  const filterGenre = selectedGenre || '';
+  const filterYear = selectedYear || '';
+
+  // Loading is derived: true until the movies for the current filters are fetched
+  const requestKey = `${selectedCategory || ''}|${filterGenre}|${filterYear}`;
+  const [loadedKey, setLoadedKey] = useState(null);
+  const loading = loadedKey !== requestKey;
 
   const isUkr = language === 'UKR';
 
@@ -36,11 +41,6 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
   };
 
   useEffect(() => {
-    setFilterGenre(selectedGenre || '');
-    setFilterYear(selectedYear || '');
-  }, [selectedGenre, selectedYear]);
-
-  useEffect(() => {
     const params = {};
     if (selectedCategory) {
       const catLower = selectedCategory.toLowerCase();
@@ -55,23 +55,29 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
     if (filterGenre) params.genre = filterGenre;
     if (filterYear) params.year = filterYear;
 
-    setLoading(true);
+    // Ignore responses of outdated requests (filters changed while loading)
+    let ignore = false;
     apiClient.get('/movies', { params })
       .then(response => {
+        if (ignore) return;
         const data = response.data.items || response.data;
         if (data && data.length > 0) {
           setMovies(data);
         } else {
           setMovies(mockMovies);
         }
-        setLoading(false);
+        setLoadedKey(requestKey);
       })
       .catch(error => {
+        if (ignore) return;
         console.warn("Бекенд фільмів ще недоступний, використовуємо mockData.js:", error);
         setMovies(mockMovies);
-        setLoading(false);
+        setLoadedKey(requestKey);
       });
-  }, [selectedCategory, filterGenre, filterYear]);
+    return () => {
+      ignore = true;
+    };
+  }, [selectedCategory, filterGenre, filterYear, requestKey]);
 
   const displayedMovies = movies.filter(movie => {
     if (selectedCategory) {

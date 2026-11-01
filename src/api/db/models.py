@@ -1,6 +1,18 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, JSON, String, Text, Uuid
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.sql import func
 
 from src.api.db.database import Base
@@ -32,13 +44,22 @@ Movie = Content
 
 class Review(Base):
     __tablename__ = "reviews"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        # 1) One review per user per movie/series
+        UniqueConstraint("user_id", "content_id", name="uq_reviews_user_content"),
+        # 2) Text is optional, but if present it must be 10-5000 chars
+        CheckConstraint(
+            "review_text IS NULL OR length(review_text) BETWEEN 10 AND 5000",
+            name="ck_reviews_text_length",
+        ),
+        {"extend_existing": True},
+    )
 
     review_id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(Uuid(as_uuid=True), nullable=False)
     content_id = Column(Uuid(as_uuid=True), nullable=False)
     rating = Column(Integer, nullable=False)
-    review_text = Column(Text, nullable=False)
+    review_text = Column(Text, nullable=True)
     contains_spoilers = Column(Boolean, nullable=False, default=False)
     status = Column(String, nullable=False, default="published")
     created_at = Column(

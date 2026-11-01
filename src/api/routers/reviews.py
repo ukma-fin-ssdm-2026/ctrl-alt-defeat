@@ -4,11 +4,12 @@ from typing import Optional, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.api.db import models
 from src.api.db.database import SessionLocal
-from src.api.schemas.errors import STANDARD_ERRORS
+from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
 from src.api.schemas.review import (
     PaginatedReviewsResponse,
     ReviewCreate,
@@ -17,6 +18,11 @@ from src.api.schemas.review import (
     ReviewUpdate,
 )
 from src.api.utils import check_review_policy_violations
+
+DUPLICATE_REVIEW_ERROR = {
+    "code": "DUPLICATE_REVIEW",
+    "message": "You have already reviewed this content. Edit your existing review instead.",
+}
 
 router = APIRouter(
     prefix="/api/v1/reviews",
@@ -37,21 +43,37 @@ def get_db():
     response_model=ReviewResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new review",
-    responses=STANDARD_ERRORS,
+    responses={
+        **STANDARD_ERRORS,
+        409: {"model": ErrorResponse, "description": "User has already reviewed this content"},
+    },
 )
 async def create_review(
     review: ReviewCreate,
     db: Session = Depends(get_db),
 ):
-    violations = check_review_policy_violations(review.review_text)
-    if violations:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "code": "POLICY_VIOLATION",
-                "message": f"Review contains forbidden content: {', '.join(violations)}",
-            },
+    if review.review_text:
+        violations = check_review_policy_violations(review.review_text)
+        if violations:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "POLICY_VIOLATION",
+                    "message": f"Review contains forbidden content: {', '.join(violations)}",
+                },
+            )
+
+    # One review per user per content
+    existing_review = (
+        db.query(models.Review)
+        .filter(
+            models.Review.user_id == review.user_id,
+            models.Review.content_id == review.content_id,
         )
+        .first()
+    )
+    if existing_review is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=DUPLICATE_REVIEW_ERROR)
 
     review_id = uuid.uuid4()
     new_review = ReviewResponse(
@@ -69,7 +91,13 @@ async def create_review(
     )
 
     db.add(db_review)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Race condition: two simultaneous requests passed the check above,
+        # the UNIQUE (user_id, content_id) constraint in the DB catches the second one.
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=DUPLICATE_REVIEW_ERROR)
     return new_review
 
 
@@ -142,7 +170,7 @@ async def update_review(
 
     update_data = review_update.model_dump(exclude_unset=True)
 
-    if "review_text" in update_data:
+    if update_data.get("review_text"):
         violations = check_review_policy_violations(update_data["review_text"])
         if violations:
             raise HTTPException(

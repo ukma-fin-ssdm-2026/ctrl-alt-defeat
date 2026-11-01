@@ -151,6 +151,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User has already reviewed this content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       tags:
       - reviews
@@ -575,11 +581,14 @@ components:
           title: Rating
           description: Rating from 1 to 10
         review_text:
-          type: string
-          maxLength: 5000
-          minLength: 10
+          anyOf:
+          - type: string
+            maxLength: 5000
+            minLength: 10
+          - type: 'null'
           title: Review Text
-          description: Text of the review
+          description: Optional text of the review (10-5000 chars). Omit, null or
+            empty = rating-only review
         contains_spoilers:
           type: boolean
           title: Contains Spoilers
@@ -590,7 +599,6 @@ components:
       - user_id
       - content_id
       - rating
-      - review_text
       title: ReviewCreate
       example:
         contains_spoilers: false
@@ -617,11 +625,14 @@ components:
           title: Rating
           description: Rating from 1 to 10
         review_text:
-          type: string
-          maxLength: 5000
-          minLength: 10
+          anyOf:
+          - type: string
+            maxLength: 5000
+            minLength: 10
+          - type: 'null'
           title: Review Text
-          description: Text of the review
+          description: Optional text of the review (10-5000 chars). Omit, null or
+            empty = rating-only review
         contains_spoilers:
           type: boolean
           title: Contains Spoilers
@@ -645,7 +656,6 @@ components:
       - user_id
       - content_id
       - rating
-      - review_text
       - review_id
       - status
       - created_at
@@ -683,7 +693,8 @@ components:
             minLength: 10
           - type: 'null'
           title: Review Text
-          description: Text of the review
+          description: Text of the review (10-5000 chars). Send null or empty string
+            to remove the text
         contains_spoilers:
           anyOf:
           - type: boolean
