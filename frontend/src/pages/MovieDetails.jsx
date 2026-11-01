@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import ReviewComments from '../components/ReviewComments';
 import { isUuid } from '../utils/uuid';
+import { translateGenre } from '../utils/genres';
 const MIN_TEXT = 10;
 const MAX_TEXT = 5000;
 
@@ -80,22 +81,8 @@ export default function MovieDetails({
   const primaryTitle = isUkr ? movie.title : (movie.title_en || movie.titleEn || movie.title);
   const secondaryTitle = isUkr ? (movie.title_en || movie.titleEn || 'Original Title') : movie.title;
 
-  const genreTranslations = {
-    'Бойовик': 'Action',
-    'Комедія': 'Comedy',
-    'Драма': 'Drama',
-    'Фантастика': 'Sci-Fi',
-    'Жахи': 'Horror',
-    'Трилер': 'Thriller',
-    'Детектив': 'Detective',
-    'Документальний': 'Documentary'
-  };
 
-  const getGenreLabel = (genre) => {
-    if (!genre) return '';
-    if (isUkr) return genre;
-    return genreTranslations[genre] || genre;
-  };
+  const getGenreLabel = (genre) => translateGenre(genre, isUkr ? 'UKR' : 'EN');
 
   useEffect(() => {
     const contentUuid = movie.content_id;
