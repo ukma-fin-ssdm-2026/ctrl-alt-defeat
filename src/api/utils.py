@@ -1,13 +1,10 @@
 import re
 from typing import List, Dict, Any
 
+
 def generate_review_summary(reviews: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Generates a comprehensive summary from a list of reviews on a 1-10 scale."""
-    summary = {
-        "total_reviews": 0,
-        "average_rating": 0.0,
-        "distribution": {i: 0 for i in range(1, 11)}
-    }
+    summary = {"total_reviews": 0, "average_rating": 0.0, "distribution": {i: 0 for i in range(1, 11)}}
 
     if not reviews:
         return summary
@@ -34,22 +31,22 @@ def check_review_policy_violations(text: str) -> list[str]:
     # Matches word boundaries (\b), allows repeated characters (e.g., 'f+'),
     # and common substitutions (e.g., 'u' can be 'u', '*', or 'v').
     PROFANITY_PATTERN = re.compile(
-    r'\b('
-    r'f+[u\*v]+c+k+\w*|'         # fuck, f*ck, fuuuck, fucking
-    r's+h+[i1!]+t+\w*|'          # shit, sh1t, shittier
-    r'b+[i1!]+t+c+h+\w*|'        # bitch, b1tch, bitches
-    r'a+s+s+h+[o0]+l+e+\w*|'     # asshole, assH0le
-    r'd+[i1!]+c+k+\w*|'          # dick, d1ck, dickhead
-    r'c+u+n+t+\w*|'              # cunt, cuuunt
-    r'w+h+[o0]+r+e+\w*|'         # whore, wh0re
-    r's+l+[u\*]+t+\w*|'          # slut, sl*t
-    r'i+d+i+o+t+\w*|'            # idiot, idiooot
-    r'r+e+t+a+r+d+\w*'           # retard
-    r')\b',
-    re.IGNORECASE
-)
+        r"\b("
+        r"f+[u\*v]+c+k+\w*|"  # fuck, f*ck, fuuuck, fucking
+        r"s+h+[i1!]+t+\w*|"  # shit, sh1t, shittier
+        r"b+[i1!]+t+c+h+\w*|"  # bitch, b1tch, bitches
+        r"a+s+s+h+[o0]+l+e+\w*|"  # asshole, assH0le
+        r"d+[i1!]+c+k+\w*|"  # dick, d1ck, dickhead
+        r"c+u+n+t+\w*|"  # cunt, cuuunt
+        r"w+h+[o0]+r+e+\w*|"  # whore, wh0re
+        r"s+l+[u\*]+t+\w*|"  # slut, sl*t
+        r"i+d+i+o+t+\w*|"  # idiot, idiooot
+        r"r+e+t+a+r+d+\w*"  # retard
+        r")\b",
+        re.IGNORECASE,
+    )
 
-    URL_PATTERN = re.compile(r'https?://\S+', re.IGNORECASE)
+    URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
 
     violations = []
 
@@ -69,4 +66,19 @@ def check_review_policy_violations(text: str) -> list[str]:
             if upper_ratio > 0.8:
                 violations.append("shouting")
 
+    return violations
+
+
+# Any HTML tag (<script>, <img ...>, </b>) or a javascript: URL (SEC-002, T-032)
+HTML_MARKUP_PATTERN = re.compile(r"<\s*/?\s*[a-zA-Z!][^>]*>|javascript\s*:", re.IGNORECASE)
+
+
+def check_comment_policy_violations(text: str) -> list[str]:
+    """
+    Policy check for comments (FR-011): the review rules plus a ban on HTML markup.
+    Returns a list of violation codes, empty if the text is clean.
+    """
+    violations = check_review_policy_violations(text)
+    if text and HTML_MARKUP_PATTERN.search(text):
+        violations.append("html_markup")
     return violations
