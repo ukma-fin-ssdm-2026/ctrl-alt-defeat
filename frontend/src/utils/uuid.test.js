@@ -1,18 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { isUuid, reviewCommentsPath } from './apiPaths';
+import { isUuid } from './uuid';
 
-const ID = '11111111-1111-4111-8111-111111111111';
-
-describe('apiPaths', () => {
-  it('builds the comments path for a valid review id', () => {
-    expect(reviewCommentsPath(ID)).toBe(`/reviews/${ID}/comments`);
+describe('isUuid', () => {
+  it('accepts a valid UUID in any case', () => {
+    expect(isUuid('11111111-1111-4111-8111-111111111111')).toBe(true);
+    expect(isUuid('3FA85F64-5717-4562-B3FC-2C963F66AFA6')).toBe(true);
   });
 
-  it.each(['../../admin', `${ID}/../../users`, `${ID}?x=1`, '', null, undefined, 42])(
-    'rejects an unsafe review id: %s',
+  it.each(['../../admin', '11111111-1111-4111-8111-111111111111/../users', '11111111-1111-4111-8111-111111111111?x=1', '', null, undefined, 42])(
+    'rejects an unsafe value: %s',
     value => {
       expect(isUuid(value)).toBe(false);
-      expect(() => reviewCommentsPath(value)).toThrow('Invalid review id');
     }
   );
 });

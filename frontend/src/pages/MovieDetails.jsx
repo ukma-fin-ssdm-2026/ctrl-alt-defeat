@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { CURRENT_USER_ID } from '../auth/currentUser';
 import ReviewComments from '../components/ReviewComments';
-import { isUuid } from '../utils/apiPaths';
+import { isUuid } from '../utils/uuid';
 const MIN_TEXT = 10;
 const MAX_TEXT = 5000;
 

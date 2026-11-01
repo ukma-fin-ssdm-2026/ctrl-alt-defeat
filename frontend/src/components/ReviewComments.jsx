@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import { CURRENT_USER_ID } from '../auth/currentUser';
-import { reviewCommentsPath } from '../utils/apiPaths';
+import { isUuid } from '../utils/uuid';
 
 // Must match MAX_COMMENT_DEPTH on the backend (0 = top-level comment)
 export const MAX_COMMENT_DEPTH = 4;
@@ -65,9 +65,16 @@ function CommentForm({ reviewId, parentId, isLoggedIn, openAuth, user, t, placeh
       return;
     }
 
+    if (!isUuid(reviewId)) {
+      setError(t.failed);
+      return;
+    }
+
     setError('');
     setSending(true);
-    apiClient.post(reviewCommentsPath(reviewId), {
+    // Constant URL: the review id travels in the request body
+    apiClient.post('/comments', {
+      review_id: reviewId,
       user_id: CURRENT_USER_ID,
       author_name: user?.username || user?.email || 'Viewer',
       text: text.trim(),
@@ -183,15 +190,18 @@ export default function ReviewComments({ reviewId, isLoggedIn, openAuth, user, l
   const [thread, setThread] = useState(null); // { version, data } or { version, error }
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open || !isUuid(reviewId)) return undefined;
     let ignore = false;
-    apiClient.get(reviewCommentsPath(reviewId))
+    apiClient.get('/comments', { params: { review_id: reviewId } })
       .then(response => { if (!ignore) setThread({ version, data: response.data }); })
       .catch(() => { if (!ignore) setThread({ version, error: true }); });
     return () => { ignore = true; };
   }, [open, reviewId, version]);
 
   const reload = () => setVersion(v => v + 1);
+  // Only reviews stored on the backend (UUID ids) can have comments
+  if (!isUuid(reviewId)) return null;
+
   // Keep showing the previous thread while a reload is in flight
   const data = thread?.data;
   const loading = !thread || (thread.version !== version && !data);

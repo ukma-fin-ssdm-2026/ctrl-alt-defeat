@@ -50,7 +50,7 @@ describe('ReviewComments (FR-011)', () => {
     await openThread();
 
     expect(await screen.findByText('Great review!')).toBeInTheDocument();
-    expect(apiClient.get).toHaveBeenCalledWith(`/reviews/${REVIEW_ID}/comments`);
+    expect(apiClient.get).toHaveBeenCalledWith('/comments', { params: { review_id: REVIEW_ID } });
     const reply = screen.getByText('Agreed').closest('li');
     expect(within(reply).getByText('taras')).toBeInTheDocument();
     expect(screen.getByText('olena')).toBeInTheDocument();
@@ -70,7 +70,8 @@ describe('ReviewComments (FR-011)', () => {
     await userEvent.type(screen.getByRole('textbox', { name: 'Коментар' }), '  My first comment ');
     await userEvent.click(screen.getByRole('button', { name: 'Відправити' }));
 
-    expect(apiClient.post).toHaveBeenCalledWith(`/reviews/${REVIEW_ID}/comments`, {
+    expect(apiClient.post).toHaveBeenCalledWith('/comments', {
+      review_id: REVIEW_ID,
       user_id: CURRENT_USER_ID,
       author_name: 'admin',
       text: 'My first comment',
@@ -93,8 +94,8 @@ describe('ReviewComments (FR-011)', () => {
     await userEvent.click(within(replyBox.closest('form')).getByRole('button', { name: 'Відправити' }));
 
     expect(apiClient.post).toHaveBeenCalledWith(
-      `/reviews/${REVIEW_ID}/comments`,
-      expect.objectContaining({ text: 'A reply', parent_id: 'c1' })
+      '/comments',
+      expect.objectContaining({ review_id: REVIEW_ID, text: 'A reply', parent_id: 'c1' })
     );
   });
 
@@ -148,6 +149,16 @@ describe('ReviewComments (FR-011)', () => {
     expect(await screen.findByText('<img src=x onerror="alert(1)"><b>bold</b>')).toBeInTheDocument();
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('b')).toBeNull();
+  });
+
+  it('does not call the API for an invalid review id', async () => {
+    // Trace: T-029
+    const { container } = render(
+      <ReviewComments reviewId="../../admin" isLoggedIn user={user} openAuth={vi.fn()} />
+    );
+
+    expect(container).toBeEmptyDOMElement();
+    expect(apiClient.get).not.toHaveBeenCalled();
   });
 
   it('shows a policy error returned by the server', async () => {
