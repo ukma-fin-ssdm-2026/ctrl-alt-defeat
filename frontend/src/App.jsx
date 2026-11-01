@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Home from './pages/Home';
 import MovieDetails from './pages/MovieDetails';
+import Recommendations from './components/Recommendations';
 import AuthModal from './components/AuthModal';
 import UserProfile from './pages/UserProfile';
 import { mockMovies } from './data/mockData';
@@ -132,7 +133,19 @@ export default function App() {
             onToggleWatchlist={() => toggleWatchlist(selectedMovie.id)}
           />
         ) : (
-          <Home 
+          <>
+            {/* FR-007: personal block only on the unfiltered home page */}
+            {!selectedCategory && !selectedGenre && !selectedYear && (
+              <Recommendations
+                isLoggedIn={isLoggedIn}
+                openAuth={() => setIsAuthOpen(true)}
+                onSelectMovie={(movie) => setSelectedMovie(movie)}
+                language={language}
+                watchlist={watchlist}
+                onToggleWatchlist={toggleWatchlist}
+              />
+            )}
+            <Home 
             selectedCategory={selectedCategory}
             selectedGenre={selectedGenre} 
             selectedYear={selectedYear}
@@ -141,6 +154,7 @@ export default function App() {
             watchlist={watchlist}
             onToggleWatchlist={toggleWatchlist}
           />
+          </>
         )}
       </main>
 
