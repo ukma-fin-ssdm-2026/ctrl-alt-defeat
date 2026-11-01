@@ -1,30 +1,11 @@
-import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import { isUuid } from '../utils/uuid';
+import useUserList from './useUserList';
 
-// "Watched" list backed by the API (FR-006). Optimistic updates with rollback and a visible error.
+// "Watched" list backed by the API (FR-006)
 export default function useWatchedList({ user, catalog = [], onAuthRequired }) {
-  const userId = user?.user_id ?? null;
-  const [state, setState] = useState({ userId: null, items: [] });
-  const [error, setError] = useState(null); // 'UNAVAILABLE' | 'FAILED' | null
-
-  useEffect(() => {
-    if (!userId) return undefined;
-    let ignore = false;
-    apiClient.get('/users/me/watched')
-      .then(response => {
-        if (!ignore) setState({ userId, items: response.data.items || [] });
-      })
-      .catch(err => {
-        console.warn('Watched list is unavailable:', err);
-        if (!ignore) setState({ userId, items: [] });
-      });
-    return () => {
-      ignore = true;
-    };
-  }, [userId]);
-
-  const items = userId && state.userId === userId ? state.items : [];
+  const list = useUserList({ path: '/users/me/watched', user, onAuthRequired });
+  const { items } = list;
 
   const resolveContentId = movieOrId => {
     if (movieOrId && typeof movieOrId === 'object') return movieOrId.content_id;
@@ -38,52 +19,39 @@ export default function useWatchedList({ user, catalog = [], onAuthRequired }) {
   };
 
   const toggleWatched = async movieOrId => {
-    if (!userId) {
-      onAuthRequired?.();
-      return;
-    }
+    if (!list.requireUser()) return;
     const contentId = resolveContentId(movieOrId);
     if (!isUuid(contentId)) {
-      setError('UNAVAILABLE');
+      list.reportUnavailable();
       return;
     }
 
     const watched = items.some(item => item.content_id === contentId);
-    const previous = items;
     const movie = typeof movieOrId === 'object' ? movieOrId : catalog.find(m => m.content_id === contentId) || {};
-    setError(null);
-    setState({
-      userId,
-      items: watched
-        ? items.filter(item => item.content_id !== contentId)
-        : [{ ...movie, content_id: contentId }, ...items],
-    });
-
-    try {
-      if (watched) {
-        // Constant URL: the id travels as a query parameter (no user data in the request path)
-        await apiClient.delete('/users/me/watched', { params: { content_id: contentId } });
-      } else {
-        const response = await apiClient.post('/users/me/watched', { content_id: contentId });
-        // Replace the optimistic item with the server version (has title, poster, dates)
-        setState(current => ({
-          userId,
-          items: [response.data, ...current.items.filter(item => item.content_id !== contentId)],
-        }));
-      }
-    } catch (err) {
+    const response = await list.applyOptimistic(
+      watched ? items.filter(item => item.content_id !== contentId) : [{ ...movie, content_id: contentId }, ...items],
+      // Constant URL: the id travels as a query parameter (no user data in the request path)
+      () => watched
+        ? apiClient.delete('/users/me/watched', { params: { content_id: contentId } })
+        : apiClient.post('/users/me/watched', { content_id: contentId }),
       // Already removed on the server: keep the optimistic state
-      if (watched && err.response?.status === 404) return;
-      setState({ userId, items: previous });
-      setError('FAILED');
+      status => watched && status === 404
+    );
+
+    // Replace the optimistic item with the server version (title, poster, dates)
+    if (!watched && response?.data) {
+      updateServerItem(response.data);
     }
   };
+
+  const updateServerItem = serverItem =>
+    list.updateItems(current => [serverItem, ...current.filter(item => item.content_id !== serverItem.content_id)]);
 
   return {
     watchedMovies: items,
     isWatched,
     toggleWatched,
-    error,
-    clearError: () => setError(null),
+    error: list.error,
+    clearError: list.clearError,
   };
 }
