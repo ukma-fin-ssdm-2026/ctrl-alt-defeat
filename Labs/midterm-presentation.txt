@@ -1,4 +1,3 @@
 # Посилання на демонстраційне відео проміжного етапу (Midterm Presentation)
-# Запишіть відео на 4-5 хвилин із демонстрацією роботи системи (гість, користувач, адміністратор) та додайте посилання нижче:
 
 https://www.loom.com/share/placeholder-midterm-presentation-ctrl-alt-defeat
