@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
-import { CURRENT_USER_ID } from '../auth/currentUser';
 import MovieCard from './MovieCard';
 
 const RECOMMENDATIONS_LIMIT = 10;
@@ -16,26 +15,27 @@ export default function Recommendations({
   onToggleWatchlist,
 }) {
   const isUkr = language === 'UKR';
-  const [result, setResult] = useState(null); // { userId, data } or { userId, error }
-  const activeUserId = user?.user_id || CURRENT_USER_ID;
+  const [result, setResult] = useState(null); // { userKey, data } or { userKey, error }
+  // Results are cached per user, so another user's picks are never shown after re-login
+  const userKey = user?.user_id ?? 'session';
 
   useEffect(() => {
     if (!isLoggedIn) return undefined;
 
-    // Ignore the response if the user logged out while the request was in flight
+    // The backend takes the user from the access token; no user id is sent
     let ignore = false;
-    apiClient.get('/recommendations', { params: { user_id: activeUserId, limit: RECOMMENDATIONS_LIMIT } })
+    apiClient.get('/recommendations', { params: { limit: RECOMMENDATIONS_LIMIT } })
       .then(response => {
-        if (!ignore) setResult({ userId: activeUserId, data: response.data });
+        if (!ignore) setResult({ userKey, data: response.data });
       })
       .catch(error => {
         console.warn('Recommendations are unavailable:', error);
-        if (!ignore) setResult({ userId: activeUserId, error: true });
+        if (!ignore) setResult({ userKey, error: true });
       });
     return () => {
       ignore = true;
     };
-  }, [isLoggedIn, activeUserId]);
+  }, [isLoggedIn, userKey]);
 
   const heading = (
     <h2 className="text-xl font-black text-gray-900 dark:text-white border-l-4 border-yellow-500 pl-3">
@@ -66,7 +66,7 @@ export default function Recommendations({
     );
   }
 
-  const isLoaded = result && result.userId === CURRENT_USER_ID;
+  const isLoaded = result !== null && result.userKey === userKey;
   // Hide the block if the backend is unavailable or has nothing to recommend
   if (isLoaded && (result.error || result.data.items.length === 0)) return null;
 

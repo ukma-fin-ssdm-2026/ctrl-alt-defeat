@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import apiClient from '../api/client';
-import { CURRENT_USER_ID } from '../auth/currentUser';
 import Recommendations from './Recommendations';
 
 vi.mock('../api/client', () => ({
@@ -31,9 +30,8 @@ describe('Recommendations block (FR-007)', () => {
     expect(screen.getByText('Рекомендовано для вас')).toBeInTheDocument();
     expect(await screen.findByText('Interstellar')).toBeInTheDocument();
     items.forEach(movie => expect(screen.getByText(movie.title)).toBeInTheDocument());
-    expect(apiClient.get).toHaveBeenCalledWith('/recommendations', {
-      params: { user_id: CURRENT_USER_ID, limit: 10 },
-    });
+    // The user comes from the access token: no user id in the request
+    expect(apiClient.get).toHaveBeenCalledWith('/recommendations', { params: { limit: 10 } });
   });
 
   it('explains which genres the recommendations are based on', async () => {
@@ -63,6 +61,32 @@ describe('Recommendations block (FR-007)', () => {
     await userEvent.click(await screen.findByText('Alien'));
 
     expect(onSelectMovie).toHaveBeenCalledWith(items[1]);
+  });
+
+  it('shows recommendations for a real logged-in user (not stuck on loading)', async () => {
+    // Trace: T-020
+    apiClient.get.mockResolvedValue({ data: { items, personalized: true, favorite_genres: ['Фантастика'] } });
+    const realUser = { user_id: '77db9445-647f-4cef-89fd-186719646491', nickname: 'cinema_fan' };
+
+    render(<Recommendations isLoggedIn user={realUser} onSelectMovie={() => {}} />);
+
+    expect(await screen.findByText('Interstellar')).toBeInTheDocument();
+    expect(screen.queryByText('Підбираємо рекомендації...')).not.toBeInTheDocument();
+  });
+
+  it('reloads recommendations when another user logs in', async () => {
+    // Trace: T-021
+    apiClient.get
+      .mockResolvedValueOnce({ data: { items: [items[0]], personalized: true, favorite_genres: ['Фантастика'] } })
+      .mockResolvedValueOnce({ data: { items: [items[3]], personalized: true, favorite_genres: ['Драма'] } });
+
+    const { rerender } = render(<Recommendations isLoggedIn user={{ user_id: 'a' }} onSelectMovie={() => {}} />);
+    expect(await screen.findByText('Interstellar')).toBeInTheDocument();
+
+    rerender(<Recommendations isLoggedIn user={{ user_id: 'b' }} onSelectMovie={() => {}} />);
+    expect(await screen.findByText('Shawshank')).toBeInTheDocument();
+    expect(screen.queryByText('Interstellar')).not.toBeInTheDocument();
+    expect(apiClient.get).toHaveBeenCalledTimes(2);
   });
 
   it('asks a guest to log in and does not call the API', async () => {
