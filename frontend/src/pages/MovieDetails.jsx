@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
-
-// TODO: replace with the real user id once authentication is implemented
-const CURRENT_USER_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+import { CURRENT_USER_ID } from '../auth/currentUser';
 const MIN_TEXT = 10;
 const MAX_TEXT = 5000;
 
