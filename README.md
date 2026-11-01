@@ -1,4 +1,4 @@
-# Сайт рецензій та рекомендацій фільмів і серіалів 
+# Сайт рецензій та рекомендацій фільмів і серіалів «Після титрів» 
 
 [![CI Test](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/workflows/ci.yml/badge.svg)](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/workflows/ci.yml)
 
