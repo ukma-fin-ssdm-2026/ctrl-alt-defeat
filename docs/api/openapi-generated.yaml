@@ -716,6 +716,23 @@ paths:
       - comments
       summary: Comment on a review or reply to a comment
       operationId: create_comment_api_v1_comments_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       requestBody:
         required: true
         content:
@@ -768,13 +785,14 @@ components:
             format: uuid4
           - type: 'null'
           title: User Id
-          description: 'Temporary until authentication: author of the comment'
+          description: Author ID (defaults to authenticated user from JWT)
         author_name:
-          type: string
-          maxLength: 50
-          minLength: 1
+          anyOf:
+          - type: string
+            maxLength: 50
+          - type: 'null'
           title: Author Name
-          description: 'Temporary: author nickname'
+          description: Author nickname (defaults to authenticated user)
         text:
           type: string
           maxLength: 2000
@@ -790,7 +808,6 @@ components:
       type: object
       required:
       - review_id
-      - author_name
       - text
       title: CommentCreate
       example:

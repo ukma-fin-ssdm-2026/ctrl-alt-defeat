@@ -50,7 +50,6 @@ export default function MovieDetails({
   movie, 
   user,
   isLoggedIn, 
-  user,
   openAuth, 
   onBack, 
   language = 'UKR', 

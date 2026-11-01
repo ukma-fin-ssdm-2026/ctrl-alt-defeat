@@ -227,3 +227,36 @@ def test_comments_get_db_generator():
     generator = comments_router.get_db()
     assert next(generator) is not None
     generator.close()
+
+
+def test_create_comment_with_authenticated_jwt_token(client, db_session):
+    # Trace: T-029
+    from src.api.db.models import User
+    from src.api.services.auth import create_access_token
+
+    user_id = uuid.uuid4()
+    db_session.add(
+        User(
+            user_id=user_id,
+            email="verified_commenter@example.com",
+            nickname="SuperCommenter",
+            password_hash="fakehash",
+            role="user",
+            email_verified=True,
+            status="active",
+        )
+    )
+    db_session.commit()
+    token = create_access_token(data={"sub": str(user_id), "role": "user"})
+
+    response = client.post(
+        URL,
+        json={"review_id": str(REVIEW_ID), "text": "Comment using real JWT auth"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["author_name"] == "SuperCommenter"
+    assert data["user_id"] == str(user_id)
+    assert data["text"] == "Comment using real JWT auth"

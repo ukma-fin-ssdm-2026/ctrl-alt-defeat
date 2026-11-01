@@ -10,17 +10,18 @@ EMPTY_COMMENT_MESSAGE = "Comment text cannot be empty"
 
 class CommentCreate(BaseModel):
     review_id: UUID4 = Field(..., description="Review to comment on")
-    # TODO(FR-001): user and nickname will come from the access token instead of the request body
-    user_id: Optional[UUID4] = Field(None, description="Temporary until authentication: author of the comment")
-    author_name: str = Field(
-        ..., min_length=1, max_length=MAX_AUTHOR_NAME_LENGTH, description="Temporary: author nickname"
+    user_id: Optional[UUID4] = Field(None, description="Author ID (defaults to authenticated user from JWT)")
+    author_name: Optional[str] = Field(
+        None, max_length=MAX_AUTHOR_NAME_LENGTH, description="Author nickname (defaults to authenticated user)"
     )
     text: str = Field(..., max_length=MAX_COMMENT_LENGTH, description="Comment text (1-2000 chars)")
     parent_id: Optional[UUID4] = Field(None, description="Comment to reply to; omit for a top-level comment")
 
     @field_validator("text", "author_name")
     @classmethod
-    def strip_and_require(cls, value: str, info) -> str:
+    def strip_and_require(cls, value: Optional[str], info) -> Optional[str]:
+        if value is None:
+            return None
         value = value.strip()
         if not value:
             raise ValueError(EMPTY_COMMENT_MESSAGE if info.field_name == "text" else "Author name cannot be empty")
