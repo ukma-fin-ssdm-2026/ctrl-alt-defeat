@@ -48,6 +48,7 @@ function ReviewContent({ text, isSpoiler, language = 'UKR' }) {
 
 export default function MovieDetails({ 
   movie, 
+  user,
   isLoggedIn, 
   user,
   openAuth, 
@@ -68,9 +69,9 @@ export default function MovieDetails({
   const [formError, setFormError] = useState('');
   const isUkr = language === 'UKR';
 
-  // Reviews may be loaded without a content filter, so match both user and movie
+  const currentActiveUserId = user?.user_id || CURRENT_USER_ID;
   const myReview = reviews.find(
-    r => r.user_id === CURRENT_USER_ID && movie.content_id && r.content_id === movie.content_id
+    r => r.user_id === currentActiveUserId && movie.content_id && r.content_id === movie.content_id
   );
   const trimmedLength = reviewText.trim().length;
   const textTooShort = trimmedLength > 0 && trimmedLength < MIN_TEXT;
@@ -131,7 +132,7 @@ export default function MovieDetails({
     const contentUuid = movie.content_id || "11111111-1111-1111-1111-111111111111";
 
     apiClient.post('/reviews', {
-      user_id: CURRENT_USER_ID,
+      user_id: user?.user_id || CURRENT_USER_ID,
       content_id: contentUuid,
       rating: Number(rating),
       review_text: text || null,

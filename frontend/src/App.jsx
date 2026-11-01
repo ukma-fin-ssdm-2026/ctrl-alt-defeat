@@ -7,12 +7,13 @@ import AuthModal from './components/AuthModal';
 import UserProfile from './pages/UserProfile';
 import { mockMovies } from './data/mockData';
 import apiClient from './api/client';
+import { getStoredUser, setStoredAuth, clearStoredAuth, getStoredToken } from './auth/currentUser';
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => getStoredUser());
   const isLoggedIn = !!user;
 
   const [language, setLanguage] = useState('UKR'); 
@@ -27,6 +28,20 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(null); // Додали стан для року
 
   useEffect(() => {
+    // Validate session on startup with backend (FR-001, US-011)
+    const token = getStoredToken();
+    if (token) {
+      apiClient.get('/auth/me')
+        .then(res => {
+          setUser(res.data);
+          setStoredAuth(token, res.data);
+        })
+        .catch(() => {
+          clearStoredAuth();
+          setUser(null);
+        });
+    }
+
     apiClient.get('/movies', { params: { limit: 100 } })
       .then(response => {
         const items = response.data.items || response.data;
@@ -72,13 +87,31 @@ export default function App() {
     );
   };
 
-  const handleLogin = (email, password) => {
-    if (email === 'admin@gmail.com' && password === 'password12345') {
-      setUser({ username: 'admin', email: 'admin@gmail.com' });
+  const handleLogin = async (email, password) => {
+    try {
+      const response = await apiClient.post('/auth/login', { email, password });
+      const { access_token, user: userData } = response.data;
+      setStoredAuth(access_token, userData);
+      setUser(userData);
       setIsAuthOpen(false);
-      return true;
+      return { success: true };
+    } catch (err) {
+      const errCode = err.response?.data?.error?.code || err.response?.data?.detail?.code;
+      const errMsg = err.response?.data?.error?.message || err.response?.data?.detail?.message || err.message;
+      return { success: false, code: errCode, message: errMsg };
     }
-    return false;
+  };
+
+  const handleLogout = async () => {
+    try {
+      await apiClient.post('/auth/logout');
+    } catch (e) {
+      console.warn("Logout error:", e);
+    }
+    clearStoredAuth();
+    setUser(null);
+    setWatchlist([]);
+    handleGoHome();
   };
 
   return (
@@ -88,7 +121,7 @@ export default function App() {
         isDarkMode={isDarkMode}
         openAuth={() => setIsAuthOpen(true)}
         user={user}
-        onLogout={() => { setUser(null); setWatchlist([]); handleGoHome(); }}
+        onLogout={handleLogout}
         onGoHome={handleGoHome}
         onGoProfile={() => { setSelectedMovie(null); setShowProfile(true); }}
         
@@ -125,6 +158,7 @@ export default function App() {
         ) : selectedMovie ? (
           <MovieDetails 
             movie={selectedMovie} 
+            user={user}
             isLoggedIn={isLoggedIn}
             user={user}
             openAuth={() => setIsAuthOpen(true)}
@@ -138,6 +172,7 @@ export default function App() {
             {/* FR-007: personal block only on the unfiltered home page */}
             {!selectedCategory && !selectedGenre && !selectedYear && (
               <Recommendations
+                user={user}
                 isLoggedIn={isLoggedIn}
                 openAuth={() => setIsAuthOpen(true)}
                 onSelectMovie={(movie) => setSelectedMovie(movie)}
