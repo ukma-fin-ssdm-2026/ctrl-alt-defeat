@@ -1,21 +1,29 @@
 name: CI Test & Spec Validation
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   build:
     name: Build, Lint, Test & Validate Spec
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up virtual environment & install locked dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install locked dependencies
         run: |
-          python3 -m venv .venv
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
-          .venv/bin/python3 -m pip install --only-binary :all: -r requirements.txt
+          python -m pip install --only-binary :all: -r requirements.txt
 
       - name: Run Linters & Security Scan
         run: |
@@ -28,11 +36,11 @@ jobs:
 
       - name: Verify RTM <-> Test Traceability
         run: |
-          python3 scripts/verify_traceability.py
+          python scripts/verify_traceability.py
 
       - name: Verify OpenAPI Specification Sync
         run: |
-          python3 -c "import sys; sys.path.insert(0, '.'); from src.api.main import app, save_openapi_spec; save_openapi_spec(app)"
+          python -c "import sys; sys.path.insert(0, '.'); from src.api.main import app, save_openapi_spec; save_openapi_spec(app)"
           if [ -n "$(git status --porcelain docs/api/openapi-generated.yaml)" ]; then
             echo "::error::OpenAPI specification is out of sync with code! Please run the generator and commit docs/api/openapi-generated.yaml"
             git diff docs/api/openapi-generated.yaml
