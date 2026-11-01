@@ -289,6 +289,36 @@ def test_delete_review_not_found_edge_case(client, mock_db_session, admin_user):
     assert response.json()["error"]["code"] == "REVIEW_NOT_FOUND"
 
 
+def test_delete_review_by_query_param(client, mock_db_session, mock_review, author_user):
+    # Trace: T-017
+    """FR-008: the same deletion with the id as a query parameter (constant client URL)."""
+    app.dependency_overrides[get_current_active_user] = lambda: author_user
+    mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
+
+    response = client.delete("/api/v1/reviews", params={"review_id": str(mock_review.review_id)})
+
+    assert response.status_code == 204
+    mock_db_session.delete.assert_called_once_with(mock_review)
+
+
+def test_delete_review_by_query_param_keeps_bola_check(client, mock_db_session, mock_review, stranger_user):
+    # Trace: T-018
+    app.dependency_overrides[get_current_active_user] = lambda: stranger_user
+    mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
+
+    response = client.delete("/api/v1/reviews", params={"review_id": str(mock_review.review_id)})
+
+    assert response.status_code == 403
+
+
+@pytest.mark.parametrize("params", [{}, {"review_id": "../../admin"}])
+def test_delete_review_by_query_param_validates_id(client, admin_user, params):
+    # Trace: T-019
+    app.dependency_overrides[get_current_active_user] = lambda: admin_user
+
+    assert client.delete("/api/v1/reviews", params=params).status_code == 422
+
+
 @pytest.mark.parametrize("min_val", [1, 5, 8, 10])
 def test_get_reviews_min_rating_filter(client, mock_db_session, mock_review, min_val):
     # Trace: T-038
