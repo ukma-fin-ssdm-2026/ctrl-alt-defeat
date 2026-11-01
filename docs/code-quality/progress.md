@@ -7,9 +7,9 @@
 ## 1. Поточний стан архітектури
 
 Згідно з вимогами до базової структури коду та за результатами зворотного зв'язку Code Review, монолітний файл API було успішно декомпозовано на логічні модулі:
-- **`src/api/db/`**: Містить налаштування підключення до бази даних ([database.py](../../src/api/db/database.py)) з підтримкою пулу з'єднань через SQLAlchemy та ORM-моделі `Review`, `Movie`, `User`, `WatchedItem` ([models.py](../../src/api/db/models.py)).
-- **`src/api/schemas/`**: Виділено Pydantic-схеми для рецензій ([review.py](../../src/api/schemas/review.py)), каталогу фільмів ([movie.py](../../src/api/schemas/movie.py)), списку переглянутого ([watched.py](../../src/api/schemas/watched.py)), авторизації та користувачів ([auth.py](../../src/api/schemas/auth.py)) та уніфікованих помилок ([errors.py](../../src/api/schemas/errors.py)).
-- **`src/api/routers/`**: Ізольовані обробники маршрутів API, згруповані за ресурсами ([reviews.py](../../src/api/routers/reviews.py), [movies.py](../../src/api/routers/movies.py), [recommendations.py](../../src/api/routers/recommendations.py), [watched.py](../../src/api/routers/watched.py) та [auth.py](../../src/api/routers/auth.py)).
+- **`src/api/db/`**: Містить налаштування підключення до бази даних ([database.py](../../src/api/db/database.py)) з підтримкою пулу з'єднань через SQLAlchemy та ORM-моделі `Review`, `Movie`, `User`, `WatchedItem`, `WatchlistItem` ([models.py](../../src/api/db/models.py)).
+- **`src/api/schemas/`**: Виділено Pydantic-схеми для рецензій ([review.py](../../src/api/schemas/review.py)), каталогу фільмів ([movie.py](../../src/api/schemas/movie.py)), списку переглянутого ([watched.py](../../src/api/schemas/watched.py)), списку «До перегляду» ([watchlist.py](../../src/api/schemas/watchlist.py)), авторизації та користувачів ([auth.py](../../src/api/schemas/auth.py)) та уніфікованих помилок ([errors.py](../../src/api/schemas/errors.py)).
+- **`src/api/routers/`**: Ізольовані обробники маршрутів API, згруповані за ресурсами ([reviews.py](../../src/api/routers/reviews.py), [movies.py](../../src/api/routers/movies.py), [recommendations.py](../../src/api/routers/recommendations.py), [watched.py](../../src/api/routers/watched.py), [watchlist.py](../../src/api/routers/watchlist.py) та [auth.py](../../src/api/routers/auth.py)).
 - **`src/api/services/`**: Сервісний шар бізнес-логіки: інтеграція із зовнішніми API ([tmdb.py](../../src/api/services/tmdb.py)) з підтримкою кешованого fallback на 30 тайтлів, алгоритм персоналізованих рекомендацій ([recommendations.py](../../src/api/services/recommendations.py)) та безпека автентифікації/хешування bcrypt/JWT ([auth.py](../../src/api/services/auth.py)).
 - **`src/api/main.py`**: Точка входу в застосунок FastAPI, що об'єднує маршрутизатори, глобальні Exception Handlers, CORS-налаштування та автоматичну генерацію документації в рамках події `lifespan`.
 
@@ -97,8 +97,17 @@ uvicorn src.api.main:app --reload --host 127.0.0.1 --port 8000
 - `DELETE /api/v1/users/me/watched/{content_id}` — видалення контенту зі списку переглянутого (HTTP 204 No Content, або 404 Not Found).
 - Фронтенд: інтерактивна кнопка-перемикач «👁️ Позначити як переглянуте» / «✓ Переглянуто» на сторінці фільму ([MovieDetails.jsx](../../frontend/src/pages/MovieDetails.jsx)), окрема вкладка «👁️ Переглянуто» у профілі користувача ([UserProfile.jsx](../../frontend/src/pages/UserProfile.jsx)) з лічильником, сіткою карток, можливістю швидкого видалення зі списку та переходу до фільму.
 
+### Компонент: «Список «До перегляду»» (Watchlist [FR-005])
+**Статус:** Повністю реалізовано на бекенді та фронтенді з автоматизованим тестуванням (T-001, T-002, T-003, T-004, US-001).
+
+- `GET /api/v1/watchlist` — отримання списку фільмів і серіалів «До перегляду» користувача (сортування: найновіші додані спочатку).
+- `POST /api/v1/watchlist` — додавання тайтлу до списку (HTTP 201 Created; повернення 409 Conflict у разі спроби повторного додавання дубліката).
+- `DELETE /api/v1/watchlist?content_id=...` — видалення тайтлу зі списку за ідентифікатором контенту (HTTP 204 No Content або 404 NOT_IN_WATCHLIST).
+- Фронтенд: хук `useWatchlist.js` з автоматичною синхронізацією стану з API, відкриттям модального вікна входу для неавторизованих гостей із відповідним повідомленням-підказкою, оптимістичним або безпечним оновленням стану та відображенням помилок.
+
 ### Загальний статус тестування та покриття
-Тестовий набір розширено до **194 тестів** без жодного збою (`194 passed`):
+Тестовий набір розширено до **210 тестів** без жодного збою (`210 passed`):
+- `tests/test_watchlist.py` (16 тестів): додавання до списку (T-001), відхилення дублікатів з кодом 409 (T-002), видалення зі списку (T-003), персистентність списку між різними сесіями та токенами (T-004), обов'язкова JWT-авторизація, валідація UUID, обробка помилок 404 та заборона непідтвердженим акаунтам.
 - `tests/test_watched.py` (9 тестів): додавання до списку (T-011), видалення (T-012), сувора ізоляція даних користувачів (T-013), обов'язкова JWT-авторизація, ідемпотентність повторних запитів, коректна 404 для відсутніх записів, метадані тайтлів, заборона доступу заблокованим та непідтвердженим користувачам.
 - `tests/test_auth.py` (18 тестів): реєстрація, валідація, дублікати email, верифікація токена, логін (T-037), невірний пароль, непідтверджений акаунт, читання сесії через Bearer токен та cookie, вихід, хешування bcrypt (SEC-001).
 - `tests/test_comment_validation.py` (19 тестів): валідація коментарів, ліміти довжини, захист від XSS та ReDoS (FR-011, SEC-002).
@@ -114,7 +123,7 @@ uvicorn src.api.main:app --reload --host 127.0.0.1 --port 8000
 - `tests/test_security.py` (1 тест): регресійний тест безпеки Bandit B104.
 - `tests/test_main.py` (4 тести): обробники глобальних помилок, Swagger та валідація.
 
-**Загальне покриття коду бекенду: 95.87%** (жорсткий поріг CI: `--cov-fail-under=80`).
+**Загальне покриття коду бекенду: 96.08%** (жорсткий поріг CI: `--cov-fail-under=80`).
 
 ---
 

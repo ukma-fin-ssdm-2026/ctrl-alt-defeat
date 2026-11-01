@@ -770,6 +770,201 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/watchlist:
+    get:
+      tags:
+      - Watchlist
+      summary: Get my watchlist (FR-005)
+      operationId: get_watchlist_api_v1_watchlist_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Email is not verified or the account is banned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - Watchlist
+      summary: Add a movie or series to my watchlist (FR-005)
+      operationId: add_to_watchlist_api_v1_watchlist_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchlistAddRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Email is not verified or the account is banned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The title is already in the watchlist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - Watchlist
+      summary: Remove a movie or series from my watchlist (FR-005)
+      operationId: remove_from_watchlist_api_v1_watchlist_delete
+      parameters:
+      - name: content_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Movie or series to remove
+          title: Content Id
+        description: Movie or series to remove
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Email is not verified or the account is banned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/users/me/watched:
     get:
       tags:
@@ -1790,3 +1985,33 @@ components:
       - is_watched
       - content_id
       title: WatchedStatusResponse
+    WatchlistAddRequest:
+      properties:
+        content_id:
+          type: string
+          format: uuid4
+          title: Content Id
+          description: Movie or series to add to the watchlist
+      type: object
+      required:
+      - content_id
+      title: WatchlistAddRequest
+      example:
+        content_id: 11111111-1111-4111-8111-111111111111
+    WatchlistResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ContentResponse'
+          type: array
+          title: Items
+          description: Titles in the watchlist, most recently added first
+        total:
+          type: integer
+          title: Total
+          description: Number of titles in the watchlist
+      type: object
+      required:
+      - items
+      - total
+      title: WatchlistResponse

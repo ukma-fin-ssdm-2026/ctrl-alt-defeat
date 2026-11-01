@@ -88,6 +88,18 @@
 
 Схеми: `WatchedItemCreate`, `WatchedItemResponse`, `WatchedListResponse`, `WatchedStatusResponse`.
 
+### WatchlistItem (Список «До перегляду»)
+
+`WatchlistItem` представляє запис у списку «До перегляду» (Watchlist) авторизованого користувача (FR-005, US-001).
+
+| Поле | Тип | Опис |
+|------|-----|------|
+| `user_id` | UUID | Ідентифікатор користувача (Primary Key, Foreign Key) |
+| `content_id` | UUID | Ідентифікатор контенту в каталозі (Primary Key, Foreign Key) |
+| `added_at` | date-time | Дата та час додавання фільму/серіалу до списку |
+
+Схеми: `WatchlistAddRequest`, `WatchlistResponse`.
+
 ### Операції API
 
 #### Автентифікація та авторизація (Authentication & Authorization)
@@ -145,6 +157,14 @@
 | `POST` | `/api/v1/users/me/watched` | Позначити фільм або серіал як переглянутий (T-011) | `201 Created` / `200 OK` |
 | `GET` | `/api/v1/users/me/watched/{content_id}` | Перевірити, чи позначено конкретний тайтл як переглянутий | `200 OK` |
 | `DELETE` | `/api/v1/users/me/watched/{content_id}` | Зняти позначку «Переглянуто» з контенту (T-012, T-013) | `204 No Content` |
+
+#### Список «До перегляду» (Watchlist — FR-005, US-001)
+
+| Метод | Endpoint | Опис | Успішна відповідь |
+|-------|----------|------|-------------------|
+| `GET` | `/api/v1/watchlist` | Отримати збережений список фільмів/серіалів «До перегляду» користувача (T-001, T-004) | `200 OK` |
+| `POST` | `/api/v1/watchlist` | Додати фільм/серіал до власного списку (T-001, захист від дублікатів 409: T-002) | `201 Created` |
+| `DELETE` | `/api/v1/watchlist` | Видалити тайтл зі списку перегляду за query-параметром `content_id` (T-003) | `204 No Content` |
 
 ## Проєктні рішення
 
