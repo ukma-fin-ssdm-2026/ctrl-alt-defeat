@@ -13,7 +13,8 @@ export default function Header({
   onLogout,
   onGoProfile,
   language,
-  onToggleLanguage
+  onToggleLanguage,
+  movies
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpenSuggestions, setIsOpenSuggestions] = useState(false);
@@ -63,10 +64,13 @@ export default function Header({
 
   const availableYears = [2026, 2024, 2023, 2021, 2020, 2019, 2017, 2016, 2014, 2011, 2010, 2008, 2001, 1994];
 
-  const suggestions = searchQuery.trim() === '' ? [] : mockMovies.filter(movie => 
-    movie.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (movie.titleEn && movie.titleEn.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const movieSource = (movies && movies.length > 0) ? movies : mockMovies;
+  const suggestions = searchQuery.trim() === '' ? [] : movieSource.filter(movie => {
+    const title = movie.title || '';
+    const titleEn = movie.title_en || movie.titleEn || '';
+    const q = searchQuery.toLowerCase();
+    return title.toLowerCase().includes(q) || titleEn.toLowerCase().includes(q);
+  });
 
   useEffect(() => {
     function handleClickOutside(event) {
