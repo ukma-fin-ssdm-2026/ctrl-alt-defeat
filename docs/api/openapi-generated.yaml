@@ -441,8 +441,206 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/reviews/{review_id}/comments:
+    get:
+      tags:
+      - comments
+      summary: Get comments under a review (threaded)
+      operationId: get_comments_api_v1_reviews__review_id__comments_get
+      parameters:
+      - name: review_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: ID of the review
+          title: Review Id
+        description: ID of the review
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentThreadResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - comments
+      summary: Comment on a review or reply to a comment
+      operationId: create_comment_api_v1_reviews__review_id__comments_post
+      parameters:
+      - name: review_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: ID of the review
+          title: Review Id
+        description: ID of the review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
+    CommentCreate:
+      properties:
+        user_id:
+          anyOf:
+          - type: string
+            format: uuid4
+          - type: 'null'
+          title: User Id
+          description: 'Temporary until authentication: author of the comment'
+        author_name:
+          type: string
+          maxLength: 50
+          minLength: 1
+          title: Author Name
+          description: 'Temporary: author nickname'
+        text:
+          type: string
+          maxLength: 2000
+          title: Text
+          description: Comment text (1-2000 chars)
+        parent_id:
+          anyOf:
+          - type: string
+            format: uuid4
+          - type: 'null'
+          title: Parent Id
+          description: Comment to reply to; omit for a top-level comment
+      type: object
+      required:
+      - author_name
+      - text
+      title: CommentCreate
+      example:
+        author_name: admin
+        text: Totally agree about the soundtrack!
+        user_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+    CommentResponse:
+      properties:
+        comment_id:
+          type: string
+          format: uuid4
+          title: Comment Id
+        review_id:
+          type: string
+          format: uuid4
+          title: Review Id
+        parent_id:
+          anyOf:
+          - type: string
+            format: uuid4
+          - type: 'null'
+          title: Parent Id
+        user_id:
+          type: string
+          format: uuid4
+          title: User Id
+        author_name:
+          type: string
+          title: Author Name
+          description: Author nickname
+        text:
+          type: string
+          title: Text
+        depth:
+          type: integer
+          title: Depth
+          description: 'Nesting level: 0 for top-level comments'
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+          description: Publication date and time
+        replies:
+          items:
+            $ref: '#/components/schemas/CommentResponse'
+          type: array
+          title: Replies
+          description: Nested replies, oldest first
+      type: object
+      required:
+      - comment_id
+      - review_id
+      - user_id
+      - author_name
+      - text
+      - depth
+      - created_at
+      title: CommentResponse
+    CommentThreadResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/CommentResponse'
+          type: array
+          title: Items
+          description: Top-level comments with nested replies, oldest first
+        total:
+          type: integer
+          title: Total
+          description: Total number of comments under the review, replies included
+      type: object
+      required:
+      - items
+      - total
+      title: CommentThreadResponse
     ContentResponse:
       properties:
         id:

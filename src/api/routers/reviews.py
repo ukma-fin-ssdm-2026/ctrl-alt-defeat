@@ -201,6 +201,8 @@ async def delete_review(
 
     if existing_review is None:
         raise HTTPException(status_code=404, detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"})
+    # Remove the comment thread too (bulk delete works on SQLite without FK enforcement)
+    db.query(models.Comment).filter(models.Comment.review_id == review_id).delete(synchronize_session=False)
     db.delete(existing_review)
     db.commit()
     return None
