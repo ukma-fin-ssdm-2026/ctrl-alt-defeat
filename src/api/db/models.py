@@ -14,6 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
 )
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from src.api.db.database import Base
@@ -70,6 +71,20 @@ class Review(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    # Read-only links used to show who wrote the review and about which title (no DB schema change)
+    author = relationship("User", primaryjoin="foreign(Review.user_id) == User.user_id", viewonly=True, lazy="selectin")
+    content = relationship(
+        "Content", primaryjoin="foreign(Review.content_id) == Content.content_id", viewonly=True, lazy="selectin"
+    )
+
+    @property
+    def author_nickname(self):
+        return self.author.nickname if self.author is not None else None
+
+    @property
+    def content_title(self):
+        return self.content.title if self.content is not None else None
 
 
 class Rating(Base):

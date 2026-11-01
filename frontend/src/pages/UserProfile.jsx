@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import apiClient from '../api/client';
+import { getDisplayName } from '../utils/displayName';
 
 export default function UserProfile({ 
   user, 
@@ -19,11 +21,19 @@ export default function UserProfile({
 
   const isUkr = language === 'UKR';
 
-  const [userReviews] = useState([
-    { id: 1, movieTitle: 'Інстеллар / Interstellar', rating: 10, text: 'Неймовірний фільм із геніальною музикою Ганса Циммера!', likes: 52 },
-    { id: 2, movieTitle: 'Темний лицар / The Dark Knight', rating: 9, text: 'Гітлер Леджер у ролі Джокера — це шедевр на всі часи.', likes: 38 },
-    { id: 3, movieTitle: 'Оппенгеймер / Oppenheimer', rating: 8, text: 'Потужна драма, Кілліан Мерфі неперевершений.', likes: 14 }
-  ]);
+  // Real reviews of the current user from the API (previously hardcoded examples)
+  const userId = user?.user_id;
+  const [reviewsState, setReviewsState] = useState({ userId: null, items: [], error: false });
+  useEffect(() => {
+    if (!userId) return undefined;
+    let ignore = false;
+    apiClient.get('/reviews', { params: { user_id: userId, limit: 100 } })
+      .then(response => { if (!ignore) setReviewsState({ userId, items: response.data.items || [], error: false }); })
+      .catch(() => { if (!ignore) setReviewsState({ userId, items: [], error: true }); });
+    return () => { ignore = true; };
+  }, [userId]);
+  const reviewsLoaded = reviewsState.userId === userId;
+  const userReviews = reviewsLoaded ? reviewsState.items : [];
 
   const achievements = [
     { 
@@ -104,11 +114,11 @@ export default function UserProfile({
       {/* Шапка профілю */}
       <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-xl border border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center gap-6 mb-8">
         <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-yellow-500 to-amber-300 flex items-center justify-center text-4xl font-black text-gray-900 shadow-inner">
-          {user?.username?.[0]?.toUpperCase() || 'U'}
+          {getDisplayName(user)[0]?.toUpperCase() || 'U'}
         </div>
         <div className="text-center sm:text-left flex-1">
           <h1 className="text-2xl font-black text-gray-900 dark:text-white">
-            {user?.username || 'Користувач'}
+            {getDisplayName(user) || (isUkr ? 'Користувач' : 'User')}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {user?.email || 'user@gmail.com'}
@@ -191,7 +201,7 @@ export default function UserProfile({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
                   <span className="text-xs text-gray-400 font-bold uppercase">{isUkr ? "Ім'я користувача" : 'Username'}</span>
-                  <p className="text-base font-bold text-gray-800 dark:text-gray-100 mt-1">{user?.username}</p>
+                  <p className="text-base font-bold text-gray-800 dark:text-gray-100 mt-1">{getDisplayName(user)}</p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
                   <span className="text-xs text-gray-400 font-bold uppercase">Email</span>
@@ -368,22 +378,36 @@ export default function UserProfile({
                 {isUkr ? 'Мої рецензії та відгуки' : 'My Reviews'}
               </h2>
 
-              <div className="space-y-4">
-                {userReviews.map(review => (
-                  <div key={review.id} className="p-4 bg-gray-50 dark:bg-gray-700/40 rounded-2xl border border-gray-100 dark:border-gray-700 flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-sm text-gray-900 dark:text-white">{review.movieTitle}</h4>
-                      <span className="px-2.5 py-0.5 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-full text-xs font-black">
-                        ⭐ {review.rating}/10
-                      </span>
+              {!reviewsLoaded ? (
+                <p className="text-gray-500 dark:text-gray-400 text-sm py-8 text-center">{isUkr ? 'Завантаження...' : 'Loading...'}</p>
+              ) : reviewsState.error ? (
+                <p className="text-red-500 text-sm py-8 text-center">{isUkr ? 'Не вдалося завантажити ваші рецензії.' : 'Failed to load your reviews.'}</p>
+              ) : userReviews.length === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400 text-sm py-8 text-center">
+                  {isUkr ? 'Ви ще не залишили жодної рецензії.' : "You haven't written any reviews yet."}
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {userReviews.map(review => (
+                    <div key={review.review_id} className="p-4 bg-gray-50 dark:bg-gray-700/40 rounded-2xl border border-gray-100 dark:border-gray-700 flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-sm text-gray-900 dark:text-white">{review.content_title || (isUkr ? 'Фільм' : 'Title')}</h4>
+                        <span className="px-2.5 py-0.5 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-full text-xs font-black">
+                          ⭐ {review.rating}/10
+                        </span>
+                      </div>
+                      {review.review_text ? (
+                        <p className="text-xs text-gray-600 dark:text-gray-300 italic">"{review.review_text}"</p>
+                      ) : (
+                        <p className="text-xs text-gray-400">{isUkr ? 'Лише оцінка, без тексту' : 'Rating only'}</p>
+                      )}
+                      <div className="text-[11px] text-gray-400 mt-1">
+                        {new Date(review.created_at).toLocaleDateString(isUkr ? 'uk-UA' : 'en-US')}
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 italic">"{review.text}"</p>
-                    <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-1">
-                      <span>❤️ {review.likes} {isUkr ? 'вподобайок' : 'likes'}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
