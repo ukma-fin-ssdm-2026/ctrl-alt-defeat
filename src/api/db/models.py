@@ -132,3 +132,14 @@ class User(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+
+class WatchlistItem(Base):
+    """A title in the user's "Watch later" list (FR-005). One row per user and title."""
+
+    __tablename__ = "watchlist"
+    __table_args__ = {"extend_existing": True}
+
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
+    content_id = Column(Uuid(as_uuid=True), ForeignKey("content.content_id", ondelete="CASCADE"), primary_key=True)
+    added_at = Column(DateTime(timezone=True), nullable=False)
