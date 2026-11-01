@@ -7,10 +7,10 @@
 ## 1. Поточний стан архітектури
 
 Згідно з вимогами до базової структури коду та за результатами зворотного зв'язку Code Review, монолітний файл API було успішно декомпозовано на логічні модулі:
-- **`src/api/db/`**: Містить налаштування підключення до бази даних ([database.py](../../src/api/db/database.py)) з підтримкою пулу з'єднань через SQLAlchemy та ORM-моделі ([models.py](../../src/api/db/models.py)).
-- **`src/api/schemas/`**: Виділено Pydantic-схеми для рецензій ([review.py](../../src/api/schemas/review.py)), каталогу фільмів ([movie.py](../../src/api/schemas/movie.py)) та уніфікованих помилок ([errors.py](../../src/api/schemas/errors.py)).
-- **`src/api/routers/`**: Ізольовані обробники маршрутів API, згруповані за ресурсами ([reviews.py](../../src/api/routers/reviews.py), [movies.py](../../src/api/routers/movies.py) та [recommendations.py](../../src/api/routers/recommendations.py)).
-- **`src/api/services/`**: Сервісний шар бізнес-логіки: інтеграція із зовнішніми API ([tmdb.py](../../src/api/services/tmdb.py)) з підтримкою кешованого fallback на 30 тайтлів та алгоритм персоналізованих рекомендацій на базі жанрових векторів вподобань ([recommendations.py](../../src/api/services/recommendations.py)).
+- **`src/api/db/`**: Містить налаштування підключення до бази даних ([database.py](../../src/api/db/database.py)) з підтримкою пулу з'єднань через SQLAlchemy та ORM-моделі `Review`, `Movie`, `User` ([models.py](../../src/api/db/models.py)).
+- **`src/api/schemas/`**: Виділено Pydantic-схеми для рецензій ([review.py](../../src/api/schemas/review.py)), каталогу фільмів ([movie.py](../../src/api/schemas/movie.py)), авторизації та користувачів ([auth.py](../../src/api/schemas/auth.py)) та уніфікованих помилок ([errors.py](../../src/api/schemas/errors.py)).
+- **`src/api/routers/`**: Ізольовані обробники маршрутів API, згруповані за ресурсами ([reviews.py](../../src/api/routers/reviews.py), [movies.py](../../src/api/routers/movies.py), [recommendations.py](../../src/api/routers/recommendations.py) та [auth.py](../../src/api/routers/auth.py)).
+- **`src/api/services/`**: Сервісний шар бізнес-логіки: інтеграція із зовнішніми API ([tmdb.py](../../src/api/services/tmdb.py)) з підтримкою кешованого fallback на 30 тайтлів, алгоритм персоналізованих рекомендацій ([recommendations.py](../../src/api/services/recommendations.py)) та безпека автентифікації/хешування bcrypt/JWT ([auth.py](../../src/api/services/auth.py)).
 - **`src/api/main.py`**: Точка входу в застосунок FastAPI, що об'єднує маршрутизатори, глобальні Exception Handlers, CORS-налаштування та автоматичну генерацію документації в рамках події `lifespan`.
 
 ---
@@ -78,8 +78,19 @@ uvicorn src.api.main:app --reload --host 127.0.0.1 --port 8000
 - `src/api/services/tmdb.py` — автономний клієнт TMDB API з кешуванням та автономним fallback-каталогом на 30 тайтлів (виконання вимоги надійності REL-001 та Graceful Degradation).
 - `scripts/seed_movies.py` — скрипт первинного наповнення бази даних даними про фільми та серіали.
 
+### Компонент: «Автентифікація та безпека» (Authentication & Security — Issue #129, US-011, FR-001, SEC-001)
+**Статус:** Повністю реалізовано на бекенді та фронтенді з автоматизованим тестуванням (T-037).
+
+- `POST /api/v1/auth/register` — реєстрація користувача з валідацією полів, генерацією захищеного токена верифікації та хешуванням пароля bcrypt (SEC-001).
+- `GET /api/v1/auth/verify` — підтвердження поштової скриньки за одноразовим токеном.
+- `POST /api/v1/auth/login` — вхід користувача, повернення JWT Bearer токена доступу та виставлення захищеного cookie `access_token` (`HttpOnly`, `SameSite=Lax`) (T-037).
+- `GET /api/v1/auth/me` — верифікація сесії поточного користувача через залежність `get_current_active_user`.
+- `POST /api/v1/auth/logout` — завершення сеансу та очищення cookie авторизації.
+- Фронтенд: повноцінні форми реєстрації та входу, збереження токена, Axios request interceptor з автоматичним підставленням `Authorization: Bearer <token>` і `withCredentials: true`, очищення тимчасового користувача `CURRENT_USER_ID` та інтеграція поточного користувача в рецензії та рекомендації.
+
 ### Загальний статус тестування та покриття
-Тестовий набір розширено до **128 тестів** без жодного збою (`128 passed in 0.97s`):
+Тестовий набір розширено до **146 тестів** без жодного збою (`146 passed in 1.34s`):
+- `tests/test_auth.py` (18 тестів): реєстрація, валідація, дублікати email, верифікація токена, логін (T-037), невірний пароль, непідтверджений акаунт, читання сесії через Bearer токен та cookie, вихід, хешування bcrypt (SEC-001).
 - `tests/test_movies.py` (14 тестів): пошук за назвою, фільтрація за жанром, комбіновані фільтри, пагінація.
 - `tests/test_movies_sorting.py` (15 тестів): сортування каталогу за рейтингом, датою виходу та тривалістю (FR-010).
 - `tests/test_recommendations_api.py` (9 тестів): валідація, роутинг та пагінація рекомендацій (FR-007).
@@ -91,7 +102,7 @@ uvicorn src.api.main:app --reload --host 127.0.0.1 --port 8000
 - `tests/test_security.py` (1 тест): регресійний тест безпеки Bandit B104.
 - `tests/test_main.py` (4 тести): обробники глобальних помилок, Swagger та валідація.
 
-**Загальне покриття коду бекенду: 99.39%** (жорсткий поріг CI: `--cov-fail-under=80`).
+**Загальне покриття коду бекенду: 95.58%** (жорсткий поріг CI: `--cov-fail-under=80`).
 
 ---
 
