@@ -113,3 +113,22 @@ class Comment(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+
+class User(Base):
+    __tablename__ = "users"
+    __table_args__ = {"extend_existing": True}
+
+    user_id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    nickname = Column(String(100), unique=True, index=True, nullable=False)
+    role = Column(String(20), nullable=False, default="user")  # 'user' | 'admin'
+    email_verified = Column(Boolean, nullable=False, default=False)
+    status = Column(String(20), nullable=False, default="pending")  # 'pending' | 'active' | 'banned'
+    verification_token = Column(String(255), nullable=True, index=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
