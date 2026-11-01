@@ -264,7 +264,7 @@ export default function MovieDetails({
                   </dd>
                 </div>
               ) : null}
-              <div><dt className="text-gray-500 dark:text-gray-400 font-semibold">Rotten Eggs:</dt><dd className="text-green-600 font-bold">🥚 {movie.rotten_rating || movie.rottenRating || '88%'}</dd></div>
+              <div><dt className="text-gray-500 dark:text-gray-400 font-semibold">{isUkr ? 'Після титрів:' : 'After Credits:'}</dt><dd className="text-cyan-600 dark:text-cyan-400 font-bold">🍿 {movie.rotten_rating || movie.rottenRating || '—'}</dd></div>
             </dl>
           </div>
         </div>

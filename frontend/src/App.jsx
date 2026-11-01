@@ -236,7 +236,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-gray-200 dark:border-gray-800 py-6 text-center text-xs text-gray-500 dark:text-gray-400 mt-12">
-        © 2026 Rotten Eggs. Усі права захищено.
+        © 2026 Після титрів. Усі права захищено.
       </footer>
 
       {listError && (

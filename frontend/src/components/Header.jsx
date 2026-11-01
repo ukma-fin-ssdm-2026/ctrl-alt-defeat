@@ -91,9 +91,9 @@ export default function Header({
           onClick={onGoHome} 
           className="flex items-center gap-3 font-bold text-xl cursor-pointer"
         >
-          <img src="/logo.png" alt="Rotten Eggs Logo" className="h-10 w-auto object-contain" />
+          <img src="/logo-icon.png" alt="Після титрів" className="h-10 w-10 rounded-lg object-cover" />
           <span className="hidden sm:block text-gray-900 dark:text-white font-black tracking-wider">
-            ROTTEN <span className="text-yellow-500">EGGS</span>
+            ПІСЛЯ <span className="text-cyan-500">ТИТРІВ</span>
           </span>
         </div>
 
