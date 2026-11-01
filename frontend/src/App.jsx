@@ -54,12 +54,6 @@ export default function App() {
     setSelectedYear(null);
   };
 
-  const handleResetFilters = () => {
-  setSelectedCategory(null);
-  setSelectedGenre(null);
-  setSelectedYear(null);
-};
-
   const handleApplyFilter = (category, genre, year) => {
     handleGoHome();
     setSelectedCategory(category);
