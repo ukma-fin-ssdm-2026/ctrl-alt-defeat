@@ -126,6 +126,7 @@ export default function App() {
           <MovieDetails 
             movie={selectedMovie} 
             isLoggedIn={isLoggedIn}
+            user={user}
             openAuth={() => setIsAuthOpen(true)}
             onBack={() => setSelectedMovie(null)}
             language={language}
