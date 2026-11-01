@@ -120,7 +120,7 @@
 | `GET`    | `/api/v1/reviews`             | Отримати список рецензій  | `200 OK`          |
 | `GET`    | `/api/v1/reviews/{review_id}` | Отримати рецензію за ID   | `200 OK`          |
 | `PATCH`  | `/api/v1/reviews/{review_id}` | Частково оновити рецензію | `200 OK`          |
-| `DELETE` | `/api/v1/reviews/{review_id}` | Видалити рецензію         | `204 No Content`  |
+| `DELETE` | `/api/v1/reviews/{review_id}` | Видалити рецензію (FR-008, US-006; BOLA: дозволено лише автору або адміністратору — T-017, T-018, T-019) | `204 No Content` |
 
 Для `GET /api/v1/reviews` доступна фільтрація за `content_id`, `user_id` та `min_rating`.
 
