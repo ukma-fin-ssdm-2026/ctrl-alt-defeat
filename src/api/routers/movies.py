@@ -6,7 +6,14 @@ from sqlalchemy import or_
 
 from src.api.db.database import SessionLocal
 from src.api.db.models import Content
-from src.api.schemas.movie import ContentResponse, PaginatedContentResponse
+from src.api.schemas.movie import ContentResponse, ContentSortField, PaginatedContentResponse, SortOrder
+
+# Maps public sort keys to DB columns (FR-010). "release_date" uses the release year.
+SORT_COLUMNS = {
+    ContentSortField.rating: Content.rating,
+    ContentSortField.release_date: Content.year,
+    ContentSortField.runtime: Content.runtime,
+}
 
 router = APIRouter(prefix="/api/v1/movies", tags=["Movies & Series Catalog"])
 
@@ -25,7 +32,8 @@ def get_db():
     summary="Get catalog of movies and series",
     description=(
         "Retrieve list of movies and series with search by title, "
-        "filters by category, genre, year, and offset pagination."
+        "filters by category, genre, year, sorting (rating, release date, runtime) and offset pagination. "
+        "Sorting is applied to the filtered result set; items with unknown values are always placed last."
     ),
 )
 def get_movies(
@@ -33,6 +41,10 @@ def get_movies(
     category: Optional[str] = Query(None, description="Category: 'Movie' or 'Series'"),
     genre: Optional[str] = Query(None, description="Genre filter (e.g., 'Фантастика', 'Драма')"),
     year: Optional[int] = Query(None, description="Release year filter (e.g., 2024)"),
+    sort_by: Optional[ContentSortField] = Query(
+        None, description="Sort criterion: 'rating', 'release_date' (release year) or 'runtime'"
+    ),
+    order: SortOrder = Query(SortOrder.desc, description="Sort direction: 'desc' (default) or 'asc'"),
     skip: int = Query(0, ge=0, description="Number of items to skip"),
     limit: int = Query(20, ge=1, le=100, description="Maximum items per page"),
     db: Session = Depends(get_db),
@@ -58,7 +70,15 @@ def get_movies(
         query = query.filter(Content.year == year)
 
     total = query.count()
-    items = query.order_by(Content.id.asc()).offset(skip).limit(limit).all()
+    if sort_by is not None:
+        column = SORT_COLUMNS[sort_by]
+        direction = column.desc() if order == SortOrder.desc else column.asc()
+        # NULLs last in both directions (portable across SQLite and PostgreSQL), id as a stable tie-breaker
+        query = query.order_by(column.is_(None), direction, Content.id.asc())
+    else:
+        query = query.order_by(Content.id.asc())
+
+    items = query.offset(skip).limit(limit).all()
     has_more = (skip + limit) < total
 
     return PaginatedContentResponse(
@@ -102,4 +122,3 @@ def get_movie_by_id(
         )
 
     return content
-

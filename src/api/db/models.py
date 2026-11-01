@@ -30,6 +30,8 @@ class Content(Base):
     genre = Column(String(100), nullable=False)
     genres = Column(JSON, nullable=True)
     year = Column(Integer, nullable=False, index=True)
+    # Runtime in minutes (for series: average episode length). Nullable: not always known.
+    runtime = Column(Integer, nullable=True)
     rating = Column(Float, nullable=False, default=0.0)
     rotten_rating = Column(String(10), nullable=True)
     img = Column(String(500), nullable=True)

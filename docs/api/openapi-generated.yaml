@@ -10,7 +10,9 @@ paths:
       - Movies & Series Catalog
       summary: Get catalog of movies and series
       description: Retrieve list of movies and series with search by title, filters
-        by category, genre, year, and offset pagination.
+        by category, genre, year, sorting (rating, release date, runtime) and offset
+        pagination. Sorting is applied to the filtered result set; items with unknown
+        values are always placed last.
       operationId: get_movies_api_v1_movies_get
       parameters:
       - name: search
@@ -53,6 +55,26 @@ paths:
           description: Release year filter (e.g., 2024)
           title: Year
         description: Release year filter (e.g., 2024)
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ContentSortField'
+          - type: 'null'
+          description: 'Sort criterion: ''rating'', ''release_date'' (release year)
+            or ''runtime'''
+          title: Sort By
+        description: 'Sort criterion: ''rating'', ''release_date'' (release year)
+          or ''runtime'''
+      - name: order
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/SortOrder'
+          description: 'Sort direction: ''desc'' (default) or ''asc'''
+          default: desc
+        description: 'Sort direction: ''desc'' (default) or ''asc'''
       - name: skip
         in: query
         required: false
@@ -398,6 +420,12 @@ components:
           type: integer
           title: Year
           description: Release year
+        runtime:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Runtime
+          description: 'Runtime in minutes (for series: average episode length)'
         rating:
           type: number
           title: Rating
@@ -441,6 +469,14 @@ components:
       - genre
       - year
       title: ContentResponse
+    ContentSortField:
+      type: string
+      enum:
+      - rating
+      - release_date
+      - runtime
+      title: ContentSortField
+      description: Sorting criteria for the catalog (FR-010).
     ErrorDetail:
       properties:
         field:
@@ -707,3 +743,9 @@ components:
         contains_spoilers: true
         rating: 10
         review_text: 'Updated review: loved it even more after the second watch!'
+    SortOrder:
+      type: string
+      enum:
+      - asc
+      - desc
+      title: SortOrder
