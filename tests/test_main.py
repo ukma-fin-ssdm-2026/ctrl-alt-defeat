@@ -19,21 +19,14 @@ def test_global_404_exception_handler():
 
 def test_global_validation_exception_handler():
     # Trace: T-005
-    bad_payload = {
-        "user_id": "not-a-valid-uuid",
-        "content_id": "not-a-valid-uuid",
-        "rating": 10,
-        "review_text": "Good",
-        "contains_spoilers": False,
-    }
-
-    response = client.post("/api/v1/reviews", json=bad_payload)
+    # Public endpoint: creating reviews now requires authentication, which is checked before validation
+    response = client.get("/api/v1/reviews", params={"content_id": "not-a-valid-uuid", "min_rating": 15})
 
     assert response.status_code == 422
     data = response.json()
     assert data["error"]["code"] == "VALIDATION_ERROR"
     assert len(data["error"]["details"]) > 0
-    assert data["error"]["details"][0]["field"] == "user_id"
+    assert {detail["field"] for detail in data["error"]["details"]} == {"content_id", "min_rating"}
 
 
 def test_save_openapi_spec():
