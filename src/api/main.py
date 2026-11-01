@@ -14,6 +14,7 @@ from src.api.routers.movies import router as movies_router
 from src.api.routers.recommendations import router as recommendations_router
 from src.api.routers.comments import router as comments_router
 from src.api.routers.auth import router as auth_router
+from src.api.routers.watched import router as watched_router
 from src.api.services.auth import seed_default_users
 from src.api.db.database import SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
@@ -63,6 +64,7 @@ app.include_router(movies_router)
 app.include_router(reviews_router)
 app.include_router(recommendations_router)
 app.include_router(comments_router)
+app.include_router(watched_router)
 
 app.add_middleware(
     CORSMiddleware,

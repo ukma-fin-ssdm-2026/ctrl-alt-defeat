@@ -132,3 +132,25 @@ class User(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+
+class WatchedItem(Base):
+    """
+    User's watched list item (FR-006, US-004).
+    Stores content that the user has marked as watched.
+    """
+
+    __tablename__ = "watched_items"
+    __table_args__ = (
+        UniqueConstraint("user_id", "content_id", name="uq_watched_user_content"),
+        {"extend_existing": True},
+    )
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    content_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
