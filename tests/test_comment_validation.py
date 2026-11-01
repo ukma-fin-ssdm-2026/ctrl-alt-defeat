@@ -54,6 +54,8 @@ def test_reply_keeps_parent_id():
         "</b> broken tag",
         "javascript:alert(document.cookie)",
         "JavaScript : void(0)",
+        "unclosed <img src=x onerror=alert(1)",
+        "<!-- hidden -->",
     ],
 )
 def test_html_and_scripts_are_policy_violations(text):
@@ -65,6 +67,17 @@ def test_html_and_scripts_are_policy_violations(text):
 def test_plain_text_with_angle_brackets_is_allowed(text):
     # Trace: T-032
     assert check_comment_policy_violations(text) == []
+
+
+def test_html_pattern_runs_in_linear_time_on_hostile_input():
+    # Trace: T-032
+    """ReDoS guard: a long run of whitespace after '<' must be checked instantly."""
+    import time
+
+    hostile = "<" + " " * 50_000 + "x"
+    started = time.perf_counter()
+    check_comment_policy_violations(hostile)
+    assert time.perf_counter() - started < 0.5
 
 
 def test_comment_policy_includes_review_rules():

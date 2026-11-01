@@ -69,8 +69,9 @@ def check_review_policy_violations(text: str) -> list[str]:
     return violations
 
 
-# Any HTML tag (<script>, <img ...>, </b>) or a javascript: URL (SEC-002, T-032)
-HTML_MARKUP_PATTERN = re.compile(r"<\s*/?\s*[a-zA-Z!][^>]*>|javascript\s*:", re.IGNORECASE)
+# Start of any HTML tag or comment (<script, <img, </b, <!--) or a javascript: URL (SEC-002, T-032).
+# Linear-time pattern: no nested or adjacent optional quantifiers (no catastrophic backtracking).
+HTML_MARKUP_PATTERN = re.compile(r"</?[a-zA-Z!]|javascript\s*:", re.IGNORECASE)
 
 
 def check_comment_policy_violations(text: str) -> list[str]:
