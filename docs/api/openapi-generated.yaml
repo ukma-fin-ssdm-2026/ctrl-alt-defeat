@@ -1160,6 +1160,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - watched
+      summary: Remove content from watched list by query parameter (FR-006, US-004,
+        T-012)
+      description: Removes a movie or series from the current user's watched list.
+        The content id is passed as a query parameter so client request URLs stay
+        constant.
+      operationId: remove_from_watched_by_query_api_v1_users_me_watched_delete
+      parameters:
+      - name: content_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Content ID to remove
+          title: Content Id
+        description: Content ID to remove
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Content not in watched list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/users/me/watched/{content_id}:
     get:
       tags:
