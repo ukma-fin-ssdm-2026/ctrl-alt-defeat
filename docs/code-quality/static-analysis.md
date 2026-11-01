@@ -167,3 +167,6 @@ Detect hardcoded secrets.................................................Passed
    - *Рішення команди:* Перевірено роботу CORS middleware та глобальних Exception Handlers, оновлення підтверджено.
 
 Завдяки зв'язці `requirements.txt` + Dependabot кодова база підтримується у безпечному та актуальному стані.
+
+[AI-assisted]
+
