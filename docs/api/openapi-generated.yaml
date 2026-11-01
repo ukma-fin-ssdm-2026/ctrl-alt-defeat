@@ -1746,6 +1746,18 @@ components:
           format: uuid4
           title: User Id
           description: Identifier of the review author
+        author_nickname:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Author Nickname
+          description: Nickname of the review author
+        content_title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content Title
+          description: Title of the reviewed movie or series
         review_id:
           type: string
           format: uuid4
