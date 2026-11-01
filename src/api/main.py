@@ -11,6 +11,7 @@ from src.api.db.database import Base, engine
 from src.api.schemas.errors import ErrorDetail, ErrorPayload, ErrorResponse, STANDARD_ERRORS
 from src.api.routers.reviews import router as reviews_router
 from src.api.routers.movies import router as movies_router
+from src.api.routers.recommendations import router as recommendations_router
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -50,6 +51,7 @@ app = FastAPI(
 
 app.include_router(movies_router)
 app.include_router(reviews_router)
+app.include_router(recommendations_router)
 
 app.add_middleware(
     CORSMiddleware,

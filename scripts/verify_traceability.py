@@ -21,7 +21,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # User stories explicitly excluded from test scope (documented in test-plan.md)
-EXCLUDED_US = {"US-001", "US-004", "US-005", "US-007", "US-010"}
+EXCLUDED_US = {"US-001", "US-004", "US-005", "US-010"}
 
 # T-IDs marked as [xfail: заплановано] in test-plan.md
 XFAIL_TIDS = {
