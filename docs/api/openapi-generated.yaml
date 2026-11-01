@@ -1,9 +1,119 @@
 openapi: 3.1.0
 info:
   title: Movie Platform API
-  description: REST API for managing content reviews.
+  description: REST API for managing content reviews and movies catalog.
   version: 1.0.0
 paths:
+  /api/v1/movies:
+    get:
+      tags:
+      - Movies & Series Catalog
+      summary: Get catalog of movies and series
+      description: Retrieve list of movies and series with search by title, filters
+        by category, genre, year, and offset pagination.
+      operationId: get_movies_api_v1_movies_get
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Search term in title (Ukrainian or English)
+          title: Search
+        description: Search term in title (Ukrainian or English)
+      - name: category
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Category: ''Movie'' or ''Series'''
+          title: Category
+        description: 'Category: ''Movie'' or ''Series'''
+      - name: genre
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Genre filter (e.g., 'Фантастика', 'Драма')
+          title: Genre
+        description: Genre filter (e.g., 'Фантастика', 'Драма')
+      - name: year
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Release year filter (e.g., 2024)
+          title: Year
+        description: Release year filter (e.g., 2024)
+      - name: skip
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: Number of items to skip
+          default: 0
+          title: Skip
+        description: Number of items to skip
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Maximum items per page
+          default: 20
+          title: Limit
+        description: Maximum items per page
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedContentResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/movies/{movie_id}:
+    get:
+      tags:
+      - Movies & Series Catalog
+      summary: Get movie details by ID or content UUID
+      description: Retrieve a single movie or series by its numeric ID or UUID content_id.
+      operationId: get_movie_by_id_api_v1_movies__movie_id__get
+      parameters:
+      - name: movie_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Movie Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/reviews:
     post:
       tags:
@@ -240,6 +350,91 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
+    ContentResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+          description: Numeric identifier for backward compatibility with frontend
+        content_id:
+          type: string
+          format: uuid
+          title: Content Id
+          description: Unique UUID identifier of the movie or series
+        title:
+          type: string
+          title: Title
+          description: Ukrainian title of the movie/series
+        title_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title En
+          description: Original or English title
+        category:
+          type: string
+          title: Category
+          description: 'Category: ''Movie'' or ''Series'''
+          default: Movie
+        genre:
+          type: string
+          title: Genre
+          description: Primary genre
+        genres:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Genres
+          description: List of genre tags
+        year:
+          type: integer
+          title: Year
+          description: Release year
+        rating:
+          type: number
+          title: Rating
+          description: Average user rating (0.0 - 10.0)
+          default: 0.0
+        rotten_rating:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Rotten Rating
+          description: Rotten Tomatoes / Critic score percentage
+        img:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Img
+          description: Poster image URL
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: Ukrainian synopsis
+        description_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description En
+          description: English synopsis
+        tmdb_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Tmdb Id
+          description: External TMDB identifier
+      type: object
+      required:
+      - id
+      - content_id
+      - title
+      - genre
+      - year
+      title: ContentResponse
     ErrorDetail:
       properties:
         field:
@@ -302,6 +497,33 @@ components:
       required:
       - error
       title: ErrorResponse
+    PaginatedContentResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ContentResponse'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        skip:
+          type: integer
+          title: Skip
+        limit:
+          type: integer
+          title: Limit
+        has_more:
+          type: boolean
+          title: Has More
+      type: object
+      required:
+      - items
+      - total
+      - skip
+      - limit
+      - has_more
+      title: PaginatedContentResponse
     PaginatedReviewsResponse:
       properties:
         items:

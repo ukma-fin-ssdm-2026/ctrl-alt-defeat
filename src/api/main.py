@@ -7,11 +7,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, status
 from pathlib import Path
+from src.api.db.database import Base, engine
 from src.api.schemas.errors import ErrorDetail, ErrorPayload, ErrorResponse, STANDARD_ERRORS
 from src.api.routers.reviews import router as reviews_router
+from src.api.routers.movies import router as movies_router
 from fastapi.middleware.cors import CORSMiddleware
-
-# Base.metadata.create_all(bind=engine)
 
 
 # 1. OpenAPI auto-generation logic
@@ -32,6 +32,7 @@ def save_openapi_spec(app: FastAPI):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
     save_openapi_spec(app)
     yield
 
@@ -39,7 +40,7 @@ async def lifespan(app: FastAPI):
 # 2. App initialization
 app = FastAPI(
     title="Movie Platform API",
-    description="REST API for managing content reviews.",
+    description="REST API for managing content reviews and movies catalog.",
     version="1.0.0",
     docs_url="/api-docs",
     redoc_url="/redoc",
@@ -47,6 +48,7 @@ app = FastAPI(
     responses={422: STANDARD_ERRORS[422]},
 )
 
+app.include_router(movies_router)
 app.include_router(reviews_router)
 
 app.add_middleware(
