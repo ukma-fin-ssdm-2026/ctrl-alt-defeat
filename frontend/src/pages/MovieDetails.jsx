@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import ReviewComments from '../components/ReviewComments';
 import { isUuid } from '../utils/uuid';
+import { formatAudienceRating } from '../utils/audienceRating';
 const MIN_TEXT = 10;
 const MAX_TEXT = 5000;
 
@@ -113,6 +114,21 @@ export default function MovieDetails({
         setLoadedReviewsKey(reviewsKey);
       });
   }, [movie, reviewsKey]);
+
+  // Audience rating of this movie (US-008), refreshed whenever the list of reviews changes
+  const reviewIdsKey = reviews.map(r => r.review_id || r.id).join(',');
+  const [summaryState, setSummaryState] = useState({ key: null, data: null });
+  const summaryKey = `${movie.content_id}|${reviewIdsKey}`;
+  useEffect(() => {
+    if (!isUuid(movie.content_id)) return undefined;
+    let ignore = false;
+    apiClient.get('/reviews/summary', { params: { content_id: movie.content_id } })
+      .then(response => { if (!ignore) setSummaryState({ key: summaryKey, data: response.data }); })
+      .catch(() => { if (!ignore) setSummaryState({ key: summaryKey, data: null }); });
+    return () => { ignore = true; };
+  }, [movie.content_id, summaryKey]);
+  // Keep showing the previous numbers while a refresh is in flight
+  const audienceSummary = isUuid(movie.content_id) ? summaryState.data : null;
 
   const handleSubmitReview = (e) => {
     e.preventDefault();
@@ -254,7 +270,7 @@ export default function MovieDetails({
                 <dt className="text-gray-500 dark:text-gray-400 font-semibold">{isUkr ? 'Жанр:' : 'Genre:'}</dt>
                 <dd className="text-gray-900 dark:text-gray-200 font-medium">{getGenreLabel(movie.genre)}</dd>
               </div>
-              <div><dt className="text-gray-500 dark:text-gray-400 font-semibold">IMDb:</dt><dd className="text-yellow-600 font-bold">★ {movie.rating} / 10</dd></div>
+              <div><dt className="text-gray-500 dark:text-gray-400 font-semibold">TMDB:</dt><dd className="text-yellow-600 font-bold">★ {movie.rating} / 10</dd></div>
               {movie.runtime ? (
                 <div>
                   <dt className="text-gray-500 dark:text-gray-400 font-semibold">{isUkr ? 'Тривалість:' : 'Runtime:'}</dt>
@@ -264,7 +280,12 @@ export default function MovieDetails({
                   </dd>
                 </div>
               ) : null}
-              <div><dt className="text-gray-500 dark:text-gray-400 font-semibold">{isUkr ? 'Після титрів:' : 'After Credits:'}</dt><dd className="text-cyan-600 dark:text-cyan-400 font-bold">🍿 {movie.rotten_rating || movie.rottenRating || '—'}</dd></div>
+              <div>
+                <dt className="text-gray-500 dark:text-gray-400 font-semibold">{isUkr ? 'Після титрів (глядачі):' : 'After Credits (audience):'}</dt>
+                <dd className="text-cyan-600 dark:text-cyan-400 font-bold" data-testid="audience-rating">
+                  {formatAudienceRating(audienceSummary, isUkr)}
+                </dd>
+              </div>
             </dl>
           </div>
         </div>
