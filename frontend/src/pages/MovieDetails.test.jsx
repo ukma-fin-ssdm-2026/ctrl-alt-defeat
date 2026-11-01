@@ -131,7 +131,7 @@ describe('MovieDetails Review Deletion (FR-008, US-006)', () => {
     await userEvent.click(deleteBtn);
 
     expect(confirmSpy).toHaveBeenCalled();
-    expect(apiClient.delete).toHaveBeenCalledWith(`/reviews/${mockReview.review_id}`);
+    expect(apiClient.delete).toHaveBeenCalledWith('/reviews', { params: { review_id: mockReview.review_id } });
 
     await waitFor(() => {
       expect(screen.queryByText('Неймовірний візуальний шедевр!')).not.toBeInTheDocument();

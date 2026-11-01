@@ -180,7 +180,8 @@ export default function MovieDetails({
     }
 
     try {
-      await apiClient.delete(`/reviews/${reviewId}`);
+      // Constant URL: the id travels as a query parameter (no user data in the request path)
+      await apiClient.delete('/reviews', { params: { review_id: reviewId } });
       setReviews(prev => prev.filter(r => (r.review_id || r.id) !== reviewId));
     } catch (err) {
       const errMsg = err.response?.data?.error?.message 
