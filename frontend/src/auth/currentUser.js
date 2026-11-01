@@ -3,39 +3,29 @@
 export const DEFAULT_USER_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
 export const CURRENT_USER_ID = DEFAULT_USER_ID;
 
+let inMemoryToken = null;
+let inMemoryUser = null;
+
 export function getStoredToken() {
-  try {
-    return localStorage.getItem('access_token') || null;
-  } catch {
-    return null;
-  }
+  return inMemoryToken;
 }
 
 export function getStoredUser() {
-  try {
-    const raw = localStorage.getItem('auth_user');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  return inMemoryUser;
 }
 
 export function setStoredAuth(token, user) {
-  try {
-    if (token) localStorage.setItem('access_token', token);
-    if (user) localStorage.setItem('auth_user', JSON.stringify(user));
-  } catch (e) {
-    console.warn('Failed to persist auth data to localStorage:', e);
+  if (token !== undefined && token !== null) {
+    inMemoryToken = token;
+  }
+  if (user !== undefined && user !== null) {
+    inMemoryUser = user;
   }
 }
 
 export function clearStoredAuth() {
-  try {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('auth_user');
-  } catch (e) {
-    console.warn('Failed to clear auth data from localStorage:', e);
-  }
+  inMemoryToken = null;
+  inMemoryUser = null;
 }
 
 export function getCurrentUserId() {

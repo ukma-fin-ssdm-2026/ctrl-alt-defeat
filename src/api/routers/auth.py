@@ -264,7 +264,7 @@ def login(
         value=access_token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=True,
         max_age=86400,
     )
 
@@ -297,6 +297,11 @@ def get_current_user_profile(
     description="Clears the HttpOnly access_token cookie.",
 )
 def logout(response: Response):
-    response.delete_cookie(key="access_token")
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite="lax",
+        secure=True,
+    )
     return {"message": "Successfully logged out"}
 

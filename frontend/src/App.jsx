@@ -7,7 +7,7 @@ import AuthModal from './components/AuthModal';
 import UserProfile from './pages/UserProfile';
 import { mockMovies } from './data/mockData';
 import apiClient from './api/client';
-import { getStoredUser, setStoredAuth, clearStoredAuth, getStoredToken } from './auth/currentUser';
+import { getStoredUser, setStoredAuth, clearStoredAuth } from './auth/currentUser';
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -28,19 +28,16 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(null); // Додали стан для року
 
   useEffect(() => {
-    // Validate session on startup with backend (FR-001, US-011)
-    const token = getStoredToken();
-    if (token) {
-      apiClient.get('/auth/me')
-        .then(res => {
-          setUser(res.data);
-          setStoredAuth(token, res.data);
-        })
-        .catch(() => {
-          clearStoredAuth();
-          setUser(null);
-        });
-    }
+    // Validate session on startup with backend via HttpOnly cookie (FR-001, US-011)
+    apiClient.get('/auth/me')
+      .then(res => {
+        setUser(res.data);
+        setStoredAuth(null, res.data);
+      })
+      .catch(() => {
+        clearStoredAuth();
+        setUser(null);
+      });
 
     apiClient.get('/movies', { params: { limit: 100 } })
       .then(response => {
