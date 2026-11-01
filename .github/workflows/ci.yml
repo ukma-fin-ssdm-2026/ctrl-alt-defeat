@@ -64,8 +64,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
+      # --ignore-scripts: dependency lifecycle scripts never run in CI (supply-chain safety)
       - name: Install locked dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Lint (ESLint)
         run: npm run lint
