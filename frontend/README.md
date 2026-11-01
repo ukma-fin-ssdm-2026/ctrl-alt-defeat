@@ -1,16 +1,62 @@
-# React + Vite
+# Веб-інтерфейс платформи рецензій та рекомендацій
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Клієнтська частина платформи **ctrl-alt-defeat**, розроблена на базі бібліотеки React та інструменту збірки Vite.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Технологічний стек
+- **Основна бібліотека:** React 19
+- **Інструмент збірки:** Vite
+- **Стилізація інтерфейсу:** Tailwind CSS
+- **Взаємодія з API:** Axios
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Функціональні можливості
+- **Каталог контенту:** відображення карток фільмів та серіалів з рейтингом, постерами та базовою інформацією.
+- **Пошук контенту:** поле швидкого пошуку в шапці сайту за назвою фільму чи серіалу.
+- **Фільтрація:** вибір категорії (фільми, серіали), фільтрація за жанрами та роками випуску.
+- **Сторінка контенту:** детальний опис, список акторів, інформація про реліз та перелік відгуків.
+- **Список «До перегляду»:** додавання контенту до особистого списку та видалення з нього через кнопку на сторінці фільму.
+- **Профіль користувача:** перегляд збереженого списку «До перегляду» та даних облікового запису.
+- **Публікація відгуків:** форма оцінювання контенту від 1 до 10 та написання тексту рецензії з надсиланням на серверний API.
+- **Автентифікація:** модальне вікно входу для доступу до персональних функцій.
+- **Налаштування відображення:** перемикання світлої та темної теми, а також зміна мови інтерфейсу.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Інструкція із запуску
+
+### 1. Встановлення залежностей
+Перед початком переконайтеся, що у вас встановлено середовище Node.js (версії 18 або новішої).  
+У терміналі виконайте:
+```bash
+npm install
+```
+
+### 2. Запуск локального сервера розробки
+```bash
+npm run dev
+```
+Після виконання команди застосунок буде доступний за адресою:  
+`http://localhost:5173`
+
+---
+
+## Взаємодія з бекендом
+Клієнт налаштований на зв'язок із сервером API за адресою:  
+`http://127.0.0.1:8000/api/v1`
+
+Для коректної роботи додавання та перегляду рецензій необхідно, щоб бекенд було запущено на порту 8000.
+
+---
+
+## Структура папок
+- `src/api/` — конфігурація клієнта Axios для надсилання запитів до бекенду
+- `src/components/` — компоненти інтерфейсу (шапка сайту, картка фільму, форма відгуку, модальне вікно входу)
+- `src/pages/` — сторінки каталогу, детального перегляду контенту та профілю користувача
+- `src/data/` — локальні дані каталогу для демонстрації
+- `src/App.jsx` — головний компонент застосунку та управління станом
+
+---
+[AI-assisted]
