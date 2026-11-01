@@ -17,13 +17,123 @@
 - Владислав Виговський 
 - Максим Годік
 
-## Артефакти вимог
-- [Вимоги до системи](./docs/requirements/requirements.md)
-- [Користувацькі історії](./docs/requirements/user-stories.md)
-- [Матриця простежуваності](./docs/requirements/rtm.md)
-- [Cценарій користування](./docs/requirements/use-cases.md)
-- [Архітектура](./docs/architecture)
+## Артефакти та документація (Лабораторні роботи 1–7)
 
-## Документація
-- [Опис проєкту](Project-Description.md)
-- [Командний статут](TeamCharter.md)
+Повний індекс документації доступний у [docs/README.md](./docs/README.md).
+
+### Лабораторна робота 1: Управління проєктом та команда
+- [Опис проєкту (Project-Description.md)](Project-Description.md)
+- [Командний статут та правила використання ШІ (TeamCharter.md)](TeamCharter.md)
+- [Конфігурація CI/CD конвеєра (.github/workflows/ci.yml)](.github/workflows/ci.yml)
+- [Відеопрезентація команди](./Labs/Lab01/)
+
+### Лабораторна робота 2: Вимоги до програмної системи
+- [Вимоги до системи (FR та NFR за ISO 25010)](./docs/requirements/requirements.md)
+- [Користувацькі історії з INVEST-аналізом (User Stories)](./docs/requirements/user-stories.md)
+- [Матриця простежуваності вимог (RTM)](./docs/requirements/rtm.md)
+- [Сценарії використання (Use Cases)](./docs/requirements/use-cases.md)
+- [Індекс артефактів вимог](./docs/requirements/README.md)
+- [Відеопрезентація Лаб 2](./Labs/Lab02/)
+
+### Лабораторна робота 3: Архітектурне проектування та дизайн
+- [Високорівнева архітектура системи (High-Level Design)](./docs/architecture/high-level-design.md)
+- [Матриця простежуваності архітектури](./docs/architecture/traceability-matrix.md)
+- [Модель загроз безпеки за методологією STRIDE](./docs/architecture/threat-model.md)
+- [Доменна модель даних (Data Model)](./docs/architecture/data-model.md)
+- [Архітектурні рішення (ADR-001, ADR-002)](./docs/architecture/decisions/)
+- [Діаграми UML та модель сутностей](./docs/architecture/uml/)
+- [Індекс артефактів архітектури](./docs/architecture/README.md)
+- [Відеопрезентація Лаб 3](./Labs/Lab03/)
+
+### Лабораторна робота 4: Проектування та документування API
+- [Дизайн REST API (API Design)](./docs/api/api-design.md)
+- [Атрибути якості API та аналіз компромісів](./docs/api/quality-attributes.md)
+- [Автоматично згенерована специфікація OpenAPI](./docs/api/openapi-generated.yaml)
+- [Онлайн-документація Swagger UI (GitHub Pages)](https://ukma-fin-ssdm-2026.github.io/ctrl-alt-defeat/)
+- [Індекс артефактів API](./docs/api/README.md)
+- [Відеопрезентація Лаб 4](./Labs/Lab04/)
+
+### Лабораторна робота 5: Стандарти кодування, безпека та Code Review
+- [Звіт про перехресне рецензування коду (Code Review Report)](./docs/code-quality/review-report.md)
+- [Звіт зі статичного аналізу безпеки (SAST / Bandit / Ruff)](./docs/code-quality/static-analysis.md)
+- [Звіт про модульну декомпозицію та прогрес](./docs/code-quality/progress.md)
+- [Індекс артефактів якості коду](./docs/code-quality/README.md)
+- [Відеопрезентація Лаб 5](./Labs/Lab05/)
+
+### Лабораторна робота 6: Модульне тестування та перевірка коду
+- [Стратегія тестування та Quality Gates](./docs/testing/testing-strategy.md)
+- [Журнал налагодження виявлених дефектів (Debugging Log)](./docs/testing/debugging-log.md)
+- [Інтерактивний звіт покриття коду (htmlcov)](./htmlcov/index.html)
+- [Індекс артефактів тестування](./docs/testing/README.md)
+- [Відеопрезентація Лаб 6](./Labs/Lab06/)
+
+### Лабораторна робота 7: Валідація, верифікація та простежуваність
+- [План тестування та звіт навантажувального тесту k6](./docs/validation/test-plan.md)
+- [Журнал верифікації та рев'ю ШІ-коду (AI Code Review Log)](./docs/validation/review-log.md)
+- [Індекс артефактів валідації](./docs/validation/README.md)
+- [Відеопрезентація Лаб 7](./Labs/Lab07/)
+
+### Рефакторинг та додаткові звіти
+- [Звіт якості коду SonarCloud](./docs/refactoring/sonarcloud-report.md)
+- [Демонстрація проміжного етапу (Midterm Presentation)](./Labs/midterm-presentation.txt)
+
+---
+
+## Інструкція із запуску системи
+
+### 1. Вимоги до середовища
+- **Python:** 3.11+
+- **Node.js:** 18+ (та npm)
+- **PostgreSQL:** 14+ (або локальний інстанс SQLite/Docker)
+- **Git**
+
+### 2. Клонування репозиторію
+```bash
+git clone https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat.git
+cd ctrl-alt-defeat
+```
+
+### 3. Запуск Backend API (FastAPI)
+
+1. Створіть та активуйте віртуальне середовище Python:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. Налаштування бази даних:
+   За замовчуванням бекенд використовує PostgreSQL URL:
+   ```bash
+   export DATABASE_URL="postgresql+psycopg2://postgres:postgres@localhost:5432/reviews_db"
+   ```
+   *(За потреби можна використовувати локальну тестову БД або змінну середовища)*.
+
+3. Запустіть сервер розробки Uvicorn на порту **8000**:
+   ```bash
+   uvicorn src.api.main:app --reload --host 127.0.0.1 --port 8000
+   ```
+   Після запуску бекенд доступний за адресою: `http://127.0.0.1:8000`
+   - **Swagger UI:** [http://127.0.0.1:8000/api-docs](http://127.0.0.1:8000/api-docs)
+   - **ReDoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+
+### 4. Запуск Frontend клієнта (React + Vite)
+
+У новому вікні термінала перейдіть до директорії фронтенду:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Клієнтський застосунок відкриється за адресою: [http://localhost:5173](http://localhost:5173).  
+Фронтенд налаштований на взаємодію з бекендом за адресою `http://127.0.0.1:8000/api/v1`.
+
+### 5. Запуск автотестів та перевірка покриття
+Для запуску модульних тестів бекенду із перевіркою покриття (поріг $\ge 80\%$):
+```bash
+pytest --cov=src.api --cov-report=term tests/
+```
+Для перевірки простежуваності тестів до матриці RTM:
+```bash
+python3 scripts/verify_traceability.py
+```

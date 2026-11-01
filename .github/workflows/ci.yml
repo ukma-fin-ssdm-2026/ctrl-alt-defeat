@@ -1,9 +1,48 @@
 name: CI Test
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
   build:
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v7
-    - name: Run Team Name
-      run: echo "CTRL-ALT-DEFEAT"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install locked dependencies
+        run: |
+          python -m pip install --only-binary :all: -r requirements.txt
+
+      - name: Run Linters & Security Scan
+        run: |
+          ruff check .
+          bandit -r src/api -ll
+
+      - name: Run Unit Tests with Coverage Gate
+        run: |
+          pytest --cov=src.api --cov-report=term --cov-fail-under=80 tests/
+
+      - name: Verify RTM <-> Test Traceability
+        run: |
+          python scripts/verify_traceability.py
+
+      - name: Verify OpenAPI Specification Sync
+        run: |
+          python -c "import sys; sys.path.insert(0, '.'); from src.api.main import app, save_openapi_spec; save_openapi_spec(app)"
+          if [ -n "$(git status --porcelain docs/api/openapi-generated.yaml)" ]; then
+            echo "::error::OpenAPI specification is out of sync with code! Please run the generator and commit docs/api/openapi-generated.yaml"
+            git diff docs/api/openapi-generated.yaml
+            exit 1
+          fi
+          echo "OpenAPI specification is synchronized with application code."

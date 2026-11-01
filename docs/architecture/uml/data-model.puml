@@ -56,6 +56,16 @@ entity "WatchedItem" as WatchedItem {
   watched_at : datetime <<PERSONAL>>
 }
 
+entity "Rating" as Rating {
+  * rating_id : UUID <<PK>>
+  --
+  user_id : UUID <<FK, PERSONAL>>
+  content_id : UUID <<FK>>
+  score : integer
+  created_at : datetime
+  updated_at : datetime
+}
+
 entity "Review" as Review {
   * review_id : UUID <<PK>>
   --
@@ -115,6 +125,9 @@ Content ||--o{ WatchlistItem : included_in
 
 User ||--o{ WatchedItem : has
 Content ||--o{ WatchedItem : marked_as
+
+User ||--o{ Rating : rates
+Content ||--o{ Rating : rated_by
 
 User ||--o{ Review : writes
 Content ||--o{ Review : receives
