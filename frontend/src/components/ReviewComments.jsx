@@ -75,8 +75,8 @@ function CommentForm({ reviewId, parentId, isLoggedIn, openAuth, user, t, placeh
     // Constant URL: the review id travels in the request body
     apiClient.post('/comments', {
       review_id: reviewId,
-      user_id: CURRENT_USER_ID,
-      author_name: user?.username || user?.email || 'Viewer',
+      user_id: (user && (user.user_id || user.id)) || CURRENT_USER_ID,
+      author_name: user?.nickname || user?.username || user?.email || 'Viewer',
       text: text.trim(),
       ...(parentId ? { parent_id: parentId } : {}),
     })

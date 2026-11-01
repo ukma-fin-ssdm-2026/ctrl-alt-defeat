@@ -7,6 +7,7 @@ const RECOMMENDATIONS_LIMIT = 10;
 
 // "Recommended for you" block on the home page (FR-007)
 export default function Recommendations({
+  user,
   isLoggedIn,
   openAuth,
   onSelectMovie,
@@ -16,24 +17,25 @@ export default function Recommendations({
 }) {
   const isUkr = language === 'UKR';
   const [result, setResult] = useState(null); // { userId, data } or { userId, error }
+  const activeUserId = user?.user_id || CURRENT_USER_ID;
 
   useEffect(() => {
     if (!isLoggedIn) return undefined;
 
     // Ignore the response if the user logged out while the request was in flight
     let ignore = false;
-    apiClient.get('/recommendations', { params: { user_id: CURRENT_USER_ID, limit: RECOMMENDATIONS_LIMIT } })
+    apiClient.get('/recommendations', { params: { user_id: activeUserId, limit: RECOMMENDATIONS_LIMIT } })
       .then(response => {
-        if (!ignore) setResult({ userId: CURRENT_USER_ID, data: response.data });
+        if (!ignore) setResult({ userId: activeUserId, data: response.data });
       })
       .catch(error => {
         console.warn('Recommendations are unavailable:', error);
-        if (!ignore) setResult({ userId: CURRENT_USER_ID, error: true });
+        if (!ignore) setResult({ userId: activeUserId, error: true });
       });
     return () => {
       ignore = true;
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, activeUserId]);
 
   const heading = (
     <h2 className="text-xl font-black text-gray-900 dark:text-white border-l-4 border-yellow-500 pl-3">

@@ -4,6 +4,219 @@ info:
   description: REST API for managing content reviews and movies catalog.
   version: 1.0.0
 paths:
+  /api/v1/auth/register:
+    post:
+      tags:
+      - Authentication & User Management
+      summary: Register a new user account (FR-001)
+      description: Registers a new account with email and password. Generates a verification
+        token and leaves account in pending unverified state until email verification.
+      operationId: register_user_api_v1_auth_register_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email or nickname already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/verify:
+    get:
+      tags:
+      - Authentication & User Management
+      summary: Confirm email address and activate account (FR-001, US-011)
+      description: Validates verification token, activates user status, and sets email_verified
+        to true.
+      operationId: verify_email_api_v1_auth_verify_get
+      parameters:
+      - name: token
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Verification token sent in email
+          title: Token
+        description: Verification token sent in email
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyEmailResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid or expired verification token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Authentication & User Management
+      summary: User login and JWT token issuance (T-037, US-011)
+      description: Authenticates user by email and password using bcrypt. Returns
+        signed JWT access token in response body and sets HttpOnly cookie.
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Account is unverified or banned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Authentication & User Management
+      summary: Get current authenticated user profile
+      description: Returns profile information for the authenticated user using Bearer
+        token or cookie.
+      operationId: get_current_user_profile_api_v1_auth_me_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Authentication & User Management
+      summary: Log out and clear session cookie
+      description: Clears the HttpOnly access_token cookie.
+      operationId: logout_api_v1_auth_logout_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/movies:
     get:
       tags:
@@ -405,11 +618,27 @@ paths:
           - type: string
             format: uuid4
           - type: 'null'
-          description: 'Temporary until authentication (FR-001) is merged: the user
-            to build recommendations for'
+          description: Optional user ID override; defaults to authenticated user from
+            token/cookie (FR-001)
           title: User Id
-        description: 'Temporary until authentication (FR-001) is merged: the user
-          to build recommendations for'
+        description: Optional user ID override; defaults to authenticated user from
+          token/cookie (FR-001)
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       responses:
         '200':
           description: Successful Response
@@ -487,6 +716,23 @@ paths:
       - comments
       summary: Comment on a review or reply to a comment
       operationId: create_comment_api_v1_comments_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       requestBody:
         required: true
         content:
@@ -539,13 +785,14 @@ components:
             format: uuid4
           - type: 'null'
           title: User Id
-          description: 'Temporary until authentication: author of the comment'
+          description: Author ID (defaults to authenticated user from JWT)
         author_name:
-          type: string
-          maxLength: 50
-          minLength: 1
+          anyOf:
+          - type: string
+            maxLength: 50
+          - type: 'null'
           title: Author Name
-          description: 'Temporary: author nickname'
+          description: Author nickname (defaults to authenticated user)
         text:
           type: string
           maxLength: 2000
@@ -561,7 +808,6 @@ components:
       type: object
       required:
       - review_id
-      - author_name
       - text
       title: CommentCreate
       example:
@@ -888,6 +1134,27 @@ components:
         - Драма
         items: []
         personalized: true
+    RegisterResponse:
+      properties:
+        message:
+          type: string
+          title: Message
+          description: Status message
+        email:
+          type: string
+          title: Email
+          description: Registered email address
+        verification_token:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Verification Token
+          description: Verification token for email confirmation
+      type: object
+      required:
+      - message
+      - email
+      title: RegisterResponse
     ReviewCreate:
       properties:
         user_id:
@@ -1039,3 +1306,124 @@ components:
       - asc
       - desc
       title: SortOrder
+    TokenResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+          description: Stateless JWT access token
+        token_type:
+          type: string
+          title: Token Type
+          description: Token type, always 'bearer'
+          default: bearer
+        user:
+          $ref: '#/components/schemas/UserResponse'
+          description: Current user information
+      type: object
+      required:
+      - access_token
+      - user
+      title: TokenResponse
+    UserLoginRequest:
+      properties:
+        email:
+          type: string
+          title: Email
+          description: User email address
+        password:
+          type: string
+          title: Password
+          description: User password
+      type: object
+      required:
+      - email
+      - password
+      title: UserLoginRequest
+    UserRegisterRequest:
+      properties:
+        email:
+          type: string
+          pattern: ^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$
+          title: Email
+          description: User email address (must be valid email format)
+        nickname:
+          type: string
+          maxLength: 50
+          minLength: 2
+          title: Nickname
+          description: Unique display name (nickname) on the platform
+        password:
+          type: string
+          maxLength: 100
+          minLength: 6
+          title: Password
+          description: User password (minimum 6 characters)
+      type: object
+      required:
+      - email
+      - nickname
+      - password
+      title: UserRegisterRequest
+    UserResponse:
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+          description: Unique UUID identifier of the user
+        email:
+          type: string
+          title: Email
+          description: User email address
+        nickname:
+          type: string
+          title: Nickname
+          description: Display nickname
+        role:
+          type: string
+          title: Role
+          description: 'User role: ''user'' or ''admin'''
+        email_verified:
+          type: boolean
+          title: Email Verified
+          description: Whether the user's email has been verified
+        status:
+          type: string
+          title: Status
+          description: 'Account status: ''pending'', ''active'', or ''banned'''
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+          description: Account creation timestamp
+      type: object
+      required:
+      - user_id
+      - email
+      - nickname
+      - role
+      - email_verified
+      - status
+      - created_at
+      title: UserResponse
+    VerifyEmailResponse:
+      properties:
+        message:
+          type: string
+          title: Message
+          description: Status message
+        email:
+          type: string
+          title: Email
+          description: Verified email address
+        status:
+          type: string
+          title: Status
+          description: Updated account status
+      type: object
+      required:
+      - message
+      - email
+      - status
+      title: VerifyEmailResponse

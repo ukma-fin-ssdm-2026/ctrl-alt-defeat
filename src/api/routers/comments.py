@@ -1,7 +1,8 @@
+import uuid
 from datetime import UTC, datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,7 @@ from src.api.db import models
 from src.api.db.database import SessionLocal
 from src.api.schemas.comment import CommentCreate, CommentResponse, CommentThreadResponse
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
+from src.api.services.auth import decode_access_token
 from src.api.utils import check_comment_policy_violations
 
 # Depth of the deepest allowed reply: 0 = top-level comment, so 5 levels in total
@@ -76,15 +78,43 @@ def get_comments(
 )
 def create_comment(
     comment: CommentCreate,
+    authorization: Optional[str] = Header(None),
+    access_token_cookie: Optional[str] = Cookie(None, alias="access_token"),
     db: Session = Depends(get_db),
 ):
     review_id = comment.review_id
-    # TODO(FR-001): take the user from the access token
-    if comment.user_id is None:
+    user_id = comment.user_id
+    author_name = comment.author_name
+
+    # Resolve user from JWT access token when available (FR-001)
+    token = None
+    if authorization:
+        parts = authorization.split(" ")
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            token = parts[1]
+    if not token and access_token_cookie:
+        token = access_token_cookie
+
+    if token:
+        try:
+            payload = decode_access_token(token)
+            sub = payload.get("sub")
+            if sub:
+                user_id = uuid.UUID(sub)
+                auth_user = db.query(models.User).filter(models.User.user_id == user_id).first()
+                if auth_user:
+                    author_name = auth_user.nickname
+        except Exception:
+            pass
+
+    if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "AUTH_REQUIRED", "message": "Please log in to leave a comment"},
         )
+
+    if not author_name:
+        author_name = "Viewer"
 
     _get_review_or_404(db, review_id)
 
@@ -119,8 +149,8 @@ def create_comment(
     db_comment = models.Comment(
         review_id=review_id,
         parent_id=comment.parent_id,
-        user_id=comment.user_id,
-        author_name=comment.author_name,
+        user_id=user_id,
+        author_name=author_name,
         text=comment.text,
         depth=depth,
         # Set explicitly: microsecond precision keeps the thread order stable

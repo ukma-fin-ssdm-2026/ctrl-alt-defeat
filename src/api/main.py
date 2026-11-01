@@ -13,6 +13,9 @@ from src.api.routers.reviews import router as reviews_router
 from src.api.routers.movies import router as movies_router
 from src.api.routers.recommendations import router as recommendations_router
 from src.api.routers.comments import router as comments_router
+from src.api.routers.auth import router as auth_router
+from src.api.services.auth import seed_default_users
+from src.api.db.database import SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -35,6 +38,11 @@ def save_openapi_spec(app: FastAPI):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_default_users(db)
+    finally:
+        db.close()
     save_openapi_spec(app)
     yield
 
@@ -50,6 +58,7 @@ app = FastAPI(
     responses={422: STANDARD_ERRORS[422]},
 )
 
+app.include_router(auth_router)
 app.include_router(movies_router)
 app.include_router(reviews_router)
 app.include_router(recommendations_router)

@@ -1,12 +1,14 @@
+import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
 from src.api.db.database import SessionLocal
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
 from src.api.schemas.recommendation import RecommendationsResponse
+from src.api.services.auth import decode_access_token
 from src.api.services.recommendations import recommend_for_user
 
 router = APIRouter(prefix="/api/v1/recommendations", tags=["Recommendations"])
@@ -21,20 +23,40 @@ def get_db():
 
 
 def get_recommendation_user_id(
+    authorization: Optional[str] = Header(None),
+    access_token_cookie: Optional[str] = Cookie(None, alias="access_token"),
     user_id: Optional[UUID4] = Query(
         None,
-        description="Temporary until authentication (FR-001) is merged: the user to build recommendations for",
+        description="Optional user ID override; defaults to authenticated user from token/cookie (FR-001)",
     ),
 ) -> UUID4:
     """
-    Resolves the current user. TODO(FR-001): replace with the authenticated user from the access token.
+    Resolves the current user from JWT token/cookie or query parameter (FR-001).
     """
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "AUTH_REQUIRED", "message": "Log in to get personal recommendations"},
-        )
-    return user_id
+    if user_id is not None:
+        return user_id
+
+    token = None
+    if authorization:
+        parts = authorization.split(" ")
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            token = parts[1]
+    if not token and access_token_cookie:
+        token = access_token_cookie
+
+    if token:
+        try:
+            payload = decode_access_token(token)
+            sub = payload.get("sub")
+            if sub:
+                return uuid.UUID(sub)
+        except Exception:
+            pass
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"code": "AUTH_REQUIRED", "message": "Log in to get personal recommendations"},
+    )
 
 
 @router.get(
