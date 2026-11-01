@@ -6,9 +6,10 @@ import Recommendations from './components/Recommendations';
 import AuthModal from './components/AuthModal';
 import UserProfile from './pages/UserProfile';
 import { mockMovies } from './data/mockData';
-import apiClient from './api/client';
+import apiClient, { SESSION_EXPIRED_EVENT } from './api/client';
 import { getStoredUser, setStoredAuth, clearStoredAuth } from './auth/currentUser';
 import useWatchlist from './hooks/useWatchlist';
+import useWatchedList from './hooks/useWatchedList';
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -19,12 +20,27 @@ export default function App() {
 
   const [language, setLanguage] = useState('UKR'); 
   const isUkr = language === 'UKR';
-  const [watchedList, setWatchedList] = useState([]);
   const [catalogMovies, setCatalogMovies] = useState(mockMovies);
 
   // Message shown in the login window when a guest uses a members-only feature
   const [authNotice, setAuthNotice] = useState('');
   const closeAuth = () => { setIsAuthOpen(false); setAuthNotice(''); };
+
+  const requireAuth = () => {
+    setAuthNotice(isUkr
+      ? 'Будь ласка, авторизуйтесь для використання цієї функції'
+      : 'Please log in to use this feature');
+    setIsAuthOpen(true);
+  };
+
+  // Watched list stored on the backend (FR-006)
+  const {
+    watchedMovies,
+    isWatched,
+    toggleWatched,
+    error: watchedError,
+    clearError: clearWatchedError,
+  } = useWatchedList({ user, catalog: catalogMovies, onAuthRequired: requireAuth });
 
   // Watchlist stored on the backend (FR-005)
   const {
@@ -36,13 +52,12 @@ export default function App() {
   } = useWatchlist({
     user,
     catalog: catalogMovies,
-    onAuthRequired: () => {
-      setAuthNotice(isUkr
-        ? 'Будь ласка, авторизуйтесь для використання цієї функції'
-        : 'Please log in to use this feature');
-      setIsAuthOpen(true);
-    },
+    onAuthRequired: requireAuth,
   });
+
+  // One message for failed list updates (watchlist or watched)
+  const listError = watchlistError || watchedError;
+  const clearListError = () => { clearWatchlistError(); clearWatchedError(); };
 
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -50,27 +65,16 @@ export default function App() {
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null); // Додали стан для року
 
-  const fetchWatchedList = async () => {
-    try {
-      const res = await apiClient.get('/users/me/watched');
-      setWatchedList(res.data.items || []);
-    } catch {
-      setWatchedList([]);
-    }
-  };
-
   useEffect(() => {
     // Validate session on startup with backend via HttpOnly cookie (FR-001, US-011)
     apiClient.get('/auth/me')
       .then(res => {
         setUser(res.data);
         setStoredAuth(null, res.data);
-        fetchWatchedList();
       })
       .catch(() => {
         clearStoredAuth();
         setUser(null);
-        setWatchedList([]);
       });
 
     apiClient.get('/movies', { params: { limit: 100 } })
@@ -93,6 +97,20 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  // The server rejected the session (expired token, page reload without cookie): log out visibly
+  useEffect(() => {
+    const onSessionExpired = () => {
+      clearStoredAuth();
+      setUser(null);
+      setAuthNotice(language === 'UKR'
+        ? 'Сесія завершилась. Будь ласка, увійдіть знову.'
+        : 'Your session has expired. Please log in again.');
+      setIsAuthOpen(true);
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+  }, [language]);
+
   const handleGoHome = () => {
     setSelectedMovie(null);
     setShowProfile(false);
@@ -108,31 +126,6 @@ export default function App() {
     if (year) setSelectedYear(Number(year));
   };
 
-  const handleToggleWatched = async (movieOrId) => {
-    if (!isLoggedIn) {
-      setIsAuthOpen(true);
-      return;
-    }
-    const movieObj = typeof movieOrId === 'object' ? movieOrId : catalogMovies.find(m => (m.id === movieOrId || m.content_id === movieOrId)) || { content_id: movieOrId };
-    const contentUuid = movieObj.content_id || movieObj.id;
-    const isAlreadyWatched = watchedList.some(item => (item.content_id === contentUuid || item.id === contentUuid));
-
-    if (isAlreadyWatched) {
-      try {
-        await apiClient.delete(`/users/me/watched/${contentUuid}`);
-        setWatchedList(prev => prev.filter(item => item.content_id !== contentUuid && item.id !== contentUuid));
-      } catch (e) {
-        console.warn("Failed to remove from watched list:", e);
-      }
-    } else {
-      try {
-        const res = await apiClient.post('/users/me/watched', { content_id: contentUuid });
-        setWatchedList(prev => [res.data, ...prev.filter(item => item.content_id !== contentUuid)]);
-      } catch (e) {
-        console.warn("Failed to mark as watched:", e);
-      }
-    }
-  };
   const handleLogin = async (email, password) => {
     try {
       const response = await apiClient.post('/auth/login', { email, password });
@@ -140,7 +133,6 @@ export default function App() {
       setStoredAuth(access_token, userData);
       setUser(userData);
       closeAuth();
-      fetchWatchedList();
       return { success: true };
     } catch (err) {
       const errCode = err.response?.data?.error?.code || err.response?.data?.detail?.code;
@@ -157,7 +149,6 @@ export default function App() {
     }
     clearStoredAuth();
     setUser(null);
-    setWatchedList([]);
     handleGoHome();
   };
 
@@ -195,12 +186,12 @@ export default function App() {
             user={user}
             language={language}
             watchlistMovies={watchlistMovies}
-            watchedMovies={watchedList}
+            watchedMovies={watchedMovies}
             onSelectMovie={(movie) => { setShowProfile(false); setSelectedMovie(movie); }}
             onToggleWatchlist={toggleWatchlist}
-            onToggleWatched={handleToggleWatched}
+            onToggleWatched={toggleWatched}
             onDeleteProfile={() => {
-               setUser(null); setWatchedList([]); handleGoHome(); 
+               setUser(null); handleGoHome(); 
                alert(language === 'UKR' ? 'Профіль видалено' : 'Profile deleted');
             }}
           />
@@ -214,8 +205,8 @@ export default function App() {
             language={language}
             isWatchlisted={watchlist.includes(selectedMovie.id || selectedMovie.content_id)}
             onToggleWatchlist={() => toggleWatchlist(selectedMovie)}
-            isWatched={watchedList.some(item => (item.content_id || item.id) === (selectedMovie.content_id || selectedMovie.id))}
-            onToggleWatched={() => handleToggleWatched(selectedMovie)}
+            isWatched={isWatched(selectedMovie)}
+            onToggleWatched={() => toggleWatched(selectedMovie)}
           />
         ) : (
           <>
@@ -248,14 +239,14 @@ export default function App() {
         © 2026 Rotten Eggs. Усі права захищено.
       </footer>
 
-      {watchlistError && (
+      {listError && (
         <div role="alert" className="fixed bottom-4 right-4 z-40 max-w-sm bg-red-50 dark:bg-red-900/80 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-100 text-sm px-4 py-3 rounded-xl shadow-lg flex items-start gap-3">
           <span>
-            {watchlistError === 'UNAVAILABLE'
-              ? (isUkr ? 'Цей фільм поки не можна додати до списку: каталог недоступний.' : 'This title cannot be added right now: the catalog is unavailable.')
-              : (isUkr ? 'Не вдалося оновити список перегляду. Спробуйте ще раз.' : 'Failed to update the watchlist. Please try again.')}
+            {listError === 'UNAVAILABLE'
+              ? (isUkr ? 'Цей фільм зараз не можна додати: каталог недоступний (сервер не відповідає).' : 'This title cannot be added right now: the catalog is unavailable (server is not responding).')
+              : (isUkr ? 'Не вдалося оновити список. Спробуйте ще раз.' : 'Failed to update the list. Please try again.')}
           </span>
-          <button onClick={clearWatchlistError} aria-label={isUkr ? 'Закрити' : 'Close'} className="font-bold">✕</button>
+          <button onClick={clearListError} aria-label={isUkr ? 'Закрити' : 'Close'} className="font-bold">✕</button>
         </div>
       )}
 
