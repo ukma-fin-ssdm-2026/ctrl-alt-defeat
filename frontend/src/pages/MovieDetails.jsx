@@ -54,7 +54,9 @@ export default function MovieDetails({
   onBack, 
   language = 'UKR', 
   isWatchlisted = false, 
-  onToggleWatchlist 
+  onToggleWatchlist,
+  isWatched = false,
+  onToggleWatched
 }) {
   const [rating, setRating] = useState(10);
   const [reviewText, setReviewText] = useState('');
@@ -171,18 +173,33 @@ export default function MovieDetails({
           {isUkr ? '← Назад до списку' : '← Back to list'}
         </button>
 
-        {onToggleWatchlist && (
-          <button
-            onClick={() => onToggleWatchlist(movie.id || movie.content_id)}
-            className={`px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm flex items-center gap-2 ${
-              isWatchlisted 
-                ? 'bg-yellow-500 text-gray-900' 
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-yellow-500 hover:text-gray-900'
-            }`}
-          >
-            {isWatchlisted ? (isUkr ? '✓ У списку перегляду' : '✓ In Watchlist') : (isUkr ? '+ Додати до списку' : '+ Add to Watchlist')}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {onToggleWatchlist && (
+            <button
+              onClick={() => onToggleWatchlist(movie.id || movie.content_id)}
+              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm flex items-center gap-2 ${
+                isWatchlisted 
+                  ? 'bg-yellow-500 text-gray-900' 
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-yellow-500 hover:text-gray-900'
+              }`}
+            >
+              {isWatchlisted ? (isUkr ? '✓ У списку перегляду' : '✓ In Watchlist') : (isUkr ? '+ Додати до списку' : '+ Add to Watchlist')}
+            </button>
+          )}
+
+          {onToggleWatched && (
+            <button
+              onClick={() => onToggleWatched(movie.content_id || movie.id)}
+              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm flex items-center gap-2 ${
+                isWatched 
+                  ? 'bg-green-600 text-white shadow-md' 
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-green-600 hover:text-white'
+              }`}
+            >
+              {isWatched ? (isUkr ? '✓ Переглянуто' : '✓ Watched') : (isUkr ? '👁️ Позначити як переглянуте' : '👁️ Mark as Watched')}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
