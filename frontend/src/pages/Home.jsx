@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import MovieCard from '../components/MovieCard';
 import { mockMovies } from '../data/mockData';
+import { SORT_OPTIONS, getSortParams, sortMovies } from '../utils/sortMovies';
 
 export default function Home({ selectedCategory, selectedGenre, selectedYear, onSelectMovie, language = 'UKR', watchlist = [], onToggleWatchlist }) {
   const [movies, setMovies] = useState([]);
@@ -10,7 +11,11 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
   const filterGenre = selectedGenre || '';
   const filterYear = selectedYear || '';
 
-  // Loading is derived: true until the movies for the current filters are fetched
+  // Sorting (FR-010)
+  const [sortKey, setSortKey] = useState('');
+
+  // Loading is derived: true until the movies for the current filters are fetched.
+  // Sorting is not part of this key: the current list is re-sorted instantly while fresh data loads.
   const requestKey = `${selectedCategory || ''}|${filterGenre}|${filterYear}`;
   const [loadedKey, setLoadedKey] = useState(null);
   const loading = loadedKey !== requestKey;
@@ -54,6 +59,7 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
     }
     if (filterGenre) params.genre = filterGenre;
     if (filterYear) params.year = filterYear;
+    Object.assign(params, getSortParams(sortKey));
 
     // Ignore responses of outdated requests (filters changed while loading)
     let ignore = false;
@@ -77,9 +83,9 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
     return () => {
       ignore = true;
     };
-  }, [selectedCategory, filterGenre, filterYear, requestKey]);
+  }, [selectedCategory, filterGenre, filterYear, sortKey, requestKey]);
 
-  const displayedMovies = movies.filter(movie => {
+  const filteredMovies = movies.filter(movie => {
     if (selectedCategory) {
       const cat = (movie.category || '').toLowerCase();
       const sel = selectedCategory.toLowerCase();
@@ -105,6 +111,9 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
     return true;
   });
 
+  // Sorting is applied only to the filtered selection (FR-010)
+  const displayedMovies = sortMovies(filteredMovies, sortKey);
+
   const getCategoryTitle = (cat) => {
     if (!cat) return '';
     if (cat === 'Фільми') return isUkr ? 'фільми' : 'movies';
@@ -124,6 +133,21 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
         <h2 className="text-xl font-black text-gray-900 dark:text-white border-l-4 border-yellow-500 pl-3 capitalize">
           {titleText}
         </h2>
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+          <span className="hidden sm:inline">{isUkr ? 'Сортувати:' : 'Sort by:'}</span>
+          <select
+            aria-label={isUkr ? 'Сортування' : 'Sorting'}
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value)}
+            className="px-3 py-1.5 border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm"
+          >
+            {SORT_OPTIONS.map(option => (
+              <option key={option.key || 'default'} value={option.key}>
+                {isUkr ? option.labelUkr : option.labelEn}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       
       {loading ? (

@@ -19,8 +19,9 @@ FALLBACK_MOVIES = [
         "title_en": "Dune: Part Two",
         "category": "Movie",
         "genre": "Фантастика",
-        "genres": ["Фантастика","Бойовик","Пригоди"],
+        "genres": ["Фантастика", "Бойовик", "Пригоди"],
         "year": 2024,
+        "runtime": 166,
         "rating": 8.8,
         "rotten_rating": "93%",
         "img": "https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2TGpiom05.jpg",
@@ -40,14 +41,14 @@ FALLBACK_MOVIES = [
         "title_en": "Oppenheimer",
         "category": "Movie",
         "genre": "Драма",
-        "genres": ["Драма","Біографія","Історія"],
+        "genres": ["Драма", "Біографія", "Історія"],
         "year": 2023,
+        "runtime": 180,
         "rating": 8.4,
         "rotten_rating": "93%",
         "img": "https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
         "description": (
-            "Історія життя американського фізика Роберта Оппенгеймера, який очолював «Проєкт"
-            "Манхеттен»."
+            "Історія життя американського фізика Роберта Оппенгеймера, який очолював «Проєкт" "Манхеттен»."
         ),
         "description_en": (
             "The story of American physicist J. Robert Oppenheimer and his role in the development of"
@@ -61,18 +62,17 @@ FALLBACK_MOVIES = [
         "title_en": "Interstellar",
         "category": "Movie",
         "genre": "Фантастика",
-        "genres": ["Фантастика","Драма","Пригоди"],
+        "genres": ["Фантастика", "Драма", "Пригоди"],
         "year": 2014,
+        "runtime": 169,
         "rating": 8.6,
         "rotten_rating": "87%",
         "img": "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
         "description": (
-            "Група дослідників вирушає крізь червоточину в космосі, щоб забезпечити нове майбутнє для"
-            "людства."
+            "Група дослідників вирушає крізь червоточину в космосі, щоб забезпечити нове майбутнє для" "людства."
         ),
         "description_en": (
-            "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's"
-            "survival."
+            "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's" "survival."
         ),
         "tmdb_id": 100003,
     },
@@ -82,14 +82,14 @@ FALLBACK_MOVIES = [
         "title_en": "The Dark Knight",
         "category": "Movie",
         "genre": "Бойовик",
-        "genres": ["Бойовик","Кримінал","Драма"],
+        "genres": ["Бойовик", "Кримінал", "Драма"],
         "year": 2008,
+        "runtime": 152,
         "rating": 9,
         "rotten_rating": "94%",
         "img": "https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
         "description": (
-            "Бетмен стикається з хаотичним генієм — злочинцем на ім'я Джокер, який занурює Ґотем у"
-            "хаос."
+            "Бетмен стикається з хаотичним генієм — злочинцем на ім'я Джокер, який занурює Ґотем у" "хаос."
         ),
         "description_en": (
             "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman"
@@ -103,8 +103,9 @@ FALLBACK_MOVIES = [
         "title_en": "Inception",
         "category": "Movie",
         "genre": "Фантастика",
-        "genres": ["Фантастика","Бойовик","Трилер"],
+        "genres": ["Фантастика", "Бойовик", "Трилер"],
         "year": 2010,
+        "runtime": 148,
         "rating": 8.8,
         "rotten_rating": "87%",
         "img": "https://image.tmdb.org/t/p/w500/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg",
@@ -126,12 +127,12 @@ FALLBACK_MOVIES = [
         "genre": "Драма",
         "genres": ["Драма"],
         "year": 1994,
+        "runtime": 142,
         "rating": 9.3,
         "rotten_rating": "91%",
         "img": "https://image.tmdb.org/t/p/w500/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg",
         "description": (
-            "Банкір Енді Дюфрейн потрапляє до в'язниці Шоушенк за вбивство, якого не скоював, де"
-            "знаходить надію."
+            "Банкір Енді Дюфрейн потрапляє до в'язниці Шоушенк за вбивство, якого не скоював, де" "знаходить надію."
         ),
         "description_en": (
             "Over the course of several years, two convicts form a friendship, seeking consolation and,"
@@ -145,8 +146,9 @@ FALLBACK_MOVIES = [
         "title_en": "Forrest Gump",
         "category": "Movie",
         "genre": "Драма",
-        "genres": ["Драма","Мелодрама"],
+        "genres": ["Драма", "Мелодрама"],
         "year": 1994,
+        "runtime": 142,
         "rating": 8.8,
         "rotten_rating": "75%",
         "img": "https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
@@ -166,14 +168,14 @@ FALLBACK_MOVIES = [
         "title_en": "Blade Runner 2049",
         "category": "Movie",
         "genre": "Фантастика",
-        "genres": ["Фантастика","Детектив","Трилер"],
+        "genres": ["Фантастика", "Детектив", "Трилер"],
         "year": 2017,
+        "runtime": 164,
         "rating": 8,
         "rotten_rating": "88%",
         "img": "https://image.tmdb.org/t/p/w500/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg",
         "description": (
-            "Офіцер поліції Лос-Анджелеса розкриває давню таємницю, яка може занурити залишки"
-            "суспільства у хаос."
+            "Офіцер поліції Лос-Анджелеса розкриває давню таємницю, яка може занурити залишки" "суспільства у хаос."
         ),
         "description_en": (
             "Young Blade Runner K's discovery of a long-buried secret leads him to track down former"
@@ -187,8 +189,9 @@ FALLBACK_MOVIES = [
         "title_en": "Parasite",
         "category": "Movie",
         "genre": "Драма",
-        "genres": ["Драма","Трилер","Комедія"],
+        "genres": ["Драма", "Трилер", "Комедія"],
         "year": 2019,
+        "runtime": 132,
         "rating": 8.5,
         "rotten_rating": "99%",
         "img": "https://image.tmdb.org/t/p/w500/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
@@ -208,8 +211,9 @@ FALLBACK_MOVIES = [
         "title_en": "Saved",
         "category": "Movie",
         "genre": "Драма",
-        "genres": ["Драма","Фантастика"],
+        "genres": ["Драма", "Фантастика"],
         "year": 2026,
+        "runtime": None,
         "rating": 8.4,
         "rotten_rating": "88%",
         "img": "https://picsum.photos/300/450?random=1",
@@ -223,14 +227,14 @@ FALLBACK_MOVIES = [
         "title_en": "Stranger Things",
         "category": "Series",
         "genre": "Фантастика",
-        "genres": ["Фантастика","Жахи","Драма"],
+        "genres": ["Фантастика", "Жахи", "Драма"],
         "year": 2016,
+        "runtime": 51,
         "rating": 8.7,
         "rotten_rating": "92%",
         "img": "https://picsum.photos/300/450?random=5",
         "description": (
-            "Зникнення хлопчика в містечку Гокінс розкриває таємницю секретних експериментів і"
-            "надприродних сил."
+            "Зникнення хлопчика в містечку Гокінс розкриває таємницю секретних експериментів і" "надприродних сил."
         ),
         "description_en": (
             "When a young boy vanishes, a small town uncovers a mystery involving secret experiments,"
@@ -244,14 +248,14 @@ FALLBACK_MOVIES = [
         "title_en": "Chernobyl",
         "category": "Series",
         "genre": "Драма",
-        "genres": ["Драма","Історія","Трилер"],
+        "genres": ["Драма", "Історія", "Трилер"],
         "year": 2019,
+        "runtime": 65,
         "rating": 9.3,
         "rotten_rating": "95%",
         "img": "https://image.tmdb.org/t/p/w500/hlLXt2Stj6R38NT9PNtt8G4GBZo.jpg",
         "description": (
-            "Хроніка катастрофи на Чорнобильській АЕС 1986 року та героїчні зусилля ліквідаторів"
-            "наслідків."
+            "Хроніка катастрофи на Чорнобильській АЕС 1986 року та героїчні зусилля ліквідаторів" "наслідків."
         ),
         "description_en": (
             "In 1986, a Soviet nuclear plant, suffers a massive explosion which releases radioactive"
@@ -265,8 +269,9 @@ FALLBACK_MOVIES = [
         "title_en": "Game of Thrones",
         "category": "Series",
         "genre": "Фантастика",
-        "genres": ["Фантастика","Драма","Пригоди"],
+        "genres": ["Фантастика", "Драма", "Пригоди"],
         "year": 2011,
+        "runtime": 57,
         "rating": 9.2,
         "rotten_rating": "89%",
         "img": "https://image.tmdb.org/t/p/w500/u3bZgnGQ9T01sWNhyveQz0wH0Hl.jpg",
@@ -286,14 +291,14 @@ FALLBACK_MOVIES = [
         "title_en": "Breaking Bad",
         "category": "Series",
         "genre": "Драма",
-        "genres": ["Драма","Кримінал","Трилер"],
+        "genres": ["Драма", "Кримінал", "Трилер"],
         "year": 2008,
+        "runtime": 47,
         "rating": 9.5,
         "rotten_rating": "96%",
         "img": "https://image.tmdb.org/t/p/w500/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg",
         "description": (
-            "Хворий на рак вчитель хімії об'єднується з колишнім учнем заради виробництва та продажу"
-            "метамфетаміну."
+            "Хворий на рак вчитель хімії об'єднується з колишнім учнем заради виробництва та продажу" "метамфетаміну."
         ),
         "description_en": (
             "A chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing and"
@@ -307,14 +312,14 @@ FALLBACK_MOVIES = [
         "title_en": "True Detective",
         "category": "Series",
         "genre": "Детектив",
-        "genres": ["Детектив","Кримінал","Драма"],
+        "genres": ["Детектив", "Кримінал", "Драма"],
         "year": 2014,
+        "runtime": 58,
         "rating": 8.9,
         "rotten_rating": "83%",
         "img": "https://image.tmdb.org/t/p/w500/aVnwbDe7K0Xv7d3cE4yX0V7mY7Y.jpg",
         "description": (
-            "Детективи розслідують складні та містичні злочини протягом багатьох років, занурюючись у"
-            "власні демони."
+            "Детективи розслідують складні та містичні злочини протягом багатьох років, занурюючись у" "власні демони."
         ),
         "description_en": (
             "Seasonal anthology series in which police investigations unearth the personal and"
@@ -328,8 +333,9 @@ FALLBACK_MOVIES = [
         "title_en": "The Boys",
         "category": "Series",
         "genre": "Фантастика",
-        "genres": ["Фантастика","Бойовик","Комедія"],
+        "genres": ["Фантастика", "Бойовик", "Комедія"],
         "year": 2019,
+        "runtime": 60,
         "rating": 8.7,
         "rotten_rating": "93%",
         "img": "https://image.tmdb.org/t/p/w500/stTEycfG9928HYGEISBFaG1ngjM.jpg",
@@ -338,8 +344,7 @@ FALLBACK_MOVIES = [
             "своїми суперсилами."
         ),
         "description_en": (
-            "A group of vigilantes set out to take down corrupt superheroes who abuse their"
-            "superpowers."
+            "A group of vigilantes set out to take down corrupt superheroes who abuse their" "superpowers."
         ),
         "tmdb_id": 100016,
     },
@@ -349,8 +354,9 @@ FALLBACK_MOVIES = [
         "title_en": "The Last of Us",
         "category": "Series",
         "genre": "Драма",
-        "genres": ["Драма","Жахи","Пригоди"],
+        "genres": ["Драма", "Жахи", "Пригоди"],
         "year": 2023,
+        "runtime": 56,
         "rating": 8.8,
         "rotten_rating": "96%",
         "img": "https://image.tmdb.org/t/p/w500/uKvVjHNqB5VmOrdxqAt2F7J78ED.jpg",
@@ -367,8 +373,9 @@ FALLBACK_MOVIES = [
         "title_en": "Grave Horror",
         "category": "Series",
         "genre": "Жахи",
-        "genres": ["Жахи","Детектив"],
+        "genres": ["Жахи", "Детектив"],
         "year": 2021,
+        "runtime": None,
         "rating": 7.2,
         "rotten_rating": "65%",
         "img": "https://picsum.photos/300/450?random=3",
@@ -382,8 +389,9 @@ FALLBACK_MOVIES = [
         "title_en": "The Crown",
         "category": "Series",
         "genre": "Драма",
-        "genres": ["Драма","Історія","Біографія"],
+        "genres": ["Драма", "Історія", "Біографія"],
         "year": 2016,
+        "runtime": 58,
         "rating": 8.6,
         "rotten_rating": "89%",
         "img": "https://image.tmdb.org/t/p/w500/1MvuU91VjH3pM91sK7iW2Y9R55m.jpg",
@@ -400,8 +408,9 @@ FALLBACK_MOVIES = [
         "title_en": "Fargo",
         "category": "Series",
         "genre": "Драма",
-        "genres": ["Драма","Кримінал","Трилер"],
+        "genres": ["Драма", "Кримінал", "Трилер"],
         "year": 2014,
+        "runtime": 53,
         "rating": 8.9,
         "rotten_rating": "93%",
         "img": "https://image.tmdb.org/t/p/w500/5Wk0N0hGz0o2C0X0G7W5t6v1n5h.jpg",
@@ -418,8 +427,9 @@ FALLBACK_MOVIES = [
         "title_en": "Shrek",
         "category": "Cartoons",
         "genre": "Комедія",
-        "genres": ["Комедія","Пригоди","Фантастика"],
+        "genres": ["Комедія", "Пригоди", "Фантастика"],
         "year": 2001,
+        "runtime": 90,
         "rating": 7.9,
         "rotten_rating": "90%",
         "img": "https://picsum.photos/300/450?random=6",
@@ -433,8 +443,9 @@ FALLBACK_MOVIES = [
         "title_en": "Spider-Man: Across the Spider-Verse",
         "category": "Cartoons",
         "genre": "Фантастика",
-        "genres": ["Фантастика","Бойовик","Пригоди"],
+        "genres": ["Фантастика", "Бойовик", "Пригоди"],
         "year": 2023,
+        "runtime": 140,
         "rating": 8.7,
         "rotten_rating": "95%",
         "img": "https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg",
@@ -451,8 +462,9 @@ FALLBACK_MOVIES = [
         "title_en": "Spirited Away",
         "category": "Cartoons",
         "genre": "Фантастика",
-        "genres": ["Фантастика","Пригоди","Драма"],
+        "genres": ["Фантастика", "Пригоди", "Драма"],
         "year": 2001,
+        "runtime": 125,
         "rating": 8.6,
         "rotten_rating": "97%",
         "img": "https://image.tmdb.org/t/p/w500/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
@@ -472,8 +484,9 @@ FALLBACK_MOVIES = [
         "title_en": "Inside Out",
         "category": "Cartoons",
         "genre": "Комедія",
-        "genres": ["Комедія","Драма","Пригоди"],
+        "genres": ["Комедія", "Драма", "Пригоди"],
         "year": 2015,
+        "runtime": 95,
         "rating": 8.1,
         "rotten_rating": "98%",
         "img": "https://image.tmdb.org/t/p/w500/2H1TmgdfNtsKlU9jKdeNyYL5y8T.jpg",
@@ -491,14 +504,14 @@ FALLBACK_MOVIES = [
         "title_en": "WALL·E",
         "category": "Cartoons",
         "genre": "Фантастика",
-        "genres": ["Фантастика","Пригоди","Мелодрама"],
+        "genres": ["Фантастика", "Пригоди", "Мелодрама"],
         "year": 2008,
+        "runtime": 98,
         "rating": 8.4,
         "rotten_rating": "95%",
         "img": "https://image.tmdb.org/t/p/w500/hBGRgrjkjuoY2yV56A9eA890T5t.jpg",
         "description": (
-            "Маленький робот-прибиральник залишається на покинутій Землі та випадково вирушає у"
-            "космічну пригоду."
+            "Маленький робот-прибиральник залишається на покинутій Землі та випадково вирушає у" "космічну пригоду."
         ),
         "description_en": (
             "In the distant future, a small waste-collecting robot inadvertently embarks on a space"
@@ -512,8 +525,9 @@ FALLBACK_MOVIES = [
         "title_en": "Coco",
         "category": "Cartoons",
         "genre": "Драма",
-        "genres": ["Драма","Музика","Пригоди"],
+        "genres": ["Драма", "Музика", "Пригоди"],
         "year": 2017,
+        "runtime": 105,
         "rating": 8.4,
         "rotten_rating": "97%",
         "img": "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
@@ -530,8 +544,9 @@ FALLBACK_MOVIES = [
         "title_en": "The Lion King",
         "category": "Cartoons",
         "genre": "Драма",
-        "genres": ["Драма","Пригоди"],
+        "genres": ["Драма", "Пригоди"],
         "year": 1994,
+        "runtime": 88,
         "rating": 8.5,
         "rotten_rating": "93%",
         "img": "https://image.tmdb.org/t/p/w500/sKCr78MXSLixwmZ8DyJLrpMsd15.jpg",
@@ -551,8 +566,9 @@ FALLBACK_MOVIES = [
         "title_en": "How to Train Your Dragon",
         "category": "Cartoons",
         "genre": "Пригоди",
-        "genres": ["Пригоди","Фантастика","Комедія"],
+        "genres": ["Пригоди", "Фантастика", "Комедія"],
         "year": 2010,
+        "runtime": 98,
         "rating": 8.1,
         "rotten_rating": "99%",
         "img": "https://image.tmdb.org/t/p/w500/ygGgaVfY6bBvM6WjXq8vXqT1pZ2.jpg",
@@ -569,8 +585,9 @@ FALLBACK_MOVIES = [
         "title_en": "Soul",
         "category": "Cartoons",
         "genre": "Драма",
-        "genres": ["Драма","Комедія","Фантастика"],
+        "genres": ["Драма", "Комедія", "Фантастика"],
         "year": 2020,
+        "runtime": 100,
         "rating": 8,
         "rotten_rating": "95%",
         "img": "https://image.tmdb.org/t/p/w500/hm58Jw4Lw8OIeECIq5qyPYhAeRJ.jpg",
@@ -587,8 +604,9 @@ FALLBACK_MOVIES = [
         "title_en": "Jane Doe vs Cornell",
         "category": "Cartoons",
         "genre": "Документальний",
-        "genres": ["Документальний","Драма"],
+        "genres": ["Документальний", "Драма"],
         "year": 2026,
+        "runtime": None,
         "rating": 9,
         "rotten_rating": "95%",
         "img": "https://picsum.photos/300/450?random=4",
@@ -626,21 +644,24 @@ def fetch_tmdb_movies(api_key: Optional[str] = None) -> List[Dict[str, Any]]:
                     poster_path = item.get("poster_path")
                     img_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
 
-                    movies.append({
-                        "id": idx,
-                        "title": item.get("title") or item.get("original_title", "Без назви"),
-                        "title_en": item.get("original_title"),
-                        "category": "Movie",
-                        "genre": "Фантастика",
-                        "genres": ["Фантастика", "Драма"],
-                        "year": year,
-                        "rating": round(float(item.get("vote_average", 0.0)), 1),
-                        "rotten_rating": f"{int(item.get('vote_average', 0) * 10)}%",
-                        "img": img_url,
-                        "description": item.get("overview") or "Опис оновлюється.",
-                        "description_en": item.get("overview"),
-                        "tmdb_id": item.get("id"),
-                    })
+                    movies.append(
+                        {
+                            "id": idx,
+                            "title": item.get("title") or item.get("original_title", "Без назви"),
+                            "title_en": item.get("original_title"),
+                            "category": "Movie",
+                            "genre": "Фантастика",
+                            "genres": ["Фантастика", "Драма"],
+                            "year": year,
+                            "runtime": item.get("runtime"),  # not returned by /movie/popular
+                            "rating": round(float(item.get("vote_average", 0.0)), 1),
+                            "rotten_rating": f"{int(item.get('vote_average', 0) * 10)}%",
+                            "img": img_url,
+                            "description": item.get("overview") or "Опис оновлюється.",
+                            "description_en": item.get("overview"),
+                            "tmdb_id": item.get("id"),
+                        }
+                    )
                 return movies
     except Exception as e:
         logger.warning(f"Error fetching from TMDB API: {e}. Falling back to cached catalog.")
@@ -655,9 +676,7 @@ def seed_movies_to_database(db: Session, movies_data: Optional[List[Dict[str, An
     data = movies_data or FALLBACK_MOVIES
     count = 0
     for item in data:
-        existing = db.query(Content).filter(
-            (Content.id == item["id"]) | (Content.title == item["title"])
-        ).first()
+        existing = db.query(Content).filter((Content.id == item["id"]) | (Content.title == item["title"])).first()
 
         if not existing:
             content_item = Content(
@@ -669,6 +688,7 @@ def seed_movies_to_database(db: Session, movies_data: Optional[List[Dict[str, An
                 genre=item.get("genre", "Драма"),
                 genres=item.get("genres", []),
                 year=item.get("year", 2024),
+                runtime=item.get("runtime"),
                 rating=item.get("rating", 0.0),
                 rotten_rating=item.get("rotten_rating"),
                 img=item.get("img"),
@@ -684,7 +704,8 @@ def seed_movies_to_database(db: Session, movies_data: Optional[List[Dict[str, An
             existing.rotten_rating = item.get("rotten_rating", existing.rotten_rating)
             if item.get("img"):
                 existing.img = item.get("img")
+            if item.get("runtime") is not None:
+                existing.runtime = item.get("runtime")
 
     db.commit()
     return count
-

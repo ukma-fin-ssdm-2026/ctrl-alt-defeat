@@ -210,6 +210,15 @@ export default function MovieDetails({
                 <dd className="text-gray-900 dark:text-gray-200 font-medium">{getGenreLabel(movie.genre)}</dd>
               </div>
               <div><dt className="text-gray-500 dark:text-gray-400 font-semibold">IMDb:</dt><dd className="text-yellow-600 font-bold">★ {movie.rating} / 10</dd></div>
+              {movie.runtime ? (
+                <div>
+                  <dt className="text-gray-500 dark:text-gray-400 font-semibold">{isUkr ? 'Тривалість:' : 'Runtime:'}</dt>
+                  <dd className="text-gray-900 dark:text-gray-200 font-medium">
+                    {movie.runtime} {isUkr ? 'хв' : 'min'}
+                    {(movie.category || '').toLowerCase() === 'series' && (isUkr ? ' (серія)' : ' (episode)')}
+                  </dd>
+                </div>
+              ) : null}
               <div><dt className="text-gray-500 dark:text-gray-400 font-semibold">Rotten Eggs:</dt><dd className="text-green-600 font-bold">🥚 {movie.rotten_rating || movie.rottenRating || '88%'}</dd></div>
             </dl>
           </div>
