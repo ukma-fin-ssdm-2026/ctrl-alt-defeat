@@ -68,8 +68,8 @@ export default function UserProfile({
       icon: '⭐', 
       titleUkr: 'Експерт року', 
       titleEn: 'Expert of the Year', 
-      descUkr: 'Активна участь у житті спільноти Rotten Eggs', 
-      descEn: 'Active participation in Rotten Eggs community',
+      descUkr: 'Активна участь у житті спільноти «Після титрів»', 
+      descEn: 'Active participation in the After Credits community',
       unlocked: true 
     },
     { 
