@@ -27,11 +27,12 @@
 - [Конфігурація CI/CD конвеєра (.github/workflows/ci.yml)](.github/workflows/ci.yml)
 - [Відеопрезентація команди](./Labs/Lab01/)
 
-### Лабораторна робота 2: Вимоги до програмної системи
+### Артефакти вимог (Лабораторна робота 2)
 - [Вимоги до системи (FR та NFR за ISO 25010)](./docs/requirements/requirements.md)
 - [Користувацькі історії з INVEST-аналізом (User Stories)](./docs/requirements/user-stories.md)
 - [Матриця простежуваності вимог (RTM)](./docs/requirements/rtm.md)
 - [Сценарії використання (Use Cases)](./docs/requirements/use-cases.md)
+- [Міні-ТЗ проєкту (Project-Description.md)](./Project-Description.md#4-міні-тз)
 - [Індекс артефактів вимог](./docs/requirements/README.md)
 - [Відеопрезентація Лаб 2](./Labs/Lab02/)
 
@@ -103,13 +104,20 @@ cd ctrl-alt-defeat
    ```
 
 2. Налаштування бази даних:
-   За замовчуванням бекенд використовує PostgreSQL URL:
-   ```bash
-   export DATABASE_URL="postgresql+psycopg2://postgres:postgres@localhost:5432/reviews_db"
-   ```
-   *(За потреби можна використовувати локальну тестову БД або змінну середовища)*.
+   - **Швидкий локальний запуск (Zero-Config SQLite):**  
+     За замовчуванням (якщо змінна `DATABASE_URL` не задана) бекенд автоматично ініціалізує локальну SQLite базу даних (`app.db`), тому додаткових кроків налаштування СКБД не потрібно.
+   - **Запуск із PostgreSQL (опціонально для production):**
+     ```bash
+     export DATABASE_URL="postgresql+psycopg2://postgres:postgres@localhost:5432/reviews_db"
+     ```
 
-3. Запустіть сервер розробки Uvicorn на порту **8000**:
+3. Ініціалізація та наповнення каталогу (30 фільмів/серіалів із TMDB):
+   ```bash
+   python3 scripts/seed_movies.py
+   ```
+   *Скрипт створює необхідні таблиці та імпортує метадані фільмів.*
+
+4. Запустіть сервер розробки Uvicorn на порту **8000**:
    ```bash
    uvicorn src.api.main:app --reload --host 127.0.0.1 --port 8000
    ```
