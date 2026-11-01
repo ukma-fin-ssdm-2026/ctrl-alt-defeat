@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, UTC
 from typing import Optional, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from pydantic import UUID4
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -229,18 +229,34 @@ async def update_review(
 
 
 @router.delete(
-    "/{review_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a review", responses=STANDARD_ERRORS
+    "/{review_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a review (FR-008, US-006)",
+    responses={
+        **STANDARD_ERRORS,
+        401: {"model": ErrorResponse, "description": "Authentication required"},
+        403: {"model": ErrorResponse, "description": "Forbidden: BOLA violation (author or admin required)"},
+    },
 )
 async def delete_review(
     review_id: UUID4 = Path(..., description="ID of the review to delete"),
+    current_user: models.User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     existing_review = db.query(models.Review).filter(models.Review.review_id == review_id).first()
 
     if existing_review is None:
         raise HTTPException(status_code=404, detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"})
+
+    # BOLA check (FR-008, US-006): only author or admin can delete
+    if current_user.role != "admin" and str(existing_review.user_id) != str(current_user.user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "You do not have permission to delete this review"},
+        )
+
     # Remove the comment thread too (bulk delete works on SQLite without FK enforcement)
     db.query(models.Comment).filter(models.Comment.review_id == review_id).delete(synchronize_session=False)
     db.delete(existing_review)
     db.commit()
-    return None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

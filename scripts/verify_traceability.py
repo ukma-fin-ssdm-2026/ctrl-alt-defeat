@@ -25,7 +25,6 @@ EXCLUDED_US = {"US-005"}
 
 # T-IDs marked as [xfail: заплановано] in test-plan.md
 XFAIL_TIDS = {
-    "T-018",
     "T-023",
     "T-024",
     "T-025",
