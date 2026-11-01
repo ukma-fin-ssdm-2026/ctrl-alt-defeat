@@ -24,7 +24,7 @@
 - [Дизайн REST API (API Design)](./api/api-design.md)
 - [Згенерована специфікація OpenAPI](./api/openapi-generated.yaml)
 - [Атрибути якості та аналіз компромісів](./api/quality-attributes.md)
-- [Інтерактивна документація Swagger UI](./index.html)
+- [Інтерактивна документація Swagger UI](./api/index.html)
 
 ### 4. [Якість коду та аналіз (Code Quality)](./code-quality/README.md) — Лабораторна робота 5
 - [Звіт про перехресне рецензування (Code Review Report)](./code-quality/review-report.md)
