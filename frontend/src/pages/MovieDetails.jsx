@@ -180,7 +180,8 @@ export default function MovieDetails({
     }
 
     try {
-      await apiClient.delete(`/reviews/${reviewId}`);
+      // Constant URL: the id travels as a query parameter (no user data in the request path)
+      await apiClient.delete('/reviews', { params: { review_id: reviewId } });
       setReviews(prev => prev.filter(r => (r.review_id || r.id) !== reviewId));
     } catch (err) {
       const errMsg = err.response?.data?.error?.message 
@@ -383,7 +384,7 @@ export default function MovieDetails({
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-sm text-gray-900 dark:text-white">{rev.author || (isUkr ? 'Глядач' : 'Viewer')}</h4>
+                        <h4 className="font-bold text-sm text-gray-900 dark:text-white">{rev.author_nickname || rev.author || (isUkr ? 'Глядач' : 'Viewer')}</h4>
                         <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300 font-bold text-xs rounded">
                           ★ {rev.rating}/10
                         </span>

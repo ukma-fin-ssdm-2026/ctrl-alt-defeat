@@ -131,7 +131,7 @@ describe('MovieDetails Review Deletion (FR-008, US-006)', () => {
     await userEvent.click(deleteBtn);
 
     expect(confirmSpy).toHaveBeenCalled();
-    expect(apiClient.delete).toHaveBeenCalledWith(`/reviews/${mockReview.review_id}`);
+    expect(apiClient.delete).toHaveBeenCalledWith('/reviews', { params: { review_id: mockReview.review_id } });
 
     await waitFor(() => {
       expect(screen.queryByText('Неймовірний візуальний шедевр!')).not.toBeInTheDocument();
@@ -261,6 +261,17 @@ describe('MovieDetails review form (FR-003, FR-004)', () => {
 
     expect(await screen.findByText('★ 7/10', { selector: 'b' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Поставити оцінку' })).not.toBeInTheDocument();
+  });
+
+  it('shows the nickname of each review author', async () => {
+    // Trace: T-038
+    apiClient.get.mockResolvedValue({
+      data: { items: [{ review_id: 'r9', user_id: 'other', author_nickname: 'olena', content_id: mockMovie.content_id, rating: 8, review_text: 'Дуже атмосферно і красиво' }] },
+    });
+    renderDetails();
+
+    expect(await screen.findByText('olena')).toBeInTheDocument();
+    expect(screen.queryByText('Глядач')).not.toBeInTheDocument();
   });
 
   it('does not offer rating for titles outside the catalog', () => {

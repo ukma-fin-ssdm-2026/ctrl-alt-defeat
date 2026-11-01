@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { mockMovies } from '../data/mockData';
+import { getDisplayName } from '../utils/displayName';
 
 export default function Header({ 
   toggleTheme, 
@@ -161,10 +162,15 @@ export default function Header({
             <div className="flex items-center gap-2">
               <button 
                 onClick={onGoProfile} 
-                className="font-semibold text-gray-800 dark:text-gray-200 hover:text-yellow-500 transition text-sm hidden sm:block"
+                className="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 hover:text-yellow-500 transition text-sm"
                 title={isUkr ? 'Мій профіль' : 'My profile'}
+                aria-label={isUkr ? 'Мій профіль' : 'My profile'}
               >
-                {user.username}
+                {/* Avatar stays visible on narrow screens, the name appears from the sm breakpoint */}
+                <span className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-500 to-amber-300 flex items-center justify-center text-gray-900 font-black text-sm">
+                  {getDisplayName(user)[0]?.toUpperCase() || '👤'}
+                </span>
+                <span className="hidden sm:inline">{getDisplayName(user)}</span>
               </button>
               <button 
                 onClick={onLogout}

@@ -495,6 +495,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - reviews
+      summary: Delete a review by query parameter (FR-008, US-006)
+      description: Same as DELETE /reviews/{review_id}, with the id as a query parameter
+        (constant client URLs).
+      operationId: delete_review_by_query_api_v1_reviews_delete
+      parameters:
+      - name: review_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: ID of the review to delete
+          title: Review Id
+        description: ID of the review to delete
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 'Forbidden: BOLA violation (author or admin required)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/reviews/{review_id}:
     get:
       tags:
@@ -678,10 +744,11 @@ paths:
     get:
       tags:
       - Recommendations
-      summary: Get personal recommendations ("Recommended for you")
-      description: Movies and series the user has not reviewed yet, ranked by how
-        well their genres match the user's highly rated titles (FR-007). New users
-        get the best-rated titles.
+      summary: Get my personal recommendations ("Recommended for you")
+      description: Movies and series the authenticated user has not reviewed yet,
+        ranked by how well their genres match the user's highly rated titles (FR-007).
+        New users get the best-rated titles. The user is always taken from the access
+        token, so nobody can read another user's recommendations.
       operationId: get_recommendations_api_v1_recommendations_get
       parameters:
       - name: limit
@@ -695,19 +762,6 @@ paths:
           default: 10
           title: Limit
         description: Maximum number of recommendations
-      - name: user_id
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-            format: uuid4
-          - type: 'null'
-          description: Optional user ID override; defaults to authenticated user from
-            token/cookie (FR-001)
-          title: User Id
-        description: Optional user ID override; defaults to authenticated user from
-          token/cookie (FR-001)
       - name: authorization
         in: header
         required: false
@@ -751,6 +805,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Email is not verified or the account is banned
           content:
             application/json:
               schema:
@@ -1156,6 +1216,68 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - watched
+      summary: Remove content from watched list by query parameter (FR-006, US-004,
+        T-012)
+      description: Removes a movie or series from the current user's watched list.
+        The content id is passed as a query parameter so client request URLs stay
+        constant.
+      operationId: remove_from_watched_by_query_api_v1_users_me_watched_delete
+      parameters:
+      - name: content_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Content ID to remove
+          title: Content Id
+        description: Content ID to remove
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Content not in watched list
           content:
             application/json:
               schema:
@@ -1746,6 +1868,18 @@ components:
           format: uuid4
           title: User Id
           description: Identifier of the review author
+        author_nickname:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Author Nickname
+          description: Nickname of the review author
+        content_title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content Title
+          description: Title of the reviewed movie or series
         review_id:
           type: string
           format: uuid4

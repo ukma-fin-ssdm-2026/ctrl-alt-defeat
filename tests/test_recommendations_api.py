@@ -9,14 +9,17 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.api.db.database import Base
-from src.api.db.models import Content, Review
+from src.api.db.models import Content, Review, User
 from src.api.main import app
+from src.api.routers import auth as auth_router
 from src.api.routers.recommendations import get_db
+from src.api.services.auth import create_access_token, hash_password
 
 engine_test = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
 
 USER = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+OTHER_USER = "9b2f6a3e-1c4d-4e8f-a1b2-3c4d5e6f7a8b"
 URL = "/api/v1/recommendations"
 
 CATALOG = [
@@ -42,6 +45,18 @@ def db_session():
     db = TestingSessionLocal()
     db.query(Review).delete()
     db.query(Content).delete()
+    db.query(User).delete()
+    for user_id, nickname, status in ((USER, "viewer", "active"), (OTHER_USER, "other", "active")):
+        db.add(
+            User(
+                user_id=uuid.UUID(user_id),
+                email=f"{nickname}@example.com",
+                password_hash=hash_password("Password123!"),
+                nickname=nickname,
+                email_verified=True,
+                status=status,
+            )
+        )
     for item_id, title, genre, rating in CATALOG:
         db.add(
             Content(
@@ -69,14 +84,19 @@ def client(db_session):
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[auth_router.get_db] = override_get_db
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
 
 
-def add_review(db, content_num, rating):
+def auth(user_id=USER):
+    return {"Authorization": f"Bearer {create_access_token({'sub': user_id})}"}
+
+
+def add_review(db, content_num, rating, user_id=USER):
     db.add(
-        Review(review_id=uuid.uuid4(), user_id=uuid.UUID(USER), content_id=uuid.UUID(int=content_num), rating=rating)
+        Review(review_id=uuid.uuid4(), user_id=uuid.UUID(user_id), content_id=uuid.UUID(int=content_num), rating=rating)
     )
     db.commit()
 
@@ -85,7 +105,7 @@ def test_get_recommendations_personalized(client, db_session):
     # Trace: T-020
     add_review(db_session, 1, 10)
 
-    response = client.get(URL, params={"user_id": USER})
+    response = client.get(URL, headers=auth())
 
     assert response.status_code == 200
     body = response.json()
@@ -100,14 +120,14 @@ def test_recommendations_block_has_at_least_five_items(client, db_session):
     # Trace: T-020
     add_review(db_session, 1, 9)
 
-    items = client.get(URL, params={"user_id": USER}).json()["items"]
+    items = client.get(URL, headers=auth()).json()["items"]
 
     assert len(items) >= 5
 
 
 def test_recommendation_items_have_full_content_fields(client, db_session):
     # Trace: T-020
-    item = client.get(URL, params={"user_id": USER, "limit": 1}).json()["items"][0]
+    item = client.get(URL, params={"limit": 1}, headers=auth()).json()["items"][0]
 
     for field in ("id", "content_id", "title", "genre", "year", "rating", "img"):
         assert field in item
@@ -115,7 +135,7 @@ def test_recommendation_items_have_full_content_fields(client, db_session):
 
 def test_new_user_gets_best_rated_titles(client):
     # Trace: T-020
-    body = client.get(URL, params={"user_id": USER, "limit": 3}).json()
+    body = client.get(URL, params={"limit": 3}, headers=auth()).json()
 
     assert body["personalized"] is False
     assert body["favorite_genres"] == []
@@ -127,13 +147,41 @@ def test_recommendations_require_authentication(client):
     response = client.get(URL)
 
     assert response.status_code == 401
-    assert response.json()["error"]["code"] == "AUTH_REQUIRED"
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"
 
 
-@pytest.mark.parametrize("params", [{"limit": 0}, {"limit": 51}, {"user_id": "not-a-uuid"}])
+def test_user_id_in_query_cannot_expose_someone_elses_recommendations(client, db_session):
+    # Trace: T-021
+    add_review(db_session, 1, 10, user_id=OTHER_USER)  # the other user loves sci-fi
+
+    as_guest = client.get(URL, params={"user_id": OTHER_USER})
+    as_viewer = client.get(URL, params={"user_id": OTHER_USER}, headers=auth()).json()
+
+    assert as_guest.status_code == 401
+    # The viewer gets their own (cold start) picks, not the other user's personalized list
+    assert as_viewer["personalized"] is False
+    assert as_viewer["favorite_genres"] == []
+
+
+@pytest.mark.parametrize(
+    "status, verified, code", [("banned", True, "ACCOUNT_BANNED"), ("pending", False, "EMAIL_NOT_VERIFIED")]
+)
+def test_banned_or_unverified_user_gets_403(client, db_session, status, verified, code):
+    # Trace: T-021
+    user = db_session.query(User).filter(User.user_id == uuid.UUID(USER)).one()
+    user.status, user.email_verified = status, verified
+    db_session.commit()
+
+    response = client.get(URL, headers=auth())
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == code
+
+
+@pytest.mark.parametrize("params", [{"limit": 0}, {"limit": 51}])
 def test_recommendations_invalid_params_return_422(client, params):
     # Trace: T-020
-    response = client.get(URL, params={"user_id": USER, **params})
+    response = client.get(URL, params=params, headers=auth())
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
