@@ -55,8 +55,8 @@ export default function MovieDetails({
 
   const isUkr = language === 'UKR';
 
-  const primaryTitle = isUkr ? movie.title : (movie.titleEn || movie.title);
-  const secondaryTitle = isUkr ? (movie.titleEn || 'Original Title') : movie.title;
+  const primaryTitle = isUkr ? movie.title : (movie.title_en || movie.titleEn || movie.title);
+  const secondaryTitle = isUkr ? (movie.title_en || movie.titleEn || 'Original Title') : movie.title;
 
   const genreTranslations = {
     'Бойовик': 'Action',
@@ -77,9 +77,10 @@ export default function MovieDetails({
 
   useEffect(() => {
     setLoadingReviews(true);
-    apiClient.get('/reviews', {
-      params: { content_id: movie.id || movie.content_id }
-    })
+    const contentUuid = movie.content_id;
+    const params = contentUuid ? { content_id: contentUuid } : {};
+
+    apiClient.get('/reviews', { params })
       .then(response => {
         const reviewList = response.data.items ? response.data.items : response.data;
         setReviews(reviewList.length > 0 ? reviewList : (movie.reviews || []));
@@ -96,9 +97,11 @@ export default function MovieDetails({
     e.preventDefault();
     if (!reviewText.trim()) return;
 
+    const contentUuid = movie.content_id || "11111111-1111-1111-1111-111111111111";
+
     apiClient.post('/reviews', {
       user_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6", 
-      content_id: movie.id || movie.content_id,
+      content_id: contentUuid,
       rating: Number(rating),
       review_text: reviewText,
       contains_spoilers: isSpoiler
@@ -159,7 +162,7 @@ export default function MovieDetails({
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
               {isUkr 
                 ? (movie.description || 'Опис цього фільму поки що відсутній.') 
-                : (movie.descriptionEn || movie.description || 'No description available.')}
+                : (movie.description_en || movie.descriptionEn || movie.description || 'No description available.')}
             </p>
 
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm mb-6">
@@ -172,7 +175,7 @@ export default function MovieDetails({
                 <dd className="text-gray-900 dark:text-gray-200 font-medium">{getGenreLabel(movie.genre)}</dd>
               </div>
               <div><dt className="text-gray-500 dark:text-gray-400 font-semibold">IMDb:</dt><dd className="text-yellow-600 font-bold">★ {movie.rating} / 10</dd></div>
-              <div><dt className="text-gray-500 dark:text-gray-400 font-semibold">Rotten Eggs:</dt><dd className="text-green-600 font-bold">🥚 {movie.rottenRating || '88%'}</dd></div>
+              <div><dt className="text-gray-500 dark:text-gray-400 font-semibold">Rotten Eggs:</dt><dd className="text-green-600 font-bold">🥚 {movie.rotten_rating || movie.rottenRating || '88%'}</dd></div>
             </dl>
           </div>
         </div>

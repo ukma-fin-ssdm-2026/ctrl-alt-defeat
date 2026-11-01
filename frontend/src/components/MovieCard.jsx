@@ -1,14 +1,15 @@
 export default function MovieCard({ movie, onSelect, language = 'UKR', isWatchlisted, onToggleWatchlist }) {
   const isUkr = language === 'UKR';
   
-  const primaryTitle = isUkr ? movie.title : (movie.titleEn || movie.title);
-  const secondaryTitle = isUkr ? (movie.titleEn || '') : movie.title;
+  const primaryTitle = isUkr ? movie.title : (movie.title_en || movie.titleEn || movie.title);
+  const secondaryTitle = isUkr ? (movie.title_en || movie.titleEn || '') : movie.title;
 
   const getCategoryLabel = (cat) => {
     if (!cat) return '';
-    if (cat === 'Фільми') return isUkr ? 'Фільми' : 'Movies';
-    if (cat === 'Серіали') return isUkr ? 'Серіали' : 'TV Shows';
-    if (cat === 'Мультфільми') return isUkr ? 'Мультфільми' : 'Cartoons';
+    const c = cat.toLowerCase();
+    if (c === 'фільми' || c === 'movie' || c === 'movies') return isUkr ? 'Фільми' : 'Movies';
+    if (c === 'серіали' || c === 'series' || c === 'tv shows') return isUkr ? 'Серіали' : 'TV Shows';
+    if (c === 'мультфільми' || c === 'cartoons') return isUkr ? 'Мультфільми' : 'Cartoons';
     return cat;
   };
 

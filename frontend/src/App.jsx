@@ -5,6 +5,7 @@ import MovieDetails from './pages/MovieDetails';
 import AuthModal from './components/AuthModal';
 import UserProfile from './pages/UserProfile';
 import { mockMovies } from './data/mockData';
+import apiClient from './api/client';
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -16,12 +17,26 @@ export default function App() {
   const [language, setLanguage] = useState('UKR'); 
   
   const [watchlist, setWatchlist] = useState([]);
+  const [catalogMovies, setCatalogMovies] = useState(mockMovies);
 
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null); // Додали стан для року
+
+  useEffect(() => {
+    apiClient.get('/movies', { params: { limit: 100 } })
+      .then(response => {
+        const items = response.data.items || response.data;
+        if (items && items.length > 0) {
+          setCatalogMovies(items);
+        }
+      })
+      .catch(err => {
+        console.warn("Бекенд каталогу недоступний у App.jsx, залишаємо mockData:", err);
+      });
+  }, []);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -84,7 +99,7 @@ export default function App() {
         
         language={language}
         onToggleLanguage={() => setLanguage(l => l === 'UKR' ? 'EN' : 'UKR')}
-        movies={mockMovies}
+        movies={catalogMovies}
         onSelectMovie={(movie) => { setShowProfile(false); setSelectedMovie(movie); }}
         
         onSelectCategory={(category) => {
@@ -104,7 +119,7 @@ export default function App() {
           <UserProfile 
             user={user}
             language={language}
-            watchlistMovies={mockMovies?.filter(m => watchlist.includes(m.id)) || []}
+            watchlistMovies={catalogMovies.filter(m => watchlist.includes(m.id || m.content_id))}
             onSelectMovie={(movie) => { setShowProfile(false); setSelectedMovie(movie); }}
             onToggleWatchlist={toggleWatchlist}
             onDeleteProfile={() => {

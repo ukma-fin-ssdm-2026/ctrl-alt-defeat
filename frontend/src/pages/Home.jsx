@@ -42,7 +42,16 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
 
   useEffect(() => {
     const params = {};
-    if (selectedCategory) params.category = selectedCategory;
+    if (selectedCategory) {
+      const catLower = selectedCategory.toLowerCase();
+      if (catLower === 'фільми' || catLower === 'movie' || catLower === 'movies') {
+        params.category = 'Movie';
+      } else if (catLower === 'серіали' || catLower === 'series' || catLower === 'tv shows') {
+        params.category = 'Series';
+      } else {
+        params.category = selectedCategory;
+      }
+    }
     if (filterGenre) params.genre = filterGenre;
     if (filterYear) params.year = filterYear;
 
@@ -65,8 +74,16 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
   }, [selectedCategory, filterGenre, filterYear]);
 
   const displayedMovies = movies.filter(movie => {
-    if (selectedCategory && movie.category?.toLowerCase() !== selectedCategory.toLowerCase()) {
-      return false;
+    if (selectedCategory) {
+      const cat = (movie.category || '').toLowerCase();
+      const sel = selectedCategory.toLowerCase();
+      const isMovie = (sel === 'фільми' || sel === 'movie' || sel === 'movies') && 
+                      (cat === 'фільми' || cat === 'movie' || cat === 'movies');
+      const isSeries = (sel === 'серіали' || sel === 'series' || sel === 'tv shows') && 
+                       (cat === 'серіали' || cat === 'series' || cat === 'tv shows');
+      if (!isMovie && !isSeries && cat !== sel) {
+        return false;
+      }
     }
     
     if (filterGenre) {
