@@ -441,15 +441,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/reviews/{review_id}/comments:
+  /api/v1/comments:
     get:
       tags:
       - comments
       summary: Get comments under a review (threaded)
-      operationId: get_comments_api_v1_reviews__review_id__comments_get
+      operationId: get_comments_api_v1_comments_get
       parameters:
       - name: review_id
-        in: path
+        in: query
         required: true
         schema:
           type: string
@@ -486,17 +486,7 @@ paths:
       tags:
       - comments
       summary: Comment on a review or reply to a comment
-      operationId: create_comment_api_v1_reviews__review_id__comments_post
-      parameters:
-      - name: review_id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-          description: ID of the review
-          title: Review Id
-        description: ID of the review
+      operationId: create_comment_api_v1_comments_post
       requestBody:
         required: true
         content:
@@ -538,6 +528,11 @@ components:
   schemas:
     CommentCreate:
       properties:
+        review_id:
+          type: string
+          format: uuid4
+          title: Review Id
+          description: Review to comment on
         user_id:
           anyOf:
           - type: string
@@ -565,11 +560,13 @@ components:
           description: Comment to reply to; omit for a top-level comment
       type: object
       required:
+      - review_id
       - author_name
       - text
       title: CommentCreate
       example:
         author_name: admin
+        review_id: 550e8400-e29b-41d4-a716-446655440000
         text: Totally agree about the soundtrack!
         user_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
     CommentResponse:

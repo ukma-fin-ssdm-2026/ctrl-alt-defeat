@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,8 @@ from src.api.utils import check_comment_policy_violations
 # Depth of the deepest allowed reply: 0 = top-level comment, so 5 levels in total
 MAX_COMMENT_DEPTH = 4
 
-router = APIRouter(prefix="/api/v1/reviews", tags=["comments"])
+# Review id travels as a query parameter / body field, so client request URLs stay constant
+router = APIRouter(prefix="/api/v1/comments", tags=["comments"])
 
 
 def get_db():
@@ -33,13 +34,13 @@ def _get_review_or_404(db: Session, review_id) -> models.Review:
 
 
 @router.get(
-    "/{review_id}/comments",
+    "",
     response_model=CommentThreadResponse,
     summary="Get comments under a review (threaded)",
     responses=STANDARD_ERRORS,
 )
 def get_comments(
-    review_id: UUID4 = Path(..., description="ID of the review"),
+    review_id: UUID4 = Query(..., description="ID of the review"),
     db: Session = Depends(get_db),
 ):
     _get_review_or_404(db, review_id)
@@ -64,7 +65,7 @@ def get_comments(
 
 
 @router.post(
-    "/{review_id}/comments",
+    "",
     response_model=CommentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Comment on a review or reply to a comment",
@@ -75,9 +76,9 @@ def get_comments(
 )
 def create_comment(
     comment: CommentCreate,
-    review_id: UUID4 = Path(..., description="ID of the review"),
     db: Session = Depends(get_db),
 ):
+    review_id = comment.review_id
     # TODO(FR-001): take the user from the access token
     if comment.user_id is None:
         raise HTTPException(

@@ -9,6 +9,7 @@ EMPTY_COMMENT_MESSAGE = "Comment text cannot be empty"
 
 
 class CommentCreate(BaseModel):
+    review_id: UUID4 = Field(..., description="Review to comment on")
     # TODO(FR-001): user and nickname will come from the access token instead of the request body
     user_id: Optional[UUID4] = Field(None, description="Temporary until authentication: author of the comment")
     author_name: str = Field(
@@ -28,6 +29,7 @@ class CommentCreate(BaseModel):
     model_config = {
         "json_schema_extra": {
             "example": {
+                "review_id": "550e8400-e29b-41d4-a716-446655440000",
                 "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                 "author_name": "admin",
                 "text": "Totally agree about the soundtrack!",

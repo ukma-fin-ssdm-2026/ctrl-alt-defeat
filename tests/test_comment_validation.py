@@ -9,10 +9,11 @@ from src.api.schemas.comment import EMPTY_COMMENT_MESSAGE, MAX_COMMENT_LENGTH, C
 from src.api.utils import check_comment_policy_violations
 
 USER = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+REVIEW = "11111111-1111-4111-8111-111111111111"
 
 
 def make(**overrides):
-    data = {"user_id": USER, "author_name": "admin", "text": "Great point about the ending"}
+    data = {"review_id": REVIEW, "user_id": USER, "author_name": "admin", "text": "Great point about the ending"}
     data.update(overrides)
     return CommentCreate(**data)
 

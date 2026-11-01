@@ -23,8 +23,11 @@ REVIEW_ID = uuid.UUID("11111111-1111-4111-8111-111111111111")
 OTHER_REVIEW_ID = uuid.UUID("22222222-2222-4222-8222-222222222222")
 
 
-def url(review_id=REVIEW_ID):
-    return f"/api/v1/reviews/{review_id}/comments"
+URL = "/api/v1/comments"
+
+
+def get_thread(client, review_id=REVIEW_ID):
+    return client.get(URL, params={"review_id": str(review_id)})
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -70,10 +73,10 @@ def client(db_session):
 
 
 def post(client, text="I totally agree with you", parent_id=None, review_id=REVIEW_ID, **extra):
-    payload = {"user_id": USER, "author_name": "admin", "text": text, **extra}
+    payload = {"review_id": str(review_id), "user_id": USER, "author_name": "admin", "text": text, **extra}
     if parent_id:
         payload["parent_id"] = parent_id
-    return client.post(url(review_id), json=payload)
+    return client.post(URL, json=payload)
 
 
 def test_create_comment_shows_author_and_time(client):
@@ -93,7 +96,7 @@ def test_created_comment_appears_under_the_review(client):
     # Trace: T-029
     post(client, text="First comment here")
 
-    body = client.get(url()).json()
+    body = get_thread(client).json()
 
     assert body["total"] == 1
     assert [item["text"] for item in body["items"]] == ["First comment here"]
@@ -106,7 +109,7 @@ def test_replies_form_a_multi_level_thread(client):
     post(client, text="Reply level 2", parent_id=reply["comment_id"])
     post(client, text="Second root")
 
-    body = client.get(url()).json()
+    body = get_thread(client).json()
 
     assert body["total"] == 4
     assert [item["text"] for item in body["items"]] == ["Root comment", "Second root"]
@@ -162,7 +165,7 @@ def test_empty_comment_is_rejected(client, db_session, text):
 
 def test_comment_without_authentication_is_rejected(client, db_session):
     # Trace: T-031
-    response = client.post(url(), json={"author_name": "guest", "text": "Anonymous comment"})
+    response = client.post(URL, json={"review_id": str(REVIEW_ID), "author_name": "guest", "text": "Anonymous comment"})
 
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "AUTH_REQUIRED"
@@ -187,13 +190,13 @@ def test_comments_for_missing_review_return_404(client):
     # Trace: T-029
     missing = uuid.uuid4()
 
-    assert client.get(url(missing)).status_code == 404
+    assert get_thread(client, missing).status_code == 404
     assert post(client, review_id=missing).status_code == 404
 
 
 def test_review_without_comments_returns_empty_thread(client):
     # Trace: T-029
-    assert client.get(url()).json() == {"items": [], "total": 0}
+    assert get_thread(client).json() == {"items": [], "total": 0}
 
 
 def test_deleting_review_removes_its_comments(client, db_session):
@@ -206,6 +209,17 @@ def test_deleting_review_removes_its_comments(client, db_session):
 
     assert db_session.query(Comment).count() == 1
     assert db_session.query(Comment).one().text == "Other thread stays"
+
+
+@pytest.mark.parametrize("review_id", [None, "../../admin", "not-a-uuid"])
+def test_comments_require_a_valid_review_id(client, review_id):
+    # Trace: T-029
+    params = {} if review_id is None else {"review_id": review_id}
+    assert client.get(URL, params=params).status_code == 422
+    body = {"user_id": USER, "author_name": "admin", "text": "Some text"}
+    if review_id is not None:
+        body["review_id"] = review_id
+    assert client.post(URL, json=body).status_code == 422
 
 
 def test_comments_get_db_generator():
