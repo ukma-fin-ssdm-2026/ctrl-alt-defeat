@@ -4,7 +4,7 @@
 
 - **Базова адреса:** `http://localhost:8000/api/v1`
 - **Стиль API:** REST
-- **Автентифікація:** JWT Bearer-токени (заплановано)
+- **Автентифікація:** JWT Bearer-токени (Header `Authorization: Bearer <token>` та HttpOnly Cookie `access_token`)
 - **Формат відповіді:** JSON
 - **Стратегія версіонування:** версія в шляху URL (`/v1`, `/v2`)
 
@@ -56,7 +56,36 @@
 Використовуються схеми `ReviewCreate`, `ReviewUpdate`, `ReviewResponse`,
 `PaginatedReviewsResponse`, а також `ContentResponse` та `PaginatedContentResponse`.
 
+### User (Користувачі та безпека)
+
+`User` представляє обліковий запис зареєстрованого користувача платформи (FR-001, US-011, SEC-001).
+
+| Поле | Тип | Опис |
+|------|-----|------|
+| `id` | UUID | Унікальний ідентифікатор користувача (`user_id`) |
+| `email` | string | Унікальна електронна пошта користувача |
+| `nickname` | string | Відображуване ім'я (нікнейм) |
+| `hashed_password` | string | Безпечний хеш пароля bcrypt (SEC-001) |
+| `role` | enum | Роль у системі: `user` або `admin` |
+| `is_verified` | boolean | Статус підтвердження електронної пошти |
+| `verification_token` | string (opt) | Одноразовий токен верифікації email |
+| `is_active` | boolean | Прапорець активності облікового запису |
+| `created_at` | date-time | Дата та час реєстрації |
+| `updated_at` | date-time | Дата та час оновлення профілю |
+
+Схеми запитів/відповідей: `UserRegisterRequest`, `UserLoginRequest`, `UserResponse`, `TokenResponse`, `MessageResponse`.
+
 ### Операції API
+
+#### Автентифікація та авторизація (Authentication & Authorization)
+
+| Метод | Endpoint | Опис | Успішна відповідь |
+|-------|----------|------|-------------------|
+| `POST` | `/api/v1/auth/register` | Реєстрація нового акаунту та генерація токена верифікації (FR-001, US-011) | `201 Created` |
+| `GET` | `/api/v1/auth/verify` | Підтвердження адреси пошти за одноразовим токеном | `200 OK` |
+| `POST` | `/api/v1/auth/login` | Вхід за email/паролем, повернення JWT Bearer токена та виставлення HttpOnly cookie (T-037) | `200 OK` |
+| `GET` | `/api/v1/auth/me` | Отримання профілю поточного авторизованого користувача (`get_current_active_user`) | `200 OK` |
+| `POST` | `/api/v1/auth/logout` | Вихід користувача та очищення сесійного токена | `200 OK` |
 
 #### Рецензії (Reviews)
 
