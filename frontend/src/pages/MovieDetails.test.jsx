@@ -263,6 +263,17 @@ describe('MovieDetails review form (FR-003, FR-004)', () => {
     expect(screen.queryByRole('button', { name: 'Поставити оцінку' })).not.toBeInTheDocument();
   });
 
+  it('shows the nickname of each review author', async () => {
+    // Trace: T-038
+    apiClient.get.mockResolvedValue({
+      data: { items: [{ review_id: 'r9', user_id: 'other', author_nickname: 'olena', content_id: mockMovie.content_id, rating: 8, review_text: 'Дуже атмосферно і красиво' }] },
+    });
+    renderDetails();
+
+    expect(await screen.findByText('olena')).toBeInTheDocument();
+    expect(screen.queryByText('Глядач')).not.toBeInTheDocument();
+  });
+
   it('does not offer rating for titles outside the catalog', () => {
     // Trace: T-035
     renderDetails({ movie: { ...mockMovie, content_id: undefined } });
