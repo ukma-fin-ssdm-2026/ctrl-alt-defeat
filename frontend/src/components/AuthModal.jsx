@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import apiClient from '../api/client';
 
-export default function AuthModal({ close, onLogin, language = 'UKR' }) {
+export default function AuthModal({ close, onLogin, language = 'UKR', notice = '' }) {
   const [isLogin, setIsLogin] = useState(true);
   
   const [email, setEmail] = useState('admin@gmail.com');
@@ -95,6 +95,12 @@ export default function AuthModal({ close, onLogin, language = 'UKR' }) {
             ? (isUkr ? 'Вхід' : 'Login') 
             : (isUkr ? 'Реєстрація' : 'Register')}
         </h2>
+
+        {notice && (
+          <p role="status" className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700/50 text-blue-800 dark:text-blue-300 text-sm p-3 rounded-lg mb-4 text-center font-semibold">
+            {notice}
+          </p>
+        )}
 
         {isLogin && (
           <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-400 text-xs p-3 rounded-lg mb-6 text-center">

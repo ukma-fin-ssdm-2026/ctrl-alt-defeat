@@ -8,6 +8,7 @@ import UserProfile from './pages/UserProfile';
 import { mockMovies } from './data/mockData';
 import apiClient from './api/client';
 import { getStoredUser, setStoredAuth, clearStoredAuth } from './auth/currentUser';
+import useWatchlist from './hooks/useWatchlist';
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -17,9 +18,31 @@ export default function App() {
   const isLoggedIn = !!user;
 
   const [language, setLanguage] = useState('UKR'); 
-  
-  const [watchlist, setWatchlist] = useState([]);
+  const isUkr = language === 'UKR';
+
   const [catalogMovies, setCatalogMovies] = useState(mockMovies);
+
+  // Message shown in the login window when a guest uses a members-only feature
+  const [authNotice, setAuthNotice] = useState('');
+  const closeAuth = () => { setIsAuthOpen(false); setAuthNotice(''); };
+
+  // Watchlist stored on the backend (FR-005)
+  const {
+    watchlistIds: watchlist,
+    watchlistMovies,
+    toggleWatchlist,
+    error: watchlistError,
+    clearError: clearWatchlistError,
+  } = useWatchlist({
+    user,
+    catalog: catalogMovies,
+    onAuthRequired: () => {
+      setAuthNotice(isUkr
+        ? 'Будь ласка, авторизуйтесь для використання цієї функції'
+        : 'Please log in to use this feature');
+      setIsAuthOpen(true);
+    },
+  });
 
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -74,23 +97,13 @@ export default function App() {
     if (year) setSelectedYear(Number(year));
   };
 
-  const toggleWatchlist = (movieId) => {
-    if (!isLoggedIn) {
-      setIsAuthOpen(true);
-      return;
-    }
-    setWatchlist(prev => 
-      prev.includes(movieId) ? prev.filter(id => id !== movieId) : [...prev, movieId]
-    );
-  };
-
   const handleLogin = async (email, password) => {
     try {
       const response = await apiClient.post('/auth/login', { email, password });
       const { access_token, user: userData } = response.data;
       setStoredAuth(access_token, userData);
       setUser(userData);
-      setIsAuthOpen(false);
+      closeAuth();
       return { success: true };
     } catch (err) {
       const errCode = err.response?.data?.error?.code || err.response?.data?.detail?.code;
@@ -107,7 +120,6 @@ export default function App() {
     }
     clearStoredAuth();
     setUser(null);
-    setWatchlist([]);
     handleGoHome();
   };
 
@@ -144,11 +156,11 @@ export default function App() {
           <UserProfile 
             user={user}
             language={language}
-            watchlistMovies={catalogMovies.filter(m => watchlist.includes(m.id || m.content_id))}
+            watchlistMovies={watchlistMovies}
             onSelectMovie={(movie) => { setShowProfile(false); setSelectedMovie(movie); }}
             onToggleWatchlist={toggleWatchlist}
             onDeleteProfile={() => {
-               setUser(null); setWatchlist([]); handleGoHome(); 
+               setUser(null); handleGoHome(); 
                alert(language === 'UKR' ? 'Профіль видалено' : 'Profile deleted');
             }}
           />
@@ -161,7 +173,7 @@ export default function App() {
             onBack={() => setSelectedMovie(null)}
             language={language}
             isWatchlisted={watchlist.includes(selectedMovie.id)}
-            onToggleWatchlist={() => toggleWatchlist(selectedMovie.id)}
+            onToggleWatchlist={() => toggleWatchlist(selectedMovie)}
           />
         ) : (
           <>
@@ -194,10 +206,23 @@ export default function App() {
         © 2026 Rotten Eggs. Усі права захищено.
       </footer>
 
+      {watchlistError && (
+        <div role="alert" className="fixed bottom-4 right-4 z-40 max-w-sm bg-red-50 dark:bg-red-900/80 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-100 text-sm px-4 py-3 rounded-xl shadow-lg flex items-start gap-3">
+          <span>
+            {watchlistError === 'UNAVAILABLE'
+              ? (isUkr ? 'Цей фільм поки не можна додати до списку: каталог недоступний.' : 'This title cannot be added right now: the catalog is unavailable.')
+              : (isUkr ? 'Не вдалося оновити список перегляду. Спробуйте ще раз.' : 'Failed to update the watchlist. Please try again.')}
+          </span>
+          <button onClick={clearWatchlistError} aria-label={isUkr ? 'Закрити' : 'Close'} className="font-bold">✕</button>
+        </div>
+      )}
+
       {isAuthOpen && (
         <AuthModal 
-          close={() => setIsAuthOpen(false)} 
+          close={closeAuth} 
           onLogin={handleLogin} 
+          language={language}
+          notice={authNotice}
         />
       )}
     </div>
