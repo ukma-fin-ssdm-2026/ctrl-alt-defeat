@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
@@ -147,26 +147,11 @@ def check_is_watched(
     )
 
 
-@router.delete(
-    "/{content_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Remove content from watched list (FR-006, US-004, T-012)",
-    description="Removes a movie or series from the current user's watched list.",
-    responses={
-        **STANDARD_ERRORS,
-        401: {"model": ErrorResponse, "description": "Authentication required"},
-        404: {"model": ErrorResponse, "description": "Content not in watched list"},
-    },
-)
-def remove_from_watched(
-    content_id: UUID4 = Path(..., description="Content ID to remove"),
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
-):
+def _remove_watched(db: Session, user: models.User, content_id) -> Response:
     watched = (
         db.query(models.WatchedItem)
         .filter(
-            models.WatchedItem.user_id == current_user.user_id,
+            models.WatchedItem.user_id == user.user_id,
             models.WatchedItem.content_id == content_id,
         )
         .first()
@@ -181,3 +166,43 @@ def remove_from_watched(
     db.delete(watched)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+REMOVE_RESPONSES = {
+    **STANDARD_ERRORS,
+    401: {"model": ErrorResponse, "description": "Authentication required"},
+    404: {"model": ErrorResponse, "description": "Content not in watched list"},
+}
+
+
+@router.delete(
+    "",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove content from watched list by query parameter (FR-006, US-004, T-012)",
+    description=(
+        "Removes a movie or series from the current user's watched list. "
+        "The content id is passed as a query parameter so client request URLs stay constant."
+    ),
+    responses=REMOVE_RESPONSES,
+)
+def remove_from_watched_by_query(
+    content_id: UUID4 = Query(..., description="Content ID to remove"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    return _remove_watched(db, current_user, content_id)
+
+
+@router.delete(
+    "/{content_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove content from watched list (FR-006, US-004, T-012)",
+    description="Removes a movie or series from the current user's watched list.",
+    responses=REMOVE_RESPONSES,
+)
+def remove_from_watched(
+    content_id: UUID4 = Path(..., description="Content ID to remove"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    return _remove_watched(db, current_user, content_id)

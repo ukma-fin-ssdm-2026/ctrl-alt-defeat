@@ -307,3 +307,35 @@ def test_unverified_email_user_cannot_access_watched(client: TestClient, db_sess
     response = client.get(WATCHED_URL, headers=headers)
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
+
+
+def test_remove_movie_from_watched_by_query_param(client: TestClient, db_session, test_user_and_token):
+    """
+    Same as T-012, with the content id in the query string (constant client URL).
+    """
+    # Trace: T-012
+    _, token = test_user_and_token
+    content_id = uuid.uuid4()
+    headers = {"Authorization": f"Bearer {token}"}
+    client.post(WATCHED_URL, json={"content_id": str(content_id)}, headers=headers)
+
+    response = client.delete(WATCHED_URL, params={"content_id": str(content_id)}, headers=headers)
+
+    assert response.status_code == 204
+    status_res = client.get(f"{WATCHED_URL}/{content_id}", headers=headers)
+    assert status_res.json()["is_watched"] is False
+
+
+def test_remove_by_query_param_validates_input(client: TestClient, test_user_and_token):
+    # Trace: T-012
+    _, token = test_user_and_token
+    headers = {"Authorization": f"Bearer {token}"}
+
+    assert client.delete(WATCHED_URL, params={"content_id": "../../admin"}, headers=headers).status_code == 422
+    assert client.delete(WATCHED_URL, headers=headers).status_code == 422
+    assert client.delete(WATCHED_URL, params={"content_id": str(uuid.uuid4())}, headers=headers).status_code == 404
+
+
+def test_remove_by_query_param_requires_login(client: TestClient):
+    # Trace: T-012
+    assert client.delete(WATCHED_URL, params={"content_id": str(uuid.uuid4())}).status_code == 401
