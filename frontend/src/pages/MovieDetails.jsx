@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { CURRENT_USER_ID } from '../auth/currentUser';
+import ReviewComments from '../components/ReviewComments';
+import { isUuid } from '../utils/uuid';
 const MIN_TEXT = 10;
 const MAX_TEXT = 5000;
 
@@ -47,6 +49,7 @@ function ReviewContent({ text, isSpoiler, language = 'UKR' }) {
 export default function MovieDetails({ 
   movie, 
   isLoggedIn, 
+  user,
   openAuth, 
   onBack, 
   language = 'UKR', 
@@ -331,6 +334,16 @@ export default function MovieDetails({
                         👍 {isUkr ? 'Підтримую' : 'Support'} ({rev.likes || 0}) {!isLoggedIn && <span className="text-[10px] text-gray-400">({isUkr ? 'потрібен вхід' : 'login required'})</span>}
                       </button>
                     </div>
+                    {/* FR-011: comments only for reviews stored on the backend */}
+                    {isUuid(rev.review_id) && (
+                      <ReviewComments
+                        reviewId={rev.review_id}
+                        isLoggedIn={isLoggedIn}
+                        openAuth={openAuth}
+                        user={user}
+                        language={language}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

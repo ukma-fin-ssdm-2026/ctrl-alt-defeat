@@ -7,6 +7,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     Float,
+    ForeignKey,
     Integer,
     String,
     Text,
@@ -79,6 +80,34 @@ class Rating(Base):
     user_id = Column(Uuid(as_uuid=True), nullable=False)
     content_id = Column(Uuid(as_uuid=True), nullable=False)
     score = Column(Integer, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+
+class Comment(Base):
+    """Threaded comment under a review (FR-011). Replies reference their parent comment."""
+
+    __tablename__ = "comments"
+    __table_args__ = (
+        CheckConstraint("length(text) BETWEEN 1 AND 2000", name="ck_comments_text_length"),
+        {"extend_existing": True},
+    )
+
+    comment_id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    review_id = Column(
+        Uuid(as_uuid=True), ForeignKey("reviews.review_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    parent_id = Column(
+        Uuid(as_uuid=True), ForeignKey("comments.comment_id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    user_id = Column(Uuid(as_uuid=True), nullable=False)
+    # Display name snapshot. TODO(FR-001): take the nickname from the authenticated user.
+    author_name = Column(String(50), nullable=False)
+    text = Column(Text, nullable=False)
+    depth = Column(Integer, nullable=False, default=0)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
