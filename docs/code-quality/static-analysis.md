@@ -82,7 +82,7 @@ if __name__ == "__main__":
     import uvicorn
 
     host = os.getenv("API_HOST", "127.0.0.1")
-    uvicorn.run(app, host=host, port=3000)
+    uvicorn.run(app, host=host, port=8000)
 ```
 
 ### 2.5. Регресійне тестування
