@@ -163,6 +163,25 @@ export default function MovieDetails({
     setReviews(reviews.map(rev => (rev.review_id === id || rev.id === id) ? { ...rev, likes: (rev.likes || 0) + 1 } : rev));
   };
 
+  const handleDeleteReview = async (reviewId) => {
+    const isUkr = language === 'UKR';
+    const confirmMessage = isUkr
+      ? 'Ви впевнені, що хочете видалити цю рецензію? Цю дію неможливо скасувати.'
+      : 'Are you sure you want to delete this review? This action cannot be undone.';
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`/reviews/${reviewId}`);
+      setReviews(prev => prev.filter(r => (r.review_id || r.id) !== reviewId));
+    } catch (err) {
+      const errMsg = err.response?.data?.error?.message 
+        || (isUkr ? 'Не вдалося видалити рецензію' : 'Failed to delete review');
+      alert(errMsg);
+    }
+  };
+
   return (
     <div className="py-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -326,6 +345,9 @@ export default function MovieDetails({
         ) : (
           reviews.map((rev) => {
             const reviewId = rev.review_id || rev.id;
+            const isAuthor = user && (user.user_id === rev.user_id || user.id === rev.user_id);
+            const isAdmin = user && user.role === 'admin';
+            const canDelete = isAuthor || isAdmin;
             return (
               <div key={reviewId} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
                 <div className="flex items-start gap-3">
@@ -343,13 +365,31 @@ export default function MovieDetails({
                     
                     <ReviewContent text={rev.review_text} isSpoiler={rev.contains_spoilers} language={language} />
                     
-                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                    <div className="flex items-center justify-between gap-4 mt-3 text-xs text-gray-500">
                       <button 
                         onClick={() => handleLike(reviewId)} 
                         className="hover:text-green-500 flex items-center gap-1 font-semibold transition-colors"
                       >
                         👍 {isUkr ? 'Підтримую' : 'Support'} ({rev.likes || 0}) {!isLoggedIn && <span className="text-[10px] text-gray-400">({isUkr ? 'потрібен вхід' : 'login required'})</span>}
                       </button>
+
+                      {canDelete && (
+                        <button 
+                          onClick={() => handleDeleteReview(reviewId)} 
+                          className="hover:text-red-600 text-red-500 flex items-center gap-1 font-semibold transition-colors"
+                          title={isUkr 
+                            ? (isAdmin && !isAuthor ? 'Видалити як адміністратор' : 'Видалити власну рецензію') 
+                            : (isAdmin && !isAuthor ? 'Delete as admin' : 'Delete your review')}
+                          aria-label={isUkr ? 'Видалити рецензію' : 'Delete review'}
+                        >
+                          🗑️ {isUkr ? 'Видалити' : 'Delete'}
+                          {isAdmin && !isAuthor && (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded font-normal">
+                              {isUkr ? 'адмін' : 'admin'}
+                            </span>
+                          )}
+                        </button>
+                      )}
                     </div>
                     {/* FR-011: comments only for reviews stored on the backend */}
                     {isUuid(rev.review_id) && (
