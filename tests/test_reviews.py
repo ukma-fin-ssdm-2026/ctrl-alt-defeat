@@ -8,7 +8,8 @@ from sqlalchemy.exc import IntegrityError
 
 from src.api.main import app
 from src.api.routers.reviews import get_db
-from src.api.db.models import Review
+from src.api.routers.auth import get_current_active_user
+from src.api.db.models import Review, User
 from src.api.schemas.review import ReviewStatus
 
 
@@ -56,6 +57,42 @@ def mock_review(valid_payload):
         contains_spoilers=valid_payload["contains_spoilers"],
         status=ReviewStatus.published.value,
         created_at=datetime.now(UTC),
+    )
+
+
+@pytest.fixture
+def admin_user():
+    return User(
+        user_id=uuid.uuid4(),
+        email="admin@platform.local",
+        nickname="PlatformAdmin",
+        role="admin",
+        email_verified=True,
+        status="active",
+    )
+
+
+@pytest.fixture
+def author_user(mock_review):
+    return User(
+        user_id=mock_review.user_id,
+        email="author@platform.local",
+        nickname="ReviewAuthor",
+        role="user",
+        email_verified=True,
+        status="active",
+    )
+
+
+@pytest.fixture
+def stranger_user():
+    return User(
+        user_id=uuid.uuid4(),
+        email="stranger@platform.local",
+        nickname="OtherUser",
+        role="user",
+        email_verified=True,
+        status="active",
     )
 
 
@@ -179,8 +216,12 @@ def test_update_review_success(client, mock_db_session, mock_review):
     mock_db_session.commit.assert_called_once()
 
 
-def test_delete_review_success(client, mock_db_session, mock_review):
+def test_delete_review_success(client, mock_db_session, mock_review, admin_user):
     # Trace: T-017
+    """
+    US-006 / FR-008: Administrator successfully deletes a review.
+    """
+    app.dependency_overrides[get_current_active_user] = lambda: admin_user
     mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
 
     response = client.delete(f"/api/v1/reviews/{mock_review.review_id}")
@@ -189,13 +230,54 @@ def test_delete_review_success(client, mock_db_session, mock_review):
     mock_db_session.delete.assert_called_once_with(mock_review)
 
 
-def test_delete_review_not_found_edge_case(client, mock_db_session):
+def test_delete_review_by_author_success(client, mock_db_session, mock_review, author_user):
+    """
+    FR-008 / BOLA: Review author successfully deletes their own review.
+    """
+    app.dependency_overrides[get_current_active_user] = lambda: author_user
+    mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
+
+    response = client.delete(f"/api/v1/reviews/{mock_review.review_id}")
+
+    assert response.status_code == 204
+    mock_db_session.delete.assert_called_once_with(mock_review)
+
+
+def test_delete_review_forbidden_for_other_user(client, mock_db_session, mock_review, stranger_user):
+    # Trace: T-018
+    """
+    US-006 / FR-008 / SEC-001 (BOLA): A regular user cannot delete another user's review.
+    """
+    app.dependency_overrides[get_current_active_user] = lambda: stranger_user
+    mock_db_session.query.return_value.filter.return_value.first.return_value = mock_review
+
+    response = client.delete(f"/api/v1/reviews/{mock_review.review_id}")
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_delete_review_unauthenticated_fails(client, mock_review):
+    """
+    FR-008 / SEC-001: Unauthenticated request to delete review is rejected with 401.
+    """
+    response = client.delete(f"/api/v1/reviews/{mock_review.review_id}")
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_delete_review_not_found_edge_case(client, mock_db_session, admin_user):
     # Trace: T-019
+    """
+    US-006 / FR-008: Deleting a non-existent review returns 404.
+    """
+    app.dependency_overrides[get_current_active_user] = lambda: admin_user
     mock_db_session.query.return_value.filter.return_value.first.return_value = None
 
     response = client.delete(f"/api/v1/reviews/{uuid.uuid4()}")
 
     assert response.status_code == 404
+    assert response.json()["error"]["code"] == "REVIEW_NOT_FOUND"
 
 
 @pytest.mark.parametrize("min_val", [1, 5, 8, 10])

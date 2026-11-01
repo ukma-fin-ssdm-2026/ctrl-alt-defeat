@@ -11,6 +11,7 @@ from sqlalchemy.pool import StaticPool
 from src.api.db.database import Base
 from src.api.db.models import Comment, Review
 from src.api.main import app
+from src.api.routers import auth as auth_router
 from src.api.routers import comments as comments_router
 from src.api.routers import reviews as reviews_router
 
@@ -67,6 +68,7 @@ def client(db_session):
 
     app.dependency_overrides[comments_router.get_db] = override_get_db
     app.dependency_overrides[reviews_router.get_db] = override_get_db
+    app.dependency_overrides[auth_router.get_db] = override_get_db
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
@@ -201,11 +203,30 @@ def test_review_without_comments_returns_empty_thread(client):
 
 def test_deleting_review_removes_its_comments(client, db_session):
     # Trace: T-029
+    from src.api.db.models import User
+    from src.api.services.auth import create_access_token
+
+    admin_id = uuid.uuid4()
+    db_session.add(
+        User(
+            user_id=admin_id,
+            email="admin_comments@example.com",
+            nickname="AdminComments",
+            password_hash="fakehash",
+            role="admin",
+            email_verified=True,
+            status="active",
+        )
+    )
+    db_session.commit()
+    admin_token = create_access_token(data={"sub": str(admin_id), "role": "admin"})
+    headers = {"Authorization": f"Bearer {admin_token}"}
+
     root = post(client, text="Will be removed").json()
     post(client, text="Reply removed too", parent_id=root["comment_id"])
     post(client, text="Other thread stays", review_id=OTHER_REVIEW_ID)
 
-    assert client.delete(f"/api/v1/reviews/{REVIEW_ID}").status_code == 204
+    assert client.delete(f"/api/v1/reviews/{REVIEW_ID}", headers=headers).status_code == 204
 
     assert db_session.query(Comment).count() == 1
     assert db_session.query(Comment).one().text == "Other thread stays"
