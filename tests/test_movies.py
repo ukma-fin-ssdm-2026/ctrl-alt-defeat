@@ -195,3 +195,31 @@ def test_get_movie_by_id_not_found(client):
     error_data = response.json()
     assert error_data["error"]["code"] == "CONTENT_NOT_FOUND"
 
+
+def test_get_movies_multi_filter(client):
+    # Trace: T-014, FR-002
+    response = client.get("/api/v1/movies?category=Movie&genre=Фантастика&year=2024")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["title"] == "Дюна: Частина друга"
+
+
+def test_get_movie_by_invalid_string_id(client):
+    # Trace: T-010
+    response = client.get("/api/v1/movies/invalid-not-uuid-or-int")
+    assert response.status_code == 404
+    error_data = response.json()
+    assert error_data["error"]["code"] == "CONTENT_NOT_FOUND"
+
+
+def test_movies_get_db_generator():
+    from src.api.routers.movies import get_db
+    gen = get_db()
+    session = next(gen)
+    assert session is not None
+    try:
+        next(gen)
+    except StopIteration:
+        pass
+
