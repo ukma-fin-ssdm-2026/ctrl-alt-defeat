@@ -678,10 +678,11 @@ paths:
     get:
       tags:
       - Recommendations
-      summary: Get personal recommendations ("Recommended for you")
-      description: Movies and series the user has not reviewed yet, ranked by how
-        well their genres match the user's highly rated titles (FR-007). New users
-        get the best-rated titles.
+      summary: Get my personal recommendations ("Recommended for you")
+      description: Movies and series the authenticated user has not reviewed yet,
+        ranked by how well their genres match the user's highly rated titles (FR-007).
+        New users get the best-rated titles. The user is always taken from the access
+        token, so nobody can read another user's recommendations.
       operationId: get_recommendations_api_v1_recommendations_get
       parameters:
       - name: limit
@@ -695,19 +696,6 @@ paths:
           default: 10
           title: Limit
         description: Maximum number of recommendations
-      - name: user_id
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-            format: uuid4
-          - type: 'null'
-          description: Optional user ID override; defaults to authenticated user from
-            token/cookie (FR-001)
-          title: User Id
-        description: Optional user ID override; defaults to authenticated user from
-          token/cookie (FR-001)
       - name: authorization
         in: header
         required: false
@@ -751,6 +739,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Email is not verified or the account is banned
           content:
             application/json:
               schema:
