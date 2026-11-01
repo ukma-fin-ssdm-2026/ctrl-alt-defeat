@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.api.db.database import Base
-from src.api.db.models import Review, User, WatchedItem
+from src.api.db.models import Content, Review, User, WatchedItem
 from src.api.main import app
 from src.api.routers import auth as auth_router
 from src.api.routers import reviews as reviews_router
@@ -33,8 +33,11 @@ def setup_database():
 @pytest.fixture
 def db_session():
     db = TestingSessionLocal()
-    for model in (Review, WatchedItem, User):
+    for model in (Review, WatchedItem, User, Content):
         db.query(model).delete()
+    db.add(
+        Content(id=1, content_id=MOVIE, title="Дюна: Частина друга", category="Movie", genre="Фантастика", year=2024)
+    )
     db.commit()
     try:
         yield db
@@ -227,3 +230,32 @@ def test_guests_can_still_read_reviews(client, db_session):
 
     assert response.status_code == 200
     assert response.json()["total"] == 1
+
+
+def test_reviews_show_author_nickname_and_title(client, db_session):
+    # Trace: T-038
+    user = make_user(db_session, "cinema_fan")
+    mark_watched(db_session, user)
+
+    created = client.post(URL, json=payload(), headers=auth(user)).json()
+    listed = client.get(URL, params={"content_id": str(MOVIE)}).json()["items"][0]
+    single = client.get(f"{URL}/{created['review_id']}").json()
+
+    assert created["author_nickname"] == "cinema_fan"
+    assert listed["author_nickname"] == "cinema_fan"
+    assert listed["content_title"] == "Дюна: Частина друга"
+    assert single["author_nickname"] == "cinema_fan"
+
+
+def test_my_reviews_can_be_listed_by_user_id(client, db_session):
+    # Trace: T-038
+    me = make_user(db_session, "me")
+    other = make_user(db_session, "other")
+    for user in (me, other):
+        mark_watched(db_session, user)
+        client.post(URL, json=payload(), headers=auth(user))
+
+    items = client.get(URL, params={"user_id": str(me.user_id)}).json()["items"]
+
+    assert [item["author_nickname"] for item in items] == ["me"]
+    assert items[0]["content_title"] == "Дюна: Частина друга"
