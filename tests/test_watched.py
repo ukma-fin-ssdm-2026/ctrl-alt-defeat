@@ -307,3 +307,19 @@ def test_unverified_email_user_cannot_access_watched(client: TestClient, db_sess
     response = client.get(WATCHED_URL, headers=headers)
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
+
+
+def test_remove_movie_from_watched_by_query_param(client: TestClient, test_user_and_token):
+    """
+    Same as T-012, with the content id in the query string (constant client URL).
+    """
+    # Trace: T-012
+    headers = {"Authorization": f"Bearer {test_user_and_token[1]}"}
+    content_id = str(uuid.uuid4())
+    client.post(WATCHED_URL, json={"content_id": content_id}, headers=headers)
+
+    assert client.delete(WATCHED_URL, params={"content_id": content_id}).status_code == 401
+    assert client.delete(WATCHED_URL, params={"content_id": content_id}, headers=headers).status_code == 204
+    assert client.get(f"{WATCHED_URL}/{content_id}", headers=headers).json()["is_watched"] is False
+    assert client.delete(WATCHED_URL, params={"content_id": content_id}, headers=headers).status_code == 404
+    assert client.delete(WATCHED_URL, params={"content_id": "../../admin"}, headers=headers).status_code == 422
