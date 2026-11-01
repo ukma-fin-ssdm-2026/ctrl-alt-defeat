@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from src.api.db import models
 from src.api.db.database import SessionLocal
+from src.api.routers.auth import get_current_active_user
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
 from src.api.schemas.review import (
     PaginatedReviewsResponse,
@@ -22,6 +23,19 @@ from src.api.utils import check_review_policy_violations
 DUPLICATE_REVIEW_ERROR = {
     "code": "DUPLICATE_REVIEW",
     "message": "You have already reviewed this content. Edit your existing review instead.",
+}
+
+NOT_WATCHED_ERROR = {
+    "code": "CONTENT_NOT_WATCHED",
+    "message": "Mark this title as watched before rating or reviewing it",
+}
+
+AUTH_ERRORS = {
+    401: {"model": ErrorResponse, "description": "User is not authenticated"},
+    403: {
+        "model": ErrorResponse,
+        "description": "Not allowed (title not watched, not the author, banned or unverified)",
+    },
 }
 
 router = APIRouter(
@@ -45,13 +59,26 @@ def get_db():
     summary="Create a new review",
     responses={
         **STANDARD_ERRORS,
+        **AUTH_ERRORS,
         409: {"model": ErrorResponse, "description": "User has already reviewed this content"},
     },
 )
 async def create_review(
     review: ReviewCreate,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
 ):
+    user_id = current_user.user_id
+
+    # FR-003 / FR-004: only titles from the user's watched list can be rated and reviewed
+    is_watched = db.query(
+        db.query(models.WatchedItem)
+        .filter(models.WatchedItem.user_id == user_id, models.WatchedItem.content_id == review.content_id)
+        .exists()
+    ).scalar()
+    if not is_watched:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=NOT_WATCHED_ERROR)
+
     if review.review_text:
         violations = check_review_policy_violations(review.review_text)
         if violations:
@@ -67,7 +94,7 @@ async def create_review(
     existing_review = (
         db.query(models.Review)
         .filter(
-            models.Review.user_id == review.user_id,
+            models.Review.user_id == user_id,
             models.Review.content_id == review.content_id,
         )
         .first()
@@ -77,7 +104,11 @@ async def create_review(
 
     review_id = uuid.uuid4()
     new_review = ReviewResponse(
-        review_id=review_id, status=ReviewStatus.published, created_at=datetime.now(UTC), **review.model_dump()
+        review_id=review_id,
+        user_id=user_id,
+        status=ReviewStatus.published,
+        created_at=datetime.now(UTC),
+        **review.model_dump(),
     )
     db_review = models.Review(
         review_id=new_review.review_id,
@@ -155,18 +186,25 @@ async def get_review(
     "/{review_id}",
     response_model=ReviewResponse,
     status_code=status.HTTP_200_OK,
-    summary="Partially update a review",
-    responses=STANDARD_ERRORS,
+    summary="Partially update my review",
+    responses={**STANDARD_ERRORS, **AUTH_ERRORS},
 )
 async def update_review(
     review_update: ReviewUpdate,
     review_id: UUID4 = Path(..., description="ID of the review to update"),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
 ):
     existing_review = db.query(models.Review).filter(models.Review.review_id == review_id).first()
 
     if existing_review is None:
         raise HTTPException(status_code=404, detail={"code": "REVIEW_NOT_FOUND", "message": "Review not found"})
+
+    if existing_review.user_id != current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "NOT_REVIEW_AUTHOR", "message": "You can edit only your own reviews"},
+        )
 
     update_data = review_update.model_dump(exclude_unset=True)
 

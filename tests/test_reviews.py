@@ -7,8 +7,9 @@ from unittest.mock import MagicMock
 from sqlalchemy.exc import IntegrityError
 
 from src.api.main import app
+from src.api.routers.auth import get_current_active_user
 from src.api.routers.reviews import get_db
-from src.api.db.models import Review
+from src.api.db.models import Review, User
 from src.api.schemas.review import ReviewStatus
 
 
@@ -18,17 +19,26 @@ def mock_db_session():
     session = MagicMock()
     # By default the user has no review for this content yet (duplicate check passes)
     session.query.return_value.filter.return_value.first.return_value = None
+    # By default the title is in the user's watched list (EXISTS query returns True)
+    session.query.return_value.scalar.return_value = True
     return session
 
 
 @pytest.fixture
-def client(mock_db_session):
-    """Mocking database dependencies for test isolation"""
+def current_user():
+    """Authenticated, verified user (FR-001) who writes the reviews in these tests."""
+    return User(user_id=uuid.uuid4(), email="viewer@example.com", nickname="viewer", role="user", status="active")
+
+
+@pytest.fixture
+def client(mock_db_session, current_user):
+    """Mocking database and authentication dependencies for test isolation"""
 
     def override_get_db():
         yield mock_db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_active_user] = lambda: current_user
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -36,7 +46,6 @@ def client(mock_db_session):
 @pytest.fixture
 def valid_payload():
     return {
-        "user_id": str(uuid.uuid4()),
         "content_id": str(uuid.uuid4()),
         "rating": 10,
         "review_text": "Absolutely fantastic! " * 2,
@@ -45,11 +54,11 @@ def valid_payload():
 
 
 @pytest.fixture
-def mock_review(valid_payload):
-    """Stub with model data"""
+def mock_review(valid_payload, current_user):
+    """Stub with model data, written by the current user"""
     return Review(
         review_id=uuid.uuid4(),
-        user_id=uuid.UUID(valid_payload["user_id"]),
+        user_id=current_user.user_id,
         content_id=uuid.UUID(valid_payload["content_id"]),
         rating=valid_payload["rating"],
         review_text=valid_payload["review_text"],

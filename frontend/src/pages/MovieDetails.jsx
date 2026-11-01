@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
-import { CURRENT_USER_ID } from '../auth/currentUser';
 import ReviewComments from '../components/ReviewComments';
 import { isUuid } from '../utils/uuid';
 const MIN_TEXT = 10;
@@ -70,10 +69,11 @@ export default function MovieDetails({
   const [formError, setFormError] = useState('');
   const isUkr = language === 'UKR';
 
-  const currentActiveUserId = user?.user_id || CURRENT_USER_ID;
   const myReview = reviews.find(
-    r => r.user_id === currentActiveUserId && movie.content_id && r.content_id === movie.content_id
+    r => user?.user_id && r.user_id === user.user_id && movie.content_id && r.content_id === movie.content_id
   );
+  // Only catalog titles stored on the backend can be reviewed
+  const isCatalogTitle = isUuid(movie.content_id);
   const trimmedLength = reviewText.trim().length;
   const textTooShort = trimmedLength > 0 && trimmedLength < MIN_TEXT;
 
@@ -130,11 +130,9 @@ export default function MovieDetails({
       return;
     }
 
-    const contentUuid = movie.content_id || "11111111-1111-1111-1111-111111111111";
-
+    // The author is taken from the access token on the backend (FR-001)
     apiClient.post('/reviews', {
-      user_id: user?.user_id || CURRENT_USER_ID,
-      content_id: contentUuid,
+      content_id: movie.content_id,
       rating: Number(rating),
       review_text: text || null,
       contains_spoilers: text ? isSpoiler : false,
@@ -146,8 +144,17 @@ export default function MovieDetails({
         setRating(10);
       })
       .catch(error => {
-        if (error.response?.status === 409) {
+        const status = error.response?.status;
+        const code = error.response?.data?.error?.code;
+        if (status === 409) {
           setFormError(isUkr ? 'Ви вже залишили рецензію на цей фільм.' : 'You have already reviewed this movie.');
+        } else if (code === 'CONTENT_NOT_WATCHED') {
+          setFormError(isUkr
+            ? 'Спершу позначте фільм як переглянутий, щоб оцінити його.'
+            : 'Mark the title as watched before rating it.');
+        } else if (status === 401) {
+          setFormError(isUkr ? 'Сесія завершилась. Увійдіть ще раз.' : 'Your session has expired. Please log in again.');
+          openAuth();
         } else {
           setFormError(error.response?.data?.error?.message
             || (isUkr ? 'Не вдалося опублікувати рецензію.' : 'Failed to publish review.'));
@@ -257,10 +264,31 @@ export default function MovieDetails({
               {isUkr ? 'Увійти / Зареєструватися' : 'Login / Register'}
             </button>
           </div>
+        ) : !isCatalogTitle ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {isUkr ? 'Оцінювати можна лише фільми з каталогу.' : 'Only catalog titles can be rated.'}
+          </p>
         ) : myReview ? (
           <div className="bg-green-50 dark:bg-gray-700/50 border border-green-200 dark:border-gray-600 rounded-xl p-4 text-sm text-gray-700 dark:text-gray-300">
             {isUkr ? 'Ви вже оцінили цей фільм: ' : 'You have already rated this movie: '}
             <b>★ {myReview.rating}/10</b>
+          </div>
+        ) : !isWatched ? (
+          // FR-003 / FR-004: only watched titles can be rated and reviewed
+          <div className="bg-blue-50 dark:bg-gray-700/50 border border-blue-200 dark:border-gray-600 rounded-xl p-4 text-center">
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+              {isUkr
+                ? 'Оцінити фільм і написати рецензію можна після того, як ви позначите його як переглянутий.'
+                : 'You can rate and review this title after marking it as watched.'}
+            </p>
+            {onToggleWatched && (
+              <button
+                onClick={() => onToggleWatched(movie.content_id || movie.id)}
+                className="px-5 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold rounded-lg text-sm transition-colors shadow"
+              >
+                {isUkr ? '👁️ Позначити як переглянуте' : '👁️ Mark as watched'}
+              </button>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmitReview} className="flex flex-col gap-4">
