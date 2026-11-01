@@ -229,21 +229,7 @@ async def update_review(
     return existing_review
 
 
-@router.delete(
-    "/{review_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete a review (FR-008, US-006)",
-    responses={
-        **STANDARD_ERRORS,
-        401: {"model": ErrorResponse, "description": "Authentication required"},
-        403: {"model": ErrorResponse, "description": "Forbidden: BOLA violation (author or admin required)"},
-    },
-)
-async def delete_review(
-    review_id: UUID4 = Path(..., description="ID of the review to delete"),
-    current_user: models.User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
+def _delete_review(db: Session, current_user: models.User, review_id) -> Response:
     existing_review = db.query(models.Review).filter(models.Review.review_id == review_id).first()
 
     if existing_review is None:
@@ -261,3 +247,39 @@ async def delete_review(
     db.delete(existing_review)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+DELETE_RESPONSES = {
+    **STANDARD_ERRORS,
+    401: {"model": ErrorResponse, "description": "Authentication required"},
+    403: {"model": ErrorResponse, "description": "Forbidden: BOLA violation (author or admin required)"},
+}
+
+
+@router.delete(
+    "",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a review by query parameter (FR-008, US-006)",
+    description="Same as DELETE /reviews/{review_id}, with the id as a query parameter (constant client URLs).",
+    responses=DELETE_RESPONSES,
+)
+async def delete_review_by_query(
+    review_id: UUID4 = Query(..., description="ID of the review to delete"),
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    return _delete_review(db, current_user, review_id)
+
+
+@router.delete(
+    "/{review_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a review (FR-008, US-006)",
+    responses=DELETE_RESPONSES,
+)
+async def delete_review(
+    review_id: UUID4 = Path(..., description="ID of the review to delete"),
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    return _delete_review(db, current_user, review_id)
