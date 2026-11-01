@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import { CURRENT_USER_ID } from '../auth/currentUser';
+import { reviewCommentsPath } from '../utils/apiPaths';
 
 // Must match MAX_COMMENT_DEPTH on the backend (0 = top-level comment)
 export const MAX_COMMENT_DEPTH = 4;
@@ -66,7 +67,7 @@ function CommentForm({ reviewId, parentId, isLoggedIn, openAuth, user, t, placeh
 
     setError('');
     setSending(true);
-    apiClient.post(`/reviews/${reviewId}/comments`, {
+    apiClient.post(reviewCommentsPath(reviewId), {
       user_id: CURRENT_USER_ID,
       author_name: user?.username || user?.email || 'Viewer',
       text: text.trim(),
@@ -184,7 +185,7 @@ export default function ReviewComments({ reviewId, isLoggedIn, openAuth, user, l
   useEffect(() => {
     if (!open) return undefined;
     let ignore = false;
-    apiClient.get(`/reviews/${reviewId}/comments`)
+    apiClient.get(reviewCommentsPath(reviewId))
       .then(response => { if (!ignore) setThread({ version, data: response.data }); })
       .catch(() => { if (!ignore) setThread({ version, error: true }); });
     return () => { ignore = true; };

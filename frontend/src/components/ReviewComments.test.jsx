@@ -9,7 +9,7 @@ vi.mock('../api/client', () => ({
   default: { get: vi.fn(), post: vi.fn() },
 }));
 
-const REVIEW_ID = 'review-1';
+const REVIEW_ID = '11111111-1111-4111-8111-111111111111';
 const user = { username: 'admin', email: 'admin@gmail.com' };
 
 const comment = (id, text, depth = 0, replies = [], author = 'olena') => ({

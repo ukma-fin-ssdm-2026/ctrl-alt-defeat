@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { CURRENT_USER_ID } from '../auth/currentUser';
 import ReviewComments from '../components/ReviewComments';
+import { isUuid } from '../utils/apiPaths';
 const MIN_TEXT = 10;
 const MAX_TEXT = 5000;
 
@@ -334,7 +335,7 @@ export default function MovieDetails({
                       </button>
                     </div>
                     {/* FR-011: comments only for reviews stored on the backend */}
-                    {rev.review_id && (
+                    {isUuid(rev.review_id) && (
                       <ReviewComments
                         reviewId={rev.review_id}
                         isLoggedIn={isLoggedIn}
