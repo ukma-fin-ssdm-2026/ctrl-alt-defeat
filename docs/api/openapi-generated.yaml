@@ -355,6 +355,23 @@ paths:
       - reviews
       summary: Create a new review
       operationId: create_review_api_v1_reviews_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       requestBody:
         required: true
         content:
@@ -382,6 +399,18 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not allowed (title not watched, not the author, banned or unverified)
           content:
             application/json:
               schema:
@@ -510,7 +539,7 @@ paths:
     patch:
       tags:
       - reviews
-      summary: Partially update a review
+      summary: Partially update my review
       operationId: update_review_api_v1_reviews__review_id__patch
       parameters:
       - name: review_id
@@ -522,6 +551,22 @@ paths:
           description: ID of the review to update
           title: Review Id
         description: ID of the review to update
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       requestBody:
         required: true
         content:
@@ -549,6 +594,18 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not allowed (title not watched, not the author, banned or unverified)
           content:
             application/json:
               schema:
@@ -1620,11 +1677,6 @@ components:
       title: RegisterResponse
     ReviewCreate:
       properties:
-        user_id:
-          type: string
-          format: uuid4
-          title: User Id
-          description: Identifier of the review author
         content_id:
           type: string
           format: uuid4
@@ -1652,23 +1704,18 @@ components:
           default: false
       type: object
       required:
-      - user_id
       - content_id
       - rating
       title: ReviewCreate
+      description: The author is the authenticated user (FR-001); a client-sent user_id
+        is ignored.
       example:
         contains_spoilers: false
         content_id: 987e6543-e21b-34c2-b123-526614174111
         rating: 9
         review_text: Great movie, very deep plot and amazing acting!
-        user_id: 123e4567-e89b-12d3-a456-426614174000
     ReviewResponse:
       properties:
-        user_id:
-          type: string
-          format: uuid4
-          title: User Id
-          description: Identifier of the review author
         content_id:
           type: string
           format: uuid4
@@ -1694,6 +1741,11 @@ components:
           title: Contains Spoilers
           description: Flag indicating if review contains spoilers
           default: false
+        user_id:
+          type: string
+          format: uuid4
+          title: User Id
+          description: Identifier of the review author
         review_id:
           type: string
           format: uuid4
@@ -1709,9 +1761,9 @@ components:
           description: Publication date and time
       type: object
       required:
-      - user_id
       - content_id
       - rating
+      - user_id
       - review_id
       - status
       - created_at
@@ -1741,7 +1793,7 @@ components:
             minimum: 1.0
           - type: 'null'
           title: Rating
-          description: Rating from 1 to 10
+          description: Rating from 1 to 10 (cannot be removed)
         review_text:
           anyOf:
           - type: string

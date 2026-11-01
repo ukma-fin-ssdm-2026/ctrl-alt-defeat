@@ -20,7 +20,6 @@ def _normalize_review_text(value):
 
 
 class ReviewBase(BaseModel):
-    user_id: UUID4 = Field(..., description="Identifier of the review author")
     content_id: UUID4 = Field(..., description="Identifier of the content (movie/series)")
     rating: int = Field(..., ge=1, le=10, description="Rating from 1 to 10")
     review_text: Optional[str] = Field(
@@ -33,6 +32,8 @@ class ReviewBase(BaseModel):
 
 
 class ReviewCreate(ReviewBase):
+    """The author is the authenticated user (FR-001); a client-sent user_id is ignored."""
+
     @field_validator("review_text", mode="before")
     @classmethod
     def normalize_review_text(cls, value):
@@ -41,7 +42,6 @@ class ReviewCreate(ReviewBase):
     model_config = {
         "json_schema_extra": {
             "example": {
-                "user_id": "123e4567-e89b-12d3-a456-426614174000",
                 "content_id": "987e6543-e21b-34c2-b123-526614174111",
                 "rating": 9,
                 "review_text": "Great movie, very deep plot and amazing acting!",
@@ -52,7 +52,7 @@ class ReviewCreate(ReviewBase):
 
 
 class ReviewUpdate(BaseModel):
-    rating: Optional[int] = Field(None, ge=1, le=10, description="Rating from 1 to 10")
+    rating: Optional[int] = Field(None, ge=1, le=10, description="Rating from 1 to 10 (cannot be removed)")
     review_text: Optional[str] = Field(
         None,
         min_length=10,
@@ -66,6 +66,14 @@ class ReviewUpdate(BaseModel):
     def normalize_review_text(cls, value):
         return _normalize_review_text(value)
 
+    @field_validator("rating", "contains_spoilers", mode="before")
+    @classmethod
+    def cannot_be_null(cls, value, info):
+        # Every review keeps a rating and a spoiler flag; only the text is optional
+        if value is None:
+            raise ValueError(f"{info.field_name} cannot be null")
+        return value
+
     model_config = {
         "json_schema_extra": {
             "example": {
@@ -78,6 +86,7 @@ class ReviewUpdate(BaseModel):
 
 
 class ReviewResponse(ReviewBase):
+    user_id: UUID4 = Field(..., description="Identifier of the review author")
     review_id: UUID4 = Field(..., description="Unique identifier of the review")
     status: ReviewStatus = Field(..., description="Current status of the review")
     created_at: datetime = Field(..., description="Publication date and time")
