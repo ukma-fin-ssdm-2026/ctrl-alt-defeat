@@ -4,6 +4,31 @@ info:
   description: REST API for managing content reviews and movies catalog.
   version: 1.0.0
 paths:
+  /health:
+    get:
+      tags:
+      - health
+      summary: Health check for monitoring and container orchestration (REL-001)
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: The database is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
   /api/v1/auth/register:
     post:
       tags:
@@ -1729,6 +1754,21 @@ components:
       required:
       - error
       title: ErrorResponse
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: '''ok'' if the service can serve requests, otherwise ''degraded'''
+        database:
+          type: string
+          title: Database
+          description: '''ok'' if the database answers, otherwise ''unavailable'''
+      type: object
+      required:
+      - status
+      - database
+      title: HealthResponse
     PaginatedContentResponse:
       properties:
         items:

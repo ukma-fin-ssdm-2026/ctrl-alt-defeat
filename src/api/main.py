@@ -16,6 +16,8 @@ from src.api.routers.comments import router as comments_router
 from src.api.routers.auth import router as auth_router
 from src.api.routers.watchlist import router as watchlist_router
 from src.api.routers.watched import router as watched_router
+from src.api.routers.health import router as health_router
+from src.api.frontend import mount_frontend
 from src.api.services.auth import seed_default_users
 from src.api.services.tmdb import seed_catalog_if_empty
 from src.api.db.database import SessionLocal
@@ -63,6 +65,7 @@ app = FastAPI(
     responses={422: STANDARD_ERRORS[422]},
 )
 
+app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(movies_router)
 app.include_router(reviews_router)
@@ -70,6 +73,10 @@ app.include_router(recommendations_router)
 app.include_router(comments_router)
 app.include_router(watchlist_router)
 app.include_router(watched_router)
+
+# Built React app on the same origin (container deployment); must stay after all API routes
+if os.getenv("FRONTEND_DIST_DIR"):
+    mount_frontend(app, os.environ["FRONTEND_DIST_DIR"])
 
 app.add_middleware(
     CORSMiddleware,
