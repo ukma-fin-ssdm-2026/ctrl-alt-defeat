@@ -12,12 +12,8 @@ def normalize_database_url(url: str) -> str:
     return url
 
 
-DATABASE_URL = normalize_database_url(
-    os.getenv(
-        "DATABASE_URL",
-        "sqlite:///./app.db",
-    )
-)
+# An empty value (e.g. `DATABASE_URL=` in .env) also means the local SQLite file
+DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL") or "sqlite:///./app.db")
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
