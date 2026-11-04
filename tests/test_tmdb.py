@@ -8,6 +8,7 @@ from src.api.db.models import Content
 from src.api.services.tmdb import (
     FALLBACK_MOVIES,
     fetch_tmdb_movies,
+    seed_catalog_if_empty,
     seed_movies_to_database,
 )
 
@@ -67,3 +68,51 @@ def test_seed_movies_to_database():
     finally:
         db.close()
 
+
+def test_empty_catalog_is_seeded_on_startup(monkeypatch):
+    # Trace: T-033
+    monkeypatch.delenv("TMDB_API_KEY", raising=False)
+    monkeypatch.delenv("AUTO_SEED_CATALOG", raising=False)
+    db = TestingSessionLocal()
+    try:
+        added = seed_catalog_if_empty(db)
+        assert added == len(FALLBACK_MOVIES)
+        assert db.query(Content).count() == len(FALLBACK_MOVIES)
+    finally:
+        db.close()
+
+
+def test_existing_catalog_is_left_untouched(monkeypatch):
+    # Trace: T-033
+    monkeypatch.delenv("TMDB_API_KEY", raising=False)
+    db = TestingSessionLocal()
+    try:
+        seed_movies_to_database(db, FALLBACK_MOVIES[:2])
+        assert seed_catalog_if_empty(db) == 0
+        assert db.query(Content).count() == 2
+    finally:
+        db.close()
+
+
+def test_auto_seed_can_be_disabled(monkeypatch):
+    # Trace: T-033
+    monkeypatch.setenv("AUTO_SEED_CATALOG", "false")
+    db = TestingSessionLocal()
+    try:
+        assert seed_catalog_if_empty(db) == 0
+        assert db.query(Content).count() == 0
+    finally:
+        db.close()
+
+
+def test_outdated_database_does_not_block_startup(monkeypatch):
+    # Trace: T-034
+    """An old local database (e.g. without newer columns) must not crash the API on startup."""
+    from sqlalchemy.exc import OperationalError
+
+    monkeypatch.delenv("AUTO_SEED_CATALOG", raising=False)
+    db = MagicMock()
+    db.query.side_effect = OperationalError("SELECT", {}, Exception("no such column: content.runtime"))
+
+    assert seed_catalog_if_empty(db) == 0
+    db.rollback.assert_called_once()
