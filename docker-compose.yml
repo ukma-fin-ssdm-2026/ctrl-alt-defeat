@@ -1,0 +1,35 @@
+# Local production-like run: the application image + PostgreSQL.
+#   cp .env.example .env         # then put your own values into .env (it is gitignored)
+#   docker compose up --build    ->  http://localhost:8000
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: reviews_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reviews_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # JWT_SECRET_KEY, DEMO_MODE, SEED_* and TMDB_API_KEY come from .env (see .env.example)
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:${POSTGRES_PASSWORD}@db:5432/reviews_db
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:

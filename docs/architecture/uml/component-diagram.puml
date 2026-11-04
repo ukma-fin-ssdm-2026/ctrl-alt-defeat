@@ -45,7 +45,6 @@ package "Application Tier (FastAPI Backend)" {
     package "Data Access Layer (DAL)" {
         () "Repository Interface" as Repo_Interface
         [ORM Repositories (SQLAlchemy)] as DAL
-        [Cache Client] as Cache_Client
     }
 
     HTTP_Interface - Controllers
@@ -57,7 +56,6 @@ package "Application Tier (FastAPI Backend)" {
 
     Logic_Review --> Repo_Interface : persists & queries
     Logic_Content --> Repo_Interface : queries
-    Logic_Content --> Cache_Client : cache / lookup
     Logic_Rec --> Repo_Interface : reads history & ratings
     Repo_Interface - DAL
 }
@@ -66,17 +64,12 @@ package "Data Tier" {
     database "PostgreSQL (Primary DB)" as DB {
         [Tables: Users, Content, Ratings, Reviews, Watched, Watchlist]
     }
-
-    database "Redis (Cache & Rate Limit)" as Cache {
-        [Cached Content & Rate Limits]
-    }
 }
 
 cloud "TMDB External API" as TMDB
 
 UI_Client --> HTTP_Interface : HTTPS / JSON (Cookie / Bearer)
 DAL --> DB : SQL over TCP (:5432)
-Cache_Client ..> Cache : RESP over TCP (:6379)
 Logic_TMDB --> TMDB : HTTPS (REST API)
 
 @enduml

@@ -3,6 +3,7 @@ annotated-types==0.8.0
 anyio==4.16.0
 bandit==1.9.4
 bcrypt==5.0.0
+black==24.10.0
 click==8.5.0
 fastapi==0.162.0
 h11==0.16.0
@@ -20,6 +21,7 @@ pydantic_core==2.50.2
 Pygments==2.21.0
 pytest==9.2.0
 pytest-cov==7.1.0
+python-dotenv==1.2.4
 PyYAML==6.0.3
 ruff==0.17.3
 SQLAlchemy==2.1.6

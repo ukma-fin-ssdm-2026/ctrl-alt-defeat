@@ -46,4 +46,3 @@ class WatchedStatusResponse(BaseModel):
     watched_at: Optional[datetime] = Field(None, description="Timestamp when it was marked as watched")
 
     model_config = ConfigDict(from_attributes=True)
-

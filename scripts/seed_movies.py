@@ -8,11 +8,16 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import text
+from dotenv import load_dotenv
 
-from src.api.db.database import Base, SessionLocal, engine
-from src.api.services.auth import hash_password
-from src.api.services.tmdb import fetch_tmdb_movies, seed_movies_to_database
+# Read .env (the same file as `uvicorn --env-file .env`) before the app modules read the environment
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
+from sqlalchemy import text  # noqa: E402
+
+from src.api.db.database import Base, SessionLocal, engine  # noqa: E402
+from src.api.services.demo_accounts import seed_default_users  # noqa: E402
+from src.api.services.tmdb import fetch_tmdb_movies, seed_movies_to_database  # noqa: E402
 
 
 def ensure_schema_compatibility():
@@ -23,41 +28,6 @@ def ensure_schema_compatibility():
             conn.commit()
         except Exception:
             pass
-
-
-def seed_demo_users(db):
-    """Create initial verified admin and user accounts for evaluation and testing."""
-    from src.api.db.models import User
-
-    demo_users = [
-        {
-            "email": "admin@platform.local",
-            "nickname": "admin_demo",
-            "password": "Admin123!",
-            "role": "admin",
-        },
-        {
-            "email": "user@platform.local",
-            "nickname": "user_demo",
-            "password": "User123!",
-            "role": "user",
-        },
-    ]
-
-    for item in demo_users:
-        existing = db.query(User).filter(User.email == item["email"]).first()
-        if not existing:
-            user = User(
-                email=item["email"],
-                nickname=item["nickname"],
-                password_hash=hash_password(item["password"]),
-                role=item["role"],
-                email_verified=True,
-                status="active",
-            )
-            db.add(user)
-            print(f"👤 Created demo {item['role']}: {item['email']} (password: {item['password']})")
-    db.commit()
 
 
 def main():
@@ -76,11 +46,11 @@ def main():
         total_count = db.query(Content).count()
         print(f"✅ Successfully seeded {added} new titles into database. Total in catalog: {total_count}")
 
-        seed_demo_users(db)
+        # Same seed accounts as on API startup (SEED_* variables, see .env.example)
+        seed_default_users(db)
     finally:
         db.close()
 
 
 if __name__ == "__main__":
     main()
-
