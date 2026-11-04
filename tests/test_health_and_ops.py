@@ -107,3 +107,18 @@ def test_frontend_never_serves_files_outside_dist(frontend_client, path):
 
 def test_mount_frontend_needs_a_built_index(tmp_path):
     assert mount_frontend(FastAPI(), str(tmp_path)) is False
+
+
+def test_empty_database_url_falls_back_to_sqlite():
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    env = {**os.environ, "DATABASE_URL": ""}
+    code = "from src.api.db.database import DATABASE_URL; print(DATABASE_URL)"
+    root = Path(__file__).resolve().parents[1]
+
+    result = subprocess.run([sys.executable, "-c", code], cwd=root, env=env, capture_output=True, text=True, check=True)
+
+    assert result.stdout.strip() == "sqlite:///./app.db"
