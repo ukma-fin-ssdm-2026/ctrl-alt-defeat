@@ -18,8 +18,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DATABASE_URL=sqlite:////app/data/app.db
 WORKDIR /app
 
-COPY requirements.txt ./
-RUN pip install --only-binary :all: -r requirements.txt
+# Locked versions with sha256 hashes (requirements-lock.txt is generated from requirements.txt)
+COPY requirements-lock.txt ./
+RUN pip install --require-hashes --only-binary :all: -r requirements-lock.txt
 
 COPY pyproject.toml ./
 COPY src ./src
