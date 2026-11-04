@@ -163,19 +163,26 @@ def test_user_id_in_query_cannot_expose_someone_elses_recommendations(client, db
     assert as_viewer["favorite_genres"] == []
 
 
-@pytest.mark.parametrize(
-    "status, verified, code", [("banned", True, "ACCOUNT_BANNED"), ("pending", False, "EMAIL_NOT_VERIFIED")]
-)
-def test_banned_or_unverified_user_gets_403(client, db_session, status, verified, code):
+def test_unverified_user_gets_403(client, db_session):
     # Trace: T-021
     user = db_session.query(User).filter(User.user_id == uuid.UUID(USER)).one()
-    user.status, user.email_verified = status, verified
+    user.status, user.email_verified = "pending", False
     db_session.commit()
 
     response = client.get(URL, headers=auth())
 
     assert response.status_code == 403
-    assert response.json()["error"]["code"] == code
+    assert response.json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
+
+
+def test_banned_user_still_gets_recommendations(client, db_session):
+    # Trace: T-036
+    # FR-009: a ban takes away reviews, ratings and comments, recommendations stay available
+    user = db_session.query(User).filter(User.user_id == uuid.UUID(USER)).one()
+    user.status = "banned"
+    db_session.commit()
+
+    assert client.get(URL, headers=auth()).status_code == 200
 
 
 @pytest.mark.parametrize("params", [{"limit": 0}, {"limit": 51}])

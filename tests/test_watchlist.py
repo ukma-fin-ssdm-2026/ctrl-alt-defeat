@@ -192,17 +192,22 @@ def test_guest_cannot_use_watchlist(client, method, kwargs):
     assert response.status_code == 401
 
 
-@pytest.mark.parametrize(
-    "verified, status, code", [(False, "pending", "EMAIL_NOT_VERIFIED"), (True, "banned", "ACCOUNT_BANNED")]
-)
-def test_unverified_or_banned_user_cannot_use_watchlist(client, db_session, verified, status, code):
+def test_unverified_user_cannot_use_watchlist(client, db_session):
     # Trace: T-001
-    user = make_user(db_session, verified=verified, status=status)
+    user = make_user(db_session, verified=False, status="pending")
 
     response = add(client, user, DUNE)
 
     assert response.status_code == 403
-    assert response.json()["error"]["code"] == code
+    assert response.json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
+
+
+def test_banned_user_keeps_the_watchlist(client, db_session):
+    # Trace: T-036
+    # FR-009: a ban takes away reviews, ratings and comments only
+    user = make_user(db_session, status="banned")
+
+    assert add(client, user, DUNE).status_code == 201
 
 
 def test_adding_unknown_title_returns_404(client, db_session):

@@ -261,10 +261,11 @@ def test_watched_list_with_movie_metadata(client: TestClient, db_session, test_u
     assert item["rating"] == 8.9
 
 
-def test_banned_user_cannot_access_watched(client: TestClient, db_session):
+def test_banned_user_keeps_access_to_watched(client: TestClient, db_session):
     """
-    Banned users are rejected with 403.
+    FR-009: a ban takes away reviews, ratings and comments, the watched list stays available.
     """
+    # Trace: T-036
     user_id = uuid.uuid4()
     user = User(
         user_id=user_id,
@@ -281,8 +282,7 @@ def test_banned_user_cannot_access_watched(client: TestClient, db_session):
 
     headers = {"Authorization": f"Bearer {token}"}
     response = client.get(WATCHED_URL, headers=headers)
-    assert response.status_code == 403
-    assert response.json()["error"]["code"] == "ACCOUNT_BANNED"
+    assert response.status_code == 200
 
 
 def test_unverified_email_user_cannot_access_watched(client: TestClient, db_session):
