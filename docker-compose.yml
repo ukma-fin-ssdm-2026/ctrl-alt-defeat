@@ -1,0 +1,33 @@
+# Local production-like run: the application image + PostgreSQL.
+#   docker compose up --build    ->  http://localhost:8000
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: reviews_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # local development only
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reviews_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/reviews_db
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-local-only}
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
