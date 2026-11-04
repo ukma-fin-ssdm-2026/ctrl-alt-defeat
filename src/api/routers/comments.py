@@ -11,6 +11,7 @@ from src.api.db.database import SessionLocal
 from src.api.schemas.comment import CommentCreate, CommentResponse, CommentThreadResponse
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
 from src.api.services.auth import decode_access_token
+from src.api.services.bans import ensure_can_contribute
 from src.api.utils import check_comment_policy_violations
 
 # Depth of the deepest allowed reply: 0 = top-level comment, so 5 levels in total
@@ -74,6 +75,7 @@ def get_comments(
     responses={
         **STANDARD_ERRORS,
         401: {"model": ErrorResponse, "description": "User is not authenticated"},
+        403: {"model": ErrorResponse, "description": "The account is banned (FR-009)"},
     },
 )
 def create_comment(
@@ -115,6 +117,11 @@ def create_comment(
 
     if not author_name:
         author_name = "Viewer"
+
+    # FR-009: a banned user cannot comment (team decision: comments are treated like reviews)
+    commenter = db.query(models.User).filter(models.User.user_id == user_id).first()
+    if commenter is not None:
+        ensure_can_contribute(db, commenter)
 
     _get_review_or_404(db, review_id)
 

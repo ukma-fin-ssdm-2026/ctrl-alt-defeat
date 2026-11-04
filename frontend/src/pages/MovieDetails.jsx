@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import ReviewComments from '../components/ReviewComments';
+import BanNotice from '../components/BanNotice';
+import BanUserDialog from '../components/BanUserDialog';
 import { isUuid } from '../utils/uuid';
 import { formatAudienceRating } from '../utils/audienceRating';
 import { translateGenre } from '../utils/genres';
@@ -60,6 +62,9 @@ export default function MovieDetails({
   onToggleWatched
 }) {
   const [rating, setRating] = useState(10);
+  // FR-009: the review author the administrator is banning
+  const [banTarget, setBanTarget] = useState(null);
+  const [banDoneFor, setBanDoneFor] = useState(null);
   const [reviewText, setReviewText] = useState('');
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [reviews, setReviews] = useState([]);
@@ -305,6 +310,8 @@ export default function MovieDetails({
               {isUkr ? 'Увійти / Зареєструватися' : 'Login / Register'}
             </button>
           </div>
+        ) : user?.ban ? (
+          <BanNotice ban={user.ban} language={language} />
         ) : !isCatalogTitle ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {isUkr ? 'Оцінювати можна лише фільми з каталогу.' : 'Only catalog titles can be rated.'}
@@ -440,6 +447,21 @@ export default function MovieDetails({
                           )}
                         </button>
                       )}
+                      {isAdmin && !isAuthor && isUuid(rev.user_id) && (
+                        banDoneFor === rev.user_id ? (
+                          <span role="status" className="text-red-600 dark:text-red-400 font-semibold">
+                            {isUkr ? 'Автора заблоковано' : 'Author banned'}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setBanTarget({ user_id: rev.user_id, nickname: rev.author_nickname || (isUkr ? 'автора' : 'the author') })}
+                            className="hover:text-red-700 text-red-600 font-semibold transition-colors"
+                          >
+                            🚫 {isUkr ? 'Заблокувати автора' : 'Ban the author'}
+                          </button>
+                        )
+                      )}
                     </div>
                     {/* FR-011: comments only for reviews stored on the backend */}
                     {isUuid(rev.review_id) && (
@@ -458,6 +480,15 @@ export default function MovieDetails({
           })
         )}
       </section>
+
+      {banTarget && (
+        <BanUserDialog
+          target={banTarget}
+          language={language}
+          onClose={() => setBanTarget(null)}
+          onBanned={() => setBanDoneFor(banTarget.user_id)}
+        />
+      )}
     </div>
   );
 }

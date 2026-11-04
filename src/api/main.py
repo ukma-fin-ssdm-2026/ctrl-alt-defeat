@@ -16,6 +16,7 @@ from src.api.routers.comments import router as comments_router
 from src.api.routers.auth import router as auth_router
 from src.api.routers.watchlist import router as watchlist_router
 from src.api.routers.watched import router as watched_router
+from src.api.routers.admin import router as admin_router
 from src.api.routers.health import router as health_router
 from src.api.frontend import mount_frontend
 from src.api.services.demo_accounts import seed_default_users
@@ -73,6 +74,7 @@ app.include_router(recommendations_router)
 app.include_router(comments_router)
 app.include_router(watchlist_router)
 app.include_router(watched_router)
+app.include_router(admin_router)
 
 # Built React app on the same origin (container deployment); must stay after all API routes
 if os.getenv("FRONTEND_DIST_DIR"):

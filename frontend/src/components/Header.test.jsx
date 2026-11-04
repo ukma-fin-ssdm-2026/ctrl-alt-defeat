@@ -88,3 +88,15 @@ describe('Header interactive elements are native buttons (SonarQube S6848)', () 
     expect(onSelectMovie).toHaveBeenCalledWith(dune);
   });
 });
+
+describe('Header admin entry (FR-009)', () => {
+  it('shows the Users page button only to administrators', async () => {
+    const onGoAdmin = vi.fn();
+    const { rerender } = render(<Header {...baseProps} user={{ user_id: 'u1', nickname: 'viewer', role: 'user' }} onGoProfile={vi.fn()} onGoAdmin={onGoAdmin} />);
+    expect(screen.queryByRole('button', { name: 'Користувачі' })).not.toBeInTheDocument();
+
+    rerender(<Header {...baseProps} user={{ user_id: 'u2', nickname: 'admin', role: 'admin' }} onGoProfile={vi.fn()} onGoAdmin={onGoAdmin} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Користувачі' }));
+    expect(onGoAdmin).toHaveBeenCalledTimes(1);
+  });
+});

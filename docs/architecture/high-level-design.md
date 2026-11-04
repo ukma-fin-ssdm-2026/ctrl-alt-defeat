@@ -23,7 +23,7 @@
 * **API Client (Axios):** Ізольований HTTP-клієнт, що здійснює запити до бекенду з автоматичною передачею авторизаційних cookies (`credentials: 'include'`).
 
 ### 2.2. FastAPI Backend (Application Tier)
-* **API Routers / Controllers (`src/api/routers`):** Обробники HTTP-запитів (`/api/v1/auth`, `/api/v1/movies`, `/api/v1/reviews`, `/api/v1/watchlist`, `/api/v1/users/me/watched`, `/api/v1/recommendations`), що здійснюють первинний парсинг вхідних даних та маршрутизацію.
+* **API Routers / Controllers (`src/api/routers`):** Обробники HTTP-запитів (`/api/v1/auth`, `/api/v1/movies`, `/api/v1/reviews`, `/api/v1/watchlist`, `/api/v1/users/me/watched`, `/api/v1/recommendations`, `/api/v1/comments`, `/api/v1/admin`), що здійснюють первинний парсинг вхідних даних та маршрутизацію.
 * **Security & Auth Module:** Модуль безпеки, що виконує stateless-валідацію JWT-підпису токенів, витягнутих із `HttpOnly` cookie (або заголовка `Authorization`), та хешування паролів за допомогою алгоритму bcrypt.
 * **Business Logic Layer (Services):**
   * *Rating & Review Services:* Реалізують правила FR-003 (дозволяє виставити числову оцінку 1–10 виключно для контенту зі списку переглянутого) та FR-004 (публікація розгорнутої рецензії 10–5000 символів).

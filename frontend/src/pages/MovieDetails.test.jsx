@@ -326,3 +326,45 @@ describe('MovieDetails review form (FR-003, FR-004)', () => {
     expect(screen.getByText('Оцінювати можна лише фільми з каталогу.')).toBeInTheDocument();
   });
 });
+
+describe('MovieDetails bans (FR-009, US-006)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    apiClient.get.mockResolvedValue({ data: { items: [mockReview] } });
+  });
+
+  it('shows a banned user the ban instead of the review form', async () => {
+    // Trace: T-036
+    const banned = { ...user, ban: { ban_type: 'temporary', reason: 'Спойлери', ends_at: '2026-11-12T10:00:00Z' } };
+    renderDetails({ user: banned });
+
+    expect(await screen.findByText(/тимчасово заблоковано до/)).toHaveTextContent('Причина: Спойлери');
+    expect(screen.queryByRole('button', { name: 'Поставити оцінку' })).not.toBeInTheDocument();
+  });
+
+  it('lets an administrator ban the author of a review', async () => {
+    // Trace: T-036
+    const admin = { user_id: adminUserId, role: 'admin', nickname: 'AdminUser' };
+    apiClient.post.mockResolvedValue({ data: { ban_type: 'permanent', ends_at: null } });
+    renderDetails({ user: admin });
+
+    await userEvent.click(await screen.findByRole('button', { name: /Заблокувати автора/ }));
+    await userEvent.click(screen.getByLabelText('Назавжди'));
+    await userEvent.type(screen.getByLabelText(/Повідомлення користувачу/), 'Образи');
+    await userEvent.click(screen.getByRole('button', { name: 'Заблокувати' }));
+
+    expect(apiClient.post).toHaveBeenCalledWith('/admin/bans', {
+      user_id: authorUserId,
+      ban_type: 'permanent',
+      reason: 'Образи',
+    });
+    expect(await screen.findByText('Автора заблоковано')).toBeInTheDocument();
+  });
+
+  it('does not offer the ban to regular users or on own reviews', async () => {
+    // Trace: T-036
+    renderDetails({ user: { user_id: authorUserId, role: 'admin', nickname: 'AuthorUser' } });
+    await screen.findByText('Неймовірний візуальний шедевр!');
+    expect(screen.queryByRole('button', { name: /Заблокувати автора/ })).not.toBeInTheDocument();
+  });
+});

@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import { CURRENT_USER_ID } from '../auth/currentUser';
 import { isUuid } from '../utils/uuid';
+import BanNotice from './BanNotice';
 
 // Must match MAX_COMMENT_DEPTH on the backend (0 = top-level comment)
 export const MAX_COMMENT_DEPTH = 4;
 
 const texts = {
   UKR: {
+    lang: 'UKR',
     show: 'Коментарі',
     hide: 'Сховати коментарі',
     loading: 'Завантаження коментарів...',
@@ -26,6 +28,7 @@ const texts = {
     commentLabel: 'Коментар',
   },
   EN: {
+    lang: 'EN',
     show: 'Comments',
     hide: 'Hide comments',
     loading: 'Loading comments...',
@@ -94,6 +97,9 @@ function CommentForm({ reviewId, parentId, isLoggedIn, openAuth, user, t, placeh
         setSending(false);
       });
   };
+
+  // FR-009: a banned user sees why instead of the form
+  if (user?.ban) return <BanNotice ban={user.ban} language={t.lang} compact />;
 
   return (
     <form onSubmit={handleSubmit} className="mt-2 flex flex-col gap-2">

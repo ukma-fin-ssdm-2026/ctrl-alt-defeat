@@ -24,9 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED_US = {"US-005"}
 
 # T-IDs marked as [xfail: заплановано] in test-plan.md
-XFAIL_TIDS = {
-    "T-036",
-}
+XFAIL_TIDS: set = set()  # T-036 (FR-009 bans) is implemented and covered
 
 
 def parse_rtm():

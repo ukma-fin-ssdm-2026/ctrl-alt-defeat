@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.api.schemas.ban import BanInfo
+
 
 class UserRegisterRequest(BaseModel):
     email: str = Field(
@@ -40,6 +42,9 @@ class UserResponse(BaseModel):
     email_verified: bool = Field(..., description="Whether the user's email has been verified")
     status: str = Field(..., description="Account status: 'pending', 'active', or 'banned'")
     created_at: datetime = Field(..., description="Account creation timestamp")
+    ban: Optional[BanInfo] = Field(
+        None, description="The ban in force (FR-009): the user can log in but cannot review, rate or comment"
+    )
 
 
 class TokenResponse(BaseModel):

@@ -250,7 +250,7 @@ def test_login_invalid_password(client: TestClient):
 
 def test_login_banned_user(client: TestClient, db_session):
     """
-    FR-009: Reject login if user status is 'banned'.
+    FR-009: a banned user can still log in and sees the ban (type and period) in the profile.
     """
     email = f"banned_{uuid.uuid4().hex[:8]}@example.com"
     reg_res = client.post(
@@ -265,8 +265,8 @@ def test_login_banned_user(client: TestClient, db_session):
     db_session.commit()
 
     login_res = client.post("/api/v1/auth/login", json={"email": email, "password": "password123"})
-    assert login_res.status_code == 403
-    assert login_res.json()["error"]["code"] == "ACCOUNT_BANNED"
+    assert login_res.status_code == 200
+    assert login_res.json()["user"]["ban"]["ban_type"] == "permanent"
 
 
 def test_get_current_user_profile_via_bearer(client: TestClient):
