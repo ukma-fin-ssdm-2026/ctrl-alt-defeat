@@ -36,3 +36,10 @@ services:
       # Optional, asked once when the Blueprint is created; empty = built-in catalog
       - key: TMDB_API_KEY
         sync: false
+      # FR-001 activation emails through the Brevo HTTP API (Render free services block SMTP ports).
+      # Set in the dashboard; without them the link is only logged and the demo one-click button is used.
+      # Links point to RENDER_EXTERNAL_URL, which Render sets automatically.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
