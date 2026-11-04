@@ -43,6 +43,15 @@ describe('Recommendations block (FR-007)', () => {
     expect(await screen.findByText('На основі ваших улюблених жанрів: Фантастика, Драма')).toBeInTheDocument();
   });
 
+  it('translates favorite genres in the English interface', async () => {
+    // Trace: T-020
+    apiClient.get.mockResolvedValue({ data: { items, personalized: true, favorite_genres: ['Драма', 'Пригоди', 'Бойовик'] } });
+
+    render(<Recommendations isLoggedIn language="EN" onSelectMovie={() => {}} />);
+
+    expect(await screen.findByText('Based on your favorite genres: Drama, Adventure, Action')).toBeInTheDocument();
+  });
+
   it('tells a new user that the picks are not personal yet', async () => {
     // Trace: T-020
     apiClient.get.mockResolvedValue({ data: { items, personalized: false, favorite_genres: [] } });

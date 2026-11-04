@@ -3,6 +3,7 @@ import apiClient from '../api/client';
 import MovieCard from '../components/MovieCard';
 import { mockMovies } from '../data/mockData';
 import { SORT_OPTIONS, getSortParams, sortMovies } from '../utils/sortMovies';
+import { translateGenre } from '../utils/genres';
 
 export default function Home({ selectedCategory, selectedGenre, selectedYear, onSelectMovie, language = 'UKR', watchlist = [], onToggleWatchlist }) {
   const [movies, setMovies] = useState([]);
@@ -22,28 +23,8 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
 
   const isUkr = language === 'UKR';
 
-  const genreTranslations = {
-    'Бойовик': 'Action',
-    'Комедія': 'Comedy',
-    'Драма': 'Drama',
-    'Фантастика': 'Sci-Fi',
-    'Жахи': 'Horror',
-    'Трилер': 'Thriller',
-    'Детектив': 'Detective',
-    'Документальний': 'Documentary',
-    'Біографія': 'Biography',
-    'Історія': 'History',
-    'Мелодрама': 'Romance',
-    'Кримінал': 'Crime',
-    'Музика': 'Music',
-    'Пригоди': 'Adventure'
-  };
 
-  const getGenreLabel = (genre) => {
-    if (!genre) return '';
-    if (isUkr) return genre;
-    return genreTranslations[genre] || genre;
-  };
+  const getGenreLabel = (genre) => translateGenre(genre, isUkr ? 'UKR' : 'EN');
 
   useEffect(() => {
     const params = {};
