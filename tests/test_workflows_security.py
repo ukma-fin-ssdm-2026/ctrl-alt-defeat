@@ -40,4 +40,3 @@ def test_ci_workflow_installs_dependencies_with_hashes():
 
     assert "requirements-lock.txt" in run_cmd, "CI should install dependencies from requirements-lock.txt"
     assert "--require-hashes" in run_cmd, "CI should enforce hash verification with --require-hashes"
-
