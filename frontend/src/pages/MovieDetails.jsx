@@ -86,19 +86,32 @@ export default function MovieDetails({
 
   useEffect(() => {
     const contentUuid = movie.content_id;
-    const params = contentUuid ? { content_id: contentUuid } : {};
+    let ignore = false;
 
-    apiClient.get('/reviews', { params })
+    // Without a catalog id there is nothing to filter by: never load the reviews of all movies
+    const request = isUuid(contentUuid)
+      ? apiClient.get('/reviews', { params: { content_id: contentUuid } })
+      : Promise.resolve({ data: { items: [] } });
+
+    request
       .then(response => {
+        if (ignore) return;
         const reviewList = response.data.items ? response.data.items : response.data;
-        setReviews(reviewList.length > 0 ? reviewList : (movie.reviews || []));
+        // Defense in depth: keep only the reviews of this movie
+        const ownReviews = reviewList.filter(r => r.content_id === contentUuid);
+        setReviews(ownReviews.length > 0 ? ownReviews : (movie.reviews || []));
         setLoadedReviewsKey(reviewsKey);
       })
       .catch(error => {
+        if (ignore) return;
         console.warn("Бекенд рецензій недоступний, використовуємо приклади:", error);
         setReviews(movie.reviews || []);
         setLoadedReviewsKey(reviewsKey);
       });
+    // Ignore a late response for the previously opened movie
+    return () => {
+      ignore = true;
+    };
   }, [movie, reviewsKey]);
 
   const handleSubmitReview = (e) => {
