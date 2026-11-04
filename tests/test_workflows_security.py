@@ -26,3 +26,18 @@ def test_no_job_runs_on_a_self_hosted_runner(workflow):
 
     for name, job in jobs.items():
         assert "self-hosted" not in runner_labels(job), f"{workflow.name}: job '{name}' uses a self-hosted runner"
+
+
+def test_ci_workflow_installs_dependencies_with_hashes():
+    """CI must pin resolved dependencies and enforce hash verification (SonarQube githubactions:S8544)."""
+    ci_workflow = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "ci.yml"
+    content = ci_workflow.read_text(encoding="utf-8")
+    parsed = yaml.safe_load(content)
+
+    steps = parsed["jobs"]["build"]["steps"]
+    install_step = next(s for s in steps if s.get("name") == "Install locked dependencies")
+    run_cmd = install_step.get("run", "")
+
+    assert "requirements-lock.txt" in run_cmd, "CI should install dependencies from requirements-lock.txt"
+    assert "--require-hashes" in run_cmd, "CI should enforce hash verification with --require-hashes"
+
