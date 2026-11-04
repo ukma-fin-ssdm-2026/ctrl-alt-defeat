@@ -1,17 +1,43 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 
 export default function AuthModal({ close, onLogin, language = 'UKR', notice = '' }) {
   const [isLogin, setIsLogin] = useState(true);
   
-  const [email, setEmail] = useState('admin@gmail.com');
-  const [password, setPassword] = useState('password12345');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [error, setError] = useState('');
   const [successInfo, setSuccessInfo] = useState(null);
   const [loading, setLoading] = useState(false);
+  // Demo accounts come from the server configuration (DEMO_MODE), never from the frontend code
+  const [demoAccounts, setDemoAccounts] = useState([]);
 
   const isUkr = language === 'UKR';
+
+  useEffect(() => {
+    let active = true;
+    apiClient
+      .get('/auth/demo-accounts')
+      .then(response => {
+        if (active && response.data?.enabled) setDemoAccounts(response.data.accounts || []);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const fillDemoAccount = account => {
+    setIsLogin(true);
+    setEmail(account.email);
+    setPassword(account.password);
+    setError('');
+    setSuccessInfo(null);
+  };
+
+  const demoRoleLabel = role =>
+    role === 'admin' ? (isUkr ? 'Адміністратор' : 'Administrator') : isUkr ? 'Користувач' : 'User';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -102,9 +128,26 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
           </p>
         )}
 
-        {isLogin && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-400 text-xs p-3 rounded-lg mb-6 text-center">
-            {isUkr ? 'Демо доступ:' : 'Demo access:'} <b>admin@gmail.com</b> / <b>password12345</b>
+        {isLogin && demoAccounts.length > 0 && (
+          <div
+            aria-label={isUkr ? 'Демо доступ' : 'Demo access'}
+            className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-400 text-xs p-3 rounded-lg mb-6 text-center"
+          >
+            <p className="font-semibold mb-1">{isUkr ? 'Демо доступ:' : 'Demo access:'}</p>
+            {demoAccounts.map(account => (
+              <p key={account.email} className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                <span>
+                  {demoRoleLabel(account.role)}: <b>{account.email}</b> / <b>{account.password}</b>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => fillDemoAccount(account)}
+                  className="underline font-bold hover:text-yellow-900 dark:hover:text-yellow-200"
+                >
+                  {isUkr ? 'Підставити' : 'Use'}
+                </button>
+              </p>
+            ))}
           </div>
         )}
 

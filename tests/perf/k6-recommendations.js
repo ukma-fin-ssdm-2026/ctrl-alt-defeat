@@ -3,7 +3,8 @@ import { check, sleep } from 'k6';
 
 // k6 load test script for T-022 (FR-007, NFR PERF-001)
 // Target: 100 virtual users (VUs), p95 response time < 500ms, error rate < 1%
-// Run: k6 run -e API_URL=http://localhost:8000 [-e USER_EMAIL=... -e USER_PASSWORD=...] tests/perf/k6-recommendations.js
+// Run: k6 run -e API_URL=http://localhost:8000 -e USER_EMAIL=... -e USER_PASSWORD=... tests/perf/k6-recommendations.js
+// (e.g. the SEED_USER_EMAIL / SEED_USER_PASSWORD account from .env)
 
 export const options = {
   stages: [
@@ -19,11 +20,14 @@ export const options = {
 };
 
 const BASE_URL = __ENV.API_URL || 'http://localhost:8000';
-const EMAIL = __ENV.USER_EMAIL || 'user@example.com';
-const PASSWORD = __ENV.USER_PASSWORD || 'password123';
+const EMAIL = __ENV.USER_EMAIL;
+const PASSWORD = __ENV.USER_PASSWORD;
 
 // Log in once; recommendations are always built for the user from the access token
 export function setup() {
+  if (!EMAIL || !PASSWORD) {
+    throw new Error('Set USER_EMAIL and USER_PASSWORD (-e USER_EMAIL=... -e USER_PASSWORD=...)');
+  }
   const res = http.post(`${BASE_URL}/api/v1/auth/login`, JSON.stringify({ email: EMAIL, password: PASSWORD }), {
     headers: { 'Content-Type': 'application/json' },
   });

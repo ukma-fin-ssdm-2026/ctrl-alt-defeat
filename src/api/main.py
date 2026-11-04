@@ -18,7 +18,7 @@ from src.api.routers.watchlist import router as watchlist_router
 from src.api.routers.watched import router as watched_router
 from src.api.routers.health import router as health_router
 from src.api.frontend import mount_frontend
-from src.api.services.auth import seed_default_users
+from src.api.services.demo_accounts import seed_default_users
 from src.api.services.tmdb import seed_catalog_if_empty
 from src.api.db.database import SessionLocal
 from fastapi.middleware.cors import CORSMiddleware

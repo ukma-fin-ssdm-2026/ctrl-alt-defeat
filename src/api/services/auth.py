@@ -1,3 +1,4 @@
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -5,12 +6,14 @@ from typing import Any, Dict, Optional
 
 import bcrypt
 import jwt
-from sqlalchemy.orm import Session
 
-from src.api.db.models import User
+logger = logging.getLogger(__name__)
 
-# JWT Security Configuration
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "ctrl-alt-defeat-super-secret-jwt-key-2026")
+# JWT Security Configuration: the signing key comes only from the environment. Without it a random
+# key is generated per process (fine for local development; sessions end on every restart).
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") or secrets.token_urlsafe(64)
+if not os.getenv("JWT_SECRET_KEY"):
+    logger.warning("JWT_SECRET_KEY is not set: using a random key, sessions will not survive a restart.")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours
 
@@ -62,36 +65,3 @@ def generate_verification_token() -> str:
     Generate a cryptographically secure random token for email verification (FR-001).
     """
     return secrets.token_urlsafe(32)
-
-
-def seed_default_users(db: Session) -> None:
-    """
-    Seed initial admin and regular demo users into database if they do not already exist.
-    """
-    admin_email = "admin@gmail.com"
-    existing_admin = db.query(User).filter(User.email == admin_email).first()
-    if not existing_admin:
-        admin_user = User(
-            email=admin_email,
-            nickname="admin",
-            password_hash=hash_password("password12345"),
-            role="admin",
-            email_verified=True,
-            status="active",
-        )
-        db.add(admin_user)
-
-    user_email = "user@example.com"
-    existing_user = db.query(User).filter(User.email == user_email).first()
-    if not existing_user:
-        demo_user = User(
-            email=user_email,
-            nickname="cinema_fan",
-            password_hash=hash_password("password123"),
-            role="user",
-            email_verified=True,
-            status="active",
-        )
-        db.add(demo_user)
-
-    db.commit()

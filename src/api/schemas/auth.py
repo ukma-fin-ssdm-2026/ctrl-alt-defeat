@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -58,3 +58,14 @@ class VerifyEmailResponse(BaseModel):
     message: str = Field(..., description="Status message")
     email: str = Field(..., description="Verified email address")
     status: str = Field(..., description="Updated account status")
+
+
+class DemoAccount(BaseModel):
+    role: str = Field(..., description="admin or user")
+    email: str
+    password: str
+
+
+class DemoAccountsResponse(BaseModel):
+    enabled: bool = Field(..., description="True only on demo deployments (DEMO_MODE=true)")
+    accounts: List[DemoAccount] = Field(default_factory=list)

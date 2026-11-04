@@ -167,6 +167,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/demo-accounts:
+    get:
+      tags:
+      - Authentication & User Management
+      summary: Demo accounts for the login window
+      description: 'Public hint for demo deployments: the seed accounts configured
+        in the environment. Returns `enabled: false` and no accounts unless the server
+        runs with DEMO_MODE=true.'
+      operationId: list_demo_accounts_api_v1_auth_demo_accounts_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoAccountsResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/auth/me:
     get:
       tags:
@@ -1692,6 +1726,39 @@ components:
       - runtime
       title: ContentSortField
       description: Sorting criteria for the catalog (FR-010).
+    DemoAccount:
+      properties:
+        role:
+          type: string
+          title: Role
+          description: admin or user
+        email:
+          type: string
+          title: Email
+        password:
+          type: string
+          title: Password
+      type: object
+      required:
+      - role
+      - email
+      - password
+      title: DemoAccount
+    DemoAccountsResponse:
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+          description: True only on demo deployments (DEMO_MODE=true)
+        accounts:
+          items:
+            $ref: '#/components/schemas/DemoAccount'
+          type: array
+          title: Accounts
+      type: object
+      required:
+      - enabled
+      title: DemoAccountsResponse
     ErrorDetail:
       properties:
         field:
