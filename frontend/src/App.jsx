@@ -5,6 +5,7 @@ import MovieDetails from './pages/MovieDetails';
 import Recommendations from './components/Recommendations';
 import AuthModal from './components/AuthModal';
 import UserProfile from './pages/UserProfile';
+import AdminUsers from './pages/AdminUsers';
 import { mockMovies } from './data/mockData';
 import apiClient, { SESSION_EXPIRED_EVENT } from './api/client';
 import { getStoredUser, setStoredAuth, clearStoredAuth } from './auth/currentUser';
@@ -61,6 +62,7 @@ export default function App() {
 
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null); // Додали стан для року
@@ -114,6 +116,7 @@ export default function App() {
   const handleGoHome = () => {
     setSelectedMovie(null);
     setShowProfile(false);
+    setShowAdmin(false);
     setSelectedCategory(null);
     setSelectedGenre(null);
     setSelectedYear(null);
@@ -161,12 +164,13 @@ export default function App() {
         user={user}
         onLogout={handleLogout}
         onGoHome={handleGoHome}
-        onGoProfile={() => { setSelectedMovie(null); setShowProfile(true); }}
+        onGoProfile={() => { setSelectedMovie(null); setShowAdmin(false); setShowProfile(true); }}
+        onGoAdmin={() => { setSelectedMovie(null); setShowProfile(false); setShowAdmin(true); }}
         
         language={language}
         onToggleLanguage={() => setLanguage(l => l === 'UKR' ? 'EN' : 'UKR')}
         movies={catalogMovies}
-        onSelectMovie={(movie) => { setShowProfile(false); setSelectedMovie(movie); }}
+        onSelectMovie={(movie) => { setShowProfile(false); setShowAdmin(false); setSelectedMovie(movie); }}
         
         onSelectCategory={(category) => {
           handleGoHome();
@@ -181,7 +185,9 @@ export default function App() {
       />
       
       <main className="container mx-auto px-4 flex-1 py-6">
-        {showProfile && user ? (
+        {showAdmin && user?.role === 'admin' ? (
+          <AdminUsers language={language} />
+        ) : showProfile && user ? (
           <UserProfile 
             user={user}
             language={language}

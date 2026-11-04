@@ -14,6 +14,7 @@ export default function Header({
   user,
   onLogout,
   onGoProfile,
+  onGoAdmin,
   language,
   onToggleLanguage,
   movies
@@ -145,6 +146,16 @@ export default function Header({
           
           {user ? (
             <div className="flex items-center gap-2">
+              {/* FR-009: administrators manage users and bans */}
+              {user.role === 'admin' && onGoAdmin && (
+                <button
+                  type="button"
+                  onClick={onGoAdmin}
+                  className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold rounded-lg transition-colors text-xs shadow-sm hover:bg-gray-200 dark:hover:bg-gray-600"
+                >
+                  {isUkr ? 'Користувачі' : 'Users'}
+                </button>
+              )}
               <button 
                 onClick={onGoProfile} 
                 className="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 hover:text-yellow-500 transition text-sm"
