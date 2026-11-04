@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import MovieCard from './MovieCard';
+import { translateGenre } from '../utils/genres';
 
 const RECOMMENDATIONS_LIMIT = 10;
 
@@ -79,7 +80,7 @@ export default function Recommendations({
         {data && (
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 pl-4">
             {data.personalized
-              ? `${isUkr ? 'На основі ваших улюблених жанрів' : 'Based on your favorite genres'}: ${data.favorite_genres.join(', ')}`
+              ? `${isUkr ? 'На основі ваших улюблених жанрів' : 'Based on your favorite genres'}: ${data.favorite_genres.map(genre => translateGenre(genre, language)).join(', ')}`
               : (isUkr
                 ? 'Найкраще з каталогу. Оцініть кілька фільмів, і ми підберемо рекомендації саме для вас.'
                 : 'Top rated picks. Rate a few titles and we will tailor recommendations for you.')}
