@@ -28,11 +28,11 @@
 
 | | До | Після |
 |---|---|---|
-| **Security Rating** | **A**: 0 open issues, 0 Security Hotspots, 1 *Accepted issue* | _заповнити_ |
+| **Security Rating** | **A**: 0 open issues, 0 Security Hotspots, 1 *Accepted issue* | **A**: 0 open issues, 0 Security Hotspots, 0 Accepted issues |
 
-**Чому A.** Єдине security-issue — `githubactions:S8544` «Using dependencies without locking resolved versions» у `.github/workflows/ci.yml:25`, де CI встановлює залежності з `requirements.txt` без хешів. Раніше його позначили як *Accepted* (прийнятий ризик), тому панель показує Security «0 open issues» і окремо «Accepted issues: 1», а рейтинг воно не знижує. Вразливостей немає. Решту security-issue за останні 30 днів закрито (панель показує «6 closed»): CSRF і API traversal у `App.jsx`/`MovieDetails.jsx`, захардкоджений пароль у `seed_movies.py`, закріплення GitHub Action за SHA у `deploy-docs.yml`.
+**Чому A.** Єдине security-issue — `githubactions:S8544` «Using dependencies without locking resolved versions» у `.github/workflows/ci.yml:25`, де CI встановлював залежності з `requirements.txt` без хешів. Раніше його позначили як *Accepted* (прийнятий ризик), тому панель показувала Security «0 open issues» і окремо «Accepted issues: 1», а рейтинг воно не знижувало. Вразливостей не було. Решту security-issue за останні 30 днів закрито (панель показує «6 closed»): CSRF і API traversal у `App.jsx`/`MovieDetails.jsx`, захардкоджений пароль у `seed_movies.py`, закріплення GitHub Action за SHA у `deploy-docs.yml`.
 
-**План.** Прийнятий ризик S8544 бере _учасник команди_. Можливе виправлення: встановлювати в CI залежності з `requirements-lock.txt` з `--require-hashes`, як уже робить Docker-образ (точні версії та sha256-хеші всіх пакетів).
+**Виправлення (І. Ліфєнцєв).** Прийнятий ризик S8544 закрито: у CI встановлення залежностей переведено на `requirements-lock.txt` із прапорцем `--require-hashes --only-binary :all:`, точно як у Docker-образі (точні версії та sha256-хеші всіх пакетів). Тепер цілісність залежностей гарантується криптографічними хешами, а статус «після» становить 0 open issues та 0 accepted issues.
 
 Рейтинг **A** продовжує лінію Лаб 3 (модель загроз STRIDE) та Лаб 5 (bandit/SAST). Ось що його підтримує:
 - секрети тільки в змінних оточення та налаштуваннях хостингу, паролів і JWT-ключа в коді немає;
@@ -64,8 +64,9 @@
 | 2 | S6848 | `frontend/src/components/Header.jsx:101` (підказки пошуку) | Maintainability Low, Reliability Medium | 5 хв | М. Крилов — рефакторинг 2 |
 | 3 | S6848 | `frontend/src/components/AuthModal.jsx:216` (перемикач «Створити / Увійти») | Maintainability Low, Reliability Medium | 5 хв | Ю. Галка — рефакторинг 3 |
 | 4 | S6848 | `frontend/src/components/MovieCard.jsx:22` (картка фільму) | Maintainability Low, Reliability Medium | 5 хв | Ю. Галка — рефакторинг 4 |
+| 5 | githubactions:S8544 «Using dependencies without locking resolved versions» | `.github/workflows/ci.yml:25` (встановлення залежностей у CI) | Security Medium (Accepted) | 1 год | І. Ліфєнцєв — рефакторинг 5 |
 
-Окрім чотирьох запахів, панель показує п'яте issue: `githubactions:S8544` у `.github/workflows/ci.yml:25` (Security Medium, статус *Accepted*). Його бере _учасник команди_ (див. 1.2).
+Окрім чотирьох запахів коду, панель показувала п'яте issue: `githubactions:S8544` у `.github/workflows/ci.yml:25` (Security Medium, статус *Accepted*). Його виправлено в рефакторингу 5 (див. 1.2 та 3.5).
 
 Додаткові кандидати, яких панель не зараховує в Code Smells:
 - **Дублювання:** однакова підготовка тестової БД і клієнта (37 рядків) у `tests/test_auth.py:19` та `tests/test_movies.py:14`. Після налаштування `sonar.tests` це тестовий код, тож панель його вже не покаже; винесення фікстур у `tests/conftest.py` (*Extract Function* / *Pull Up*) лишається корисним рефакторингом, але його ефект треба доводити тестами, а не цією метрикою.
@@ -117,6 +118,15 @@
 
   Усі 3 нові тести пройдено. Також успішно пройшли 9 тестів `Recommendations.test.jsx`, зокрема перевірка відкриття фільму за натисканням на назву.
 
+### Рефакторинг 5. Закріплення залежностей CI за sha256-хешами (І. Ліфєнцєв, з ШІ-агентом)
+
+- **Запах / Security-ризик:** `githubactions:S8544`, використання залежностей без фіксації розв'язаних версій і хешів. У `.github/workflows/ci.yml:25` крок називався `Install locked dependencies`, проте фактично викликав `python -m pip install --only-binary :all: -r requirements.txt`. Це створювало ризик supply-chain attacks (підміна транзитивних бібліотек у репозиторії PyPI) і вимагало тимчасового прийняття ризику («Accepted issue») у SonarQube Cloud.
+- **Техніка:** *Pin Dependencies with Hashes* / *Enforce Dependency Integrity Verification* (каталог безпекових рефакторингів). Встановлення переведено на `requirements-lock.txt` із прапорцем `--require-hashes --only-binary :all:`, що синхронізує поведінку CI із продакшн `Dockerfile`.
+- **Що лишається незмінним:** набір пакетів і їх точні версії, які встановлюються для бекенду в CI; поведінка всіх тестів, лінтерів і генераторів коду в конвеєрі GitHub Actions на `ubuntu-latest` (Python 3.11).
+- **Що змінюється в структурі:** рядок виклику pip у конвеєрі тепер читає `requirements-lock.txt` і суворо верифікує контрольні sha256-суми кожного колеса (wheel/sdist).
+- **Тест, що це доводить:** `tests/test_workflows_security.py`, новий тест `test_ci_workflow_installs_dependencies_with_hashes`. До рефакторингу тест падав із помилкою `AssertionError: CI should install dependencies from requirements-lock.txt`, після зміни — успішно проходить. Синхронізація версій між `requirements.txt` і `requirements-lock.txt` додатково гарантується скриптом `scripts/check_requirements_lock.py`.
+- **Коміт:** з позначкою `[REFACTOR]`.
+
 ## 4. Використання ШІ
 
 - **Що виконано з агентом:** рефакторинги 1–2 (М. Крилов). Використовувався кодовий агент Claude. У завданні агенту були запах (S6848 у `Header.jsx:71` і `:101`), техніки (заміна на нативну кнопку, Extract Function) і те, що має лишитися незмінним: обробники, очищення пошуку, вигляд.
@@ -147,14 +157,29 @@
 
 - **Результат:** обидва компоненти використовують семантично правильні інтерактивні HTML-елементи. Наявні регресійні тести не виявили змін функціональної поведінки.
 
+- **Що виконано з допомогою ШІ:** рефакторинг 5 (І. Ліфєнцєв) `.github/workflows/ci.yml` та розширення тестів безпеки `test_workflows_security.py` для усунення SonarQube Cloud issue `githubactions:S8544`.
+- **Що згенеровано:**
+  - Тест безпеки конфігурації workflow `test_ci_workflow_installs_dependencies_with_hashes` у `tests/test_workflows_security.py`.
+  - Зміна команди інсталяції в `.github/workflows/ci.yml` на безпечну з `--require-hashes` та `requirements-lock.txt`.
+  - Документація рефакторингу та оновлення `CHANGELOG.md`.
+- **Як верифіковано:**
+  1. Спершу написано тест безпеки конфігурації у `tests/test_workflows_security.py`: запущено pytest і переконанося, що на коді «до» тест падає (червоний статус, `AssertionError: CI should install dependencies from requirements-lock.txt`).
+  2. Внесено зміну в `.github/workflows/ci.yml` та повторно запущено тест: він став зеленим (5/5 passed).
+  3. Перевірено синхронізацію файлів блокування: `python scripts/check_requirements_lock.py` повернув 0.
+  4. Запущено повний набір бекенд-тестів: 284 passed, покриття коду `src.api` 98 %.
+  5. Перевірено лінтери та SAST: `ruff check` (OK), `bandit -ll` (0 вразливостей), `scripts/verify_traceability.py` (32/32 PASSED).
+  6. Перевірено тести фронтенду: `npm --prefix frontend test -- --run` (121/121 passed).
+  7. Здійснено построковий перегляд diff перед створенням коміту.
+- **Результат:** ризик ненадійної фіксації залежностей повністю закрито, статус Accepted знято, CI суворо перевіряє sha256-хеші аналогічно до Docker-образу.
+
 ## 5. Регресійне тестування
 
-|| Набір | Команда | До | Після рефакторингів 1–2 | Після рефакторингів 3–4 |
-|---|---|---|---|---|
-| Бекенд (pytest, покриття ≥ 80 %) | `pytest --cov=src.api tests/` | 276 passed, 98 % | 279 passed, 98 % | Не перевірено |
-| Фронтенд (Vitest) | `npm --prefix frontend test` | 113 passed | 117 passed | 121 passed |
-| Лінтери | `ruff`, `black --check`, `eslint`, `bandit -ll` | OK | OK | Не перевірено |
-| Простежуваність | `python3 scripts/verify_traceability.py` | PASSED | PASSED | Не перевірено |
+|| Набір | Команда | До | Після рефакторингів 1–2 | Після рефакторингів 3–4 | Після рефакторингу 5 |
+|---|---|---|---|---|---|---|
+| Бекенд (pytest, покриття ≥ 80 %) | `pytest --cov=src.api tests/` | 276 passed, 98 % | 279 passed, 98 % | 283 passed, 98 % | 284 passed, 98 % |
+| Фронтенд (Vitest) | `npm --prefix frontend test` | 113 passed | 117 passed | 121 passed | 121 passed |
+| Лінтери | `ruff`, `black --check`, `eslint`, `bandit -ll` | OK | OK | OK | OK |
+| Простежуваність | `python3 scripts/verify_traceability.py` | PASSED | PASSED | PASSED | PASSED |
 
 Збоїв не було. Тести, які на коді «до» падали, — це нові тести доступності; вони й мали падати до рефакторингу (розділ 3).
 
