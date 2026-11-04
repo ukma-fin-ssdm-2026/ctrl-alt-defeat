@@ -19,6 +19,7 @@ from src.api.services.demo_accounts import get_seed_accounts, seed_default_users
 
 SEED_VARIABLES = [
     "DEMO_MODE",
+    "DEMO_ROLES",
     "SEED_ADMIN_EMAIL",
     "SEED_ADMIN_PASSWORD",
     "SEED_ADMIN_NICKNAME",
@@ -139,6 +140,21 @@ def test_demo_hint_lists_the_seed_accounts_in_demo_mode(both_accounts, monkeypat
             {"role": "user", "email": "user@example.com", "password": "user-from-env"},
         ],
     }
+
+
+def test_public_site_can_hide_the_admin_account(both_accounts, monkeypatch, db):
+    monkeypatch.setenv("DEMO_MODE", "true")
+    monkeypatch.setenv("DEMO_ROLES", " User ")
+
+    response = TestClient(app).get("/api/v1/auth/demo-accounts")
+
+    assert response.json() == {
+        "enabled": True,
+        "accounts": [{"role": "user", "email": "user@example.com", "password": "user-from-env"}],
+    }
+    # The admin account still exists, it is only not advertised
+    seed_default_users(db)
+    assert db.query(User).filter(User.role == "admin").count() == 1
 
 
 def test_demo_mode_without_accounts_shows_nothing(monkeypatch):

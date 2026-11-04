@@ -20,6 +20,20 @@ def test_health_reports_ok_when_database_answers():
     assert response.json() == {"status": "ok", "database": "ok"}
 
 
+def test_liveness_answers_without_the_database():
+    broken = MagicMock()
+    broken.execute.side_effect = OperationalError("SELECT 1", {}, Exception("connection refused"))
+    app.dependency_overrides[get_db] = lambda: broken
+    try:
+        response = TestClient(app).get("/health/live")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    broken.execute.assert_not_called()
+
+
 def test_health_reports_503_when_database_is_down():
     broken = MagicMock()
     broken.execute.side_effect = OperationalError("SELECT 1", {}, Exception("connection refused"))

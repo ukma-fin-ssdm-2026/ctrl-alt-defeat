@@ -6,6 +6,8 @@ variables (a local `.env` file or the hosting platform settings), never from the
     SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD   administrator account (created only when the password is set)
     SEED_USER_EMAIL  / SEED_USER_PASSWORD    regular user account (created only when the password is set)
     DEMO_MODE=true                           publish the seed accounts in the login window (demo deployments only)
+    DEMO_ROLES=admin,user                    which of them the login window may show (default: both); a public
+                                             site uses DEMO_ROLES=user and hands the admin password out privately
 """
 
 import logging
@@ -57,9 +59,17 @@ def get_seed_accounts() -> List[SeedAccount]:
     return accounts
 
 
+def public_demo_roles() -> set:
+    raw = os.getenv("DEMO_ROLES", "admin,user")
+    return {role.strip().lower() for role in raw.split(",") if role.strip()}
+
+
 def get_public_demo_accounts() -> List[SeedAccount]:
-    """What the login window may show: the seed accounts, but only in demo mode."""
-    return get_seed_accounts() if demo_mode_enabled() else []
+    """What the login window may show: the seed accounts of the allowed roles, only in demo mode."""
+    if not demo_mode_enabled():
+        return []
+    roles = public_demo_roles()
+    return [account for account in get_seed_accounts() if account.role in roles]
 
 
 def seed_default_users(db: Session) -> None:
