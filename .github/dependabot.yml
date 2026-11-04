@@ -4,12 +4,24 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-  
+    groups:
+      # pydantic pins an exact pydantic-core version: they must be updated together
+      pydantic:
+        patterns:
+          - "pydantic"
+          - "pydantic-core"
+          - "pydantic_core"
+
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
       interval: "weekly"
-      
+    ignore:
+      # Tailwind CSS 4 needs a configuration migration (@tailwindcss/postcss, CSS-based config);
+      # do it deliberately in a dedicated PR instead of an automatic major bump
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
