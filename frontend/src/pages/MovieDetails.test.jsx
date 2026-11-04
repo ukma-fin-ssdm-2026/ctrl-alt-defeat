@@ -275,6 +275,31 @@ describe('MovieDetails review form (FR-003, FR-004)', () => {
     expect(screen.queryByText('Глядач')).not.toBeInTheDocument();
   });
 
+  it('shows the audience rating of the movie (US-008)', async () => {
+    // Trace: T-023
+    apiClient.get.mockImplementation(url =>
+      url === '/reviews/summary'
+        ? Promise.resolve({ data: { content_id: mockMovie.content_id, average_rating: 8.5, ratings_count: 2, reviews_count: 1, distribution: {} } })
+        : Promise.resolve({ data: { items: [] } })
+    );
+    renderDetails();
+
+    expect(await screen.findByText('★ 8.5 / 10 · 2 оцінки')).toBeInTheDocument();
+    expect(apiClient.get).toHaveBeenCalledWith('/reviews/summary', { params: { content_id: mockMovie.content_id } });
+  });
+
+  it('says there are no ratings yet for a movie without reviews (US-008)', async () => {
+    // Trace: T-024
+    apiClient.get.mockImplementation(url =>
+      url === '/reviews/summary'
+        ? Promise.resolve({ data: { content_id: mockMovie.content_id, average_rating: null, ratings_count: 0, reviews_count: 0, distribution: {} } })
+        : Promise.resolve({ data: { items: [] } })
+    );
+    renderDetails();
+
+    expect(await screen.findByText('Оцінок та рецензій ще немає')).toBeInTheDocument();
+  });
+
   it('never shows reviews of other movies', async () => {
     // Trace: T-038
     apiClient.get.mockResolvedValue({

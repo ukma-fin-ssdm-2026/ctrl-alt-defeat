@@ -561,6 +561,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/reviews/summary:
+    get:
+      tags:
+      - reviews
+      summary: 'Audience rating of a movie: average, number of ratings and reviews
+        (US-008)'
+      operationId: get_review_summary_api_v1_reviews_summary_get
+      parameters:
+      - name: content_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Movie or series to summarize
+          title: Content Id
+        description: Movie or series to summarize
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewSummaryResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/reviews/{review_id}:
     get:
       tags:
@@ -1918,6 +1960,57 @@ components:
       - hidden
       - deleted
       title: ReviewStatus
+    ReviewSummaryResponse:
+      properties:
+        content_id:
+          type: string
+          format: uuid4
+          title: Content Id
+          description: Identifier of the content (movie/series)
+        average_rating:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Average Rating
+          description: Average audience rating 1-10; null if nobody rated yet
+        ratings_count:
+          type: integer
+          title: Ratings Count
+          description: Number of ratings (every review has a rating)
+        reviews_count:
+          type: integer
+          title: Reviews Count
+          description: Number of reviews with text
+        distribution:
+          additionalProperties:
+            type: integer
+          type: object
+          title: Distribution
+          description: Number of ratings for each score from 1 to 10
+      type: object
+      required:
+      - content_id
+      - ratings_count
+      - reviews_count
+      - distribution
+      title: ReviewSummaryResponse
+      description: Audience rating of a movie or series (US-008).
+      example:
+        average_rating: 8.67
+        content_id: 987e6543-e21b-34c2-b123-526614174111
+        distribution:
+          '1': 0
+          '10': 0
+          '2': 0
+          '3': 0
+          '4': 0
+          '5': 0
+          '6': 0
+          '7': 0
+          '8': 1
+          '9': 2
+        ratings_count: 3
+        reviews_count: 2
     ReviewUpdate:
       properties:
         rating:

@@ -259,3 +259,43 @@ def test_my_reviews_can_be_listed_by_user_id(client, db_session):
 
     assert [item["author_nickname"] for item in items] == ["me"]
     assert items[0]["content_title"] == "Дюна: Частина друга"
+
+
+SUMMARY_URL = f"{URL}/summary"
+
+
+def test_guest_sees_reviews_and_audience_rating(client, db_session):
+    # Trace: T-023
+    for nickname, rating, text in (
+        ("a", 9, "Неймовірна атмосфера фільму"),
+        ("b", 8, None),
+        ("c", 10, "Шедевр, дивитись усім!"),
+    ):
+        user = make_user(db_session, nickname)
+        mark_watched(db_session, user)
+        client.post(URL, json=payload(rating=rating, review_text=text), headers=auth(user))
+
+    reviews = client.get(URL, params={"content_id": str(MOVIE)})
+    summary = client.get(SUMMARY_URL, params={"content_id": str(MOVIE)}).json()
+
+    assert reviews.status_code == 200 and reviews.json()["total"] == 3
+    assert summary["average_rating"] == 9.0
+    assert summary["ratings_count"] == 3
+    assert summary["reviews_count"] == 2
+    assert summary["distribution"]["8"] == 1 and summary["distribution"]["10"] == 1
+
+
+def test_movie_without_reviews_has_empty_summary(client):
+    # Trace: T-024
+    summary = client.get(SUMMARY_URL, params={"content_id": str(OTHER_MOVIE)}).json()
+
+    assert summary["average_rating"] is None
+    assert summary["ratings_count"] == 0
+    assert summary["reviews_count"] == 0
+    assert sum(summary["distribution"].values()) == 0
+
+
+def test_summary_requires_a_valid_content_id(client):
+    # Trace: T-024
+    assert client.get(SUMMARY_URL).status_code == 422
+    assert client.get(SUMMARY_URL, params={"content_id": "../../admin"}).status_code == 422

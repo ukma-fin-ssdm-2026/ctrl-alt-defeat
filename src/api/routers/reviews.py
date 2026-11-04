@@ -16,9 +16,10 @@ from src.api.schemas.review import (
     ReviewCreate,
     ReviewResponse,
     ReviewStatus,
+    ReviewSummaryResponse,
     ReviewUpdate,
 )
-from src.api.utils import check_review_policy_violations
+from src.api.utils import check_review_policy_violations, generate_review_summary
 
 DUPLICATE_REVIEW_ERROR = {
     "code": "DUPLICATE_REVIEW",
@@ -163,6 +164,30 @@ async def get_reviews(
     has_more = (skip + limit) < total
 
     return PaginatedReviewsResponse(items=paginated_items, total=total, skip=skip, limit=limit, has_more=has_more)
+
+
+@router.get(
+    "/summary",
+    response_model=ReviewSummaryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Audience rating of a movie: average, number of ratings and reviews (US-008)",
+    responses=STANDARD_ERRORS,
+)
+async def get_review_summary(
+    content_id: UUID4 = Query(..., description="Movie or series to summarize"),
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(models.Review.rating, models.Review.review_text).filter(models.Review.content_id == content_id).all()
+    )
+    summary = generate_review_summary([{"rating": rating} for rating, _ in rows])
+    return ReviewSummaryResponse(
+        content_id=content_id,
+        average_rating=summary["average_rating"] if rows else None,
+        ratings_count=summary["total_reviews"],
+        reviews_count=sum(1 for _, text in rows if text),
+        distribution=summary["distribution"],
+    )
 
 
 @router.get(
