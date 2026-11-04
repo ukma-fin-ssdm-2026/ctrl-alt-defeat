@@ -4,7 +4,7 @@
 
 Формат базується на [Keep a Changelog](https://keepachangelog.com/uk/1.1.0/), а проєкт дотримується [семантичного версіонування](https://semver.org/lang/uk/). Номер версії однаковий у `pyproject.toml`, `frontend/package.json`, цьому файлі та git-тегу `v<версія>`.
 
-## [0.1.1] - 2026-11-04
+## [0.1.1] - 2026-11-05
 
 Рефакторинговий реліз (Лабораторна робота 8): зовнішня поведінка не змінюється, тому це patch-версія. Метрики до/після та верифікація — у [звіті SonarQube Cloud](docs/refactoring/sonarcloud-report.md).
 
