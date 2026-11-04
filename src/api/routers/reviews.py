@@ -19,6 +19,7 @@ from src.api.schemas.review import (
     ReviewSummaryResponse,
     ReviewUpdate,
 )
+from src.api.services.bans import ensure_can_contribute
 from src.api.utils import check_review_policy_violations, generate_review_summary
 
 DUPLICATE_REVIEW_ERROR = {
@@ -70,6 +71,8 @@ async def create_review(
     current_user: models.User = Depends(get_current_active_user),
 ):
     user_id = current_user.user_id
+    # FR-009: a banned user cannot rate or review
+    ensure_can_contribute(db, current_user)
 
     # FR-003 / FR-004: only titles from the user's watched list can be rated and reviewed
     is_watched = db.query(
@@ -231,6 +234,8 @@ async def update_review(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "NOT_REVIEW_AUTHOR", "message": "You can edit only your own reviews"},
         )
+    # FR-009: a banned user cannot change a rating or review text either
+    ensure_can_contribute(db, current_user)
 
     update_data = review_update.model_dump(exclude_unset=True)
 

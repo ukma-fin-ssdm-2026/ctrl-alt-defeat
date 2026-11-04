@@ -25,6 +25,7 @@ from src.api.services.auth import (
     hash_password,
     verify_password,
 )
+from src.api.services.bans import active_ban
 from src.api.services.demo_accounts import get_public_demo_accounts
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication & User Management"])
@@ -36,6 +37,11 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def user_response(db: Session, user: User) -> UserResponse:
+    """Profile with the ban in force, so the UI can tell a banned user why and until when (FR-009)."""
+    return UserResponse.model_validate(user).model_copy(update={"ban": active_ban(db, user)})
 
 
 def get_current_user(
@@ -96,13 +102,10 @@ def get_current_user(
 
 def get_current_active_user(user: User = Depends(get_current_user)) -> User:
     """
-    Ensure the authenticated user is verified and not banned.
+    Ensure the authenticated user has verified the email. A banned user stays logged in and keeps
+    the watchlist, watched list and recommendations; reviews, ratings and comments check the ban
+    separately (FR-009, services/bans.py).
     """
-    if user.status == "banned":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "ACCOUNT_BANNED", "message": "Account has been suspended"},
-        )
     if not user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -221,7 +224,7 @@ def verify_email(
     responses={
         **STANDARD_ERRORS,
         401: {"model": ErrorResponse, "description": "Invalid email or password"},
-        403: {"model": ErrorResponse, "description": "Account is unverified or banned"},
+        403: {"model": ErrorResponse, "description": "Email is not verified"},
     },
 )
 def login(
@@ -236,12 +239,6 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "INVALID_CREDENTIALS", "message": "Invalid email or password"},
-        )
-
-    if user.status == "banned":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "ACCOUNT_BANNED", "message": "Your account has been suspended by an administrator"},
         )
 
     if not user.email_verified:
@@ -274,7 +271,7 @@ def login(
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        user=UserResponse.model_validate(user),
+        user=user_response(db, user),
     )
 
 
@@ -308,8 +305,9 @@ def list_demo_accounts():
 )
 def get_current_user_profile(
     current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ):
-    return UserResponse.model_validate(current_user)
+    return user_response(db, current_user)
 
 
 @router.post(

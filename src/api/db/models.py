@@ -180,3 +180,26 @@ class WatchedItem(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+
+class Ban(Base):
+    """
+    Account ban set by an administrator (FR-009, US-006).
+    A ban is in force while is_active is true and it is permanent or ends_at is still in the future;
+    a temporary ban therefore expires on its own. Rows are kept as the user's ban history.
+    """
+
+    __tablename__ = "bans"
+    __table_args__ = (
+        CheckConstraint("ban_type IN ('temporary', 'permanent')", name="ck_bans_type"),
+        {"extend_existing": True},
+    )
+
+    ban_id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    admin_id = Column(Uuid(as_uuid=True), ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    ban_type = Column(String(20), nullable=False)
+    reason = Column(Text, nullable=True)
+    starts_at = Column(DateTime(timezone=True), nullable=False)
+    ends_at = Column(DateTime(timezone=True), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)

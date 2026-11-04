@@ -184,7 +184,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Account is unverified or banned
+          description: Email is not verified
           content:
             application/json:
               schema:
@@ -1038,6 +1038,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: The account is banned (FR-009)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/watchlist:
     get:
       tags:
@@ -1535,8 +1541,351 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/admin/users:
+    get:
+      tags:
+      - Administration
+      summary: List users with their current ban (FR-009)
+      operationId: list_users_api_v1_admin_users_get
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
+          description: Search by nickname or email
+          title: Q
+        description: Search by nickname or email
+      - name: skip
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Skip
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 50
+          title: Limit
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserList'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Administrator privileges required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/admin/bans:
+    post:
+      tags:
+      - Administration
+      summary: Ban a user temporarily or permanently (FR-009)
+      description: A temporary ban needs `duration_days` (1-365); a permanent ban
+        has no end. A new ban replaces the current one. Administrators cannot be banned.
+      operationId: create_ban_api_v1_admin_bans_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BanCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BanInfo'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Administrator privileges required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - Administration
+      summary: Lift the current ban of a user (FR-009)
+      operationId: delete_ban_api_v1_admin_bans_delete
+      parameters:
+      - name: user_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: User whose ban is lifted
+          title: User Id
+        description: User whose ban is lifted
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Administrator privileges required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
+    AdminUser:
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        email:
+          type: string
+          title: Email
+        nickname:
+          type: string
+          title: Nickname
+        role:
+          type: string
+          title: Role
+        status:
+          type: string
+          title: Status
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        ban:
+          anyOf:
+          - $ref: '#/components/schemas/BanInfo'
+          - type: 'null'
+          description: The ban in force, if any
+      type: object
+      required:
+      - user_id
+      - email
+      - nickname
+      - role
+      - status
+      - created_at
+      title: AdminUser
+    AdminUserList:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/AdminUser'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - total
+      title: AdminUserList
+    BanCreate:
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+          description: User to ban
+        ban_type:
+          $ref: '#/components/schemas/BanType'
+          description: '''temporary'' or ''permanent'''
+        duration_days:
+          anyOf:
+          - type: integer
+            maximum: 365.0
+            minimum: 1.0
+          - type: 'null'
+          title: Duration Days
+          description: Length of a temporary ban in days (1-365); not used for a permanent
+            ban
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: Reason
+          description: Message shown to the banned user
+      type: object
+      required:
+      - user_id
+      - ban_type
+      title: BanCreate
+    BanInfo:
+      properties:
+        ban_type:
+          $ref: '#/components/schemas/BanType'
+          description: '''temporary'' or ''permanent'''
+        reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reason
+          description: Message from the administrator
+        starts_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Starts At
+          description: When the ban started
+        ends_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Ends At
+          description: When a temporary ban ends; null for a permanent ban
+      type: object
+      required:
+      - ban_type
+      title: BanInfo
+      description: 'The ban currently in force (FR-009): type, period and the message
+        shown to the user.'
+    BanType:
+      type: string
+      enum:
+      - temporary
+      - permanent
+      title: BanType
     CommentCreate:
       properties:
         review_id:
@@ -1868,6 +2217,15 @@ components:
       required:
       - status
       title: LivenessResponse
+    MessageResponse:
+      properties:
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - message
+      title: MessageResponse
     PaginatedContentResponse:
       properties:
         items:
@@ -2278,6 +2636,12 @@ components:
           format: date-time
           title: Created At
           description: Account creation timestamp
+        ban:
+          anyOf:
+          - $ref: '#/components/schemas/BanInfo'
+          - type: 'null'
+          description: 'The ban in force (FR-009): the user can log in but cannot
+            review, rate or comment'
       type: object
       required:
       - user_id
