@@ -5,7 +5,6 @@ participant "API Router\n(FastAPI)" as Router
 participant "Security\n(JWT Validator)" as Sec
 participant "Rating Service\n(Business Logic)" as Service
 participant "Data Access\n(PostgreSQL)" as DB
-participant "Cache\n(Redis)" as Cache
 
 User -> UI : Clicks rating score (e.g., 9/10)
 activate UI
@@ -52,11 +51,6 @@ else #LightCyan Token valid
             else #LightGreen Transaction committed
                 DB --> Service : Rating saved & aggregates updated
                 deactivate DB
-
-                Service -> Cache : invalidate_content_cache(content_id)
-                activate Cache
-                Cache --> Service : Cache invalidated
-                deactivate Cache
 
                 Service --> Router : RatingResponse
                 Router --> UI : 201 Created {rating_id, score}

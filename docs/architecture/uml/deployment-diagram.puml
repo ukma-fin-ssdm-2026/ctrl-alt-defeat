@@ -8,9 +8,10 @@ package "Зона 1: Недовірена (Public Internet)" {
 }
 
 package "Зона 2: Захищена (Internal VPC)" {
-    node "Application Server" <<VPS / Docker Container>> {
+    node "Application Server" <<Docker Container>> {
         node "Web Server (Uvicorn)" {
             artifact "FastAPI Application" <<Backend>>
+            artifact "Built React App (static)" <<Frontend dist>>
         }
     }
 
@@ -20,11 +21,6 @@ package "Зона 2: Захищена (Internal VPC)" {
         }
     }
 
-    node "Cache Server" <<Memory>> {
-        database "Redis Instance" {
-            artifact "Cached Metadata & Rate Limiting"
-        }
-    }
 }
 
 package "Зона 3: Зовнішня (Third-Party Services)" {
@@ -49,10 +45,8 @@ end note
 "Web Server (Uvicorn)" --> "PostgreSQL Instance" : TCP (Port 5432)
 note on link
   TB-02: Внутрішня межа 
-  (Сервер ↔ БД / Кеш)
+  (Сервер ↔ БД)
 end note
-
-"Web Server (Uvicorn)" ..> "Redis Instance" : TCP (Port 6379)
 
 "Web Server (Uvicorn)" --> "TMDB API" : HTTPS
 note on link
@@ -60,7 +54,7 @@ note on link
   (Сервер ↔ Зовнішній API)
 end note
 
-"GitHub Actions Runner" ..> "Application Server" : SSH / Docker Deploy (CI/CD Pipeline)
+"GitHub Actions Runner" ..> "Application Server" : Docker image build & smoke test (CI/CD Pipeline)
 note on link
   Автоматизоване розгортання
   після успішних перевірок
