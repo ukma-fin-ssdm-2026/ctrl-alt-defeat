@@ -2,7 +2,7 @@
 
 [![CI Test](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/workflows/ci.yml/badge.svg)](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/workflows/ci.yml)
 
-**Онлайн-версія:** [https://pislya-tytriv.onrender.com](https://pislya-tytriv.onrender.com). Демо-акаунт користувача підказує вікно входу. Після простою перше відкриття може тривати до хвилини (розділ 7).
+**Онлайн-версія:** [https://pislya-tytriv-4duj.onrender.com](https://pislya-tytriv-4duj.onrender.com). Демо-акаунт користувача підказує вікно входу. Після простою перше відкриття може тривати до хвилини (розділ 7).
 
 <p align="center">
   <img src="images/banner.png" width="100%"/>
@@ -196,8 +196,8 @@ python3 scripts/verify_traceability.py
 
 1. **Neon:** створити проєкт (регіон *AWS Europe Central (Frankfurt)*, PostgreSQL 16) і скопіювати рядок підключення (**Connect** → `postgresql://...?sslmode=require`).
 2. **Render:** Dashboard → **New → Blueprint** → обрати репозиторій `ctrl-alt-defeat` (гілка `main`). На запит `DATABASE_URL` вставити рядок із Neon; `TMDB_API_KEY` можна залишити порожнім. `JWT_SECRET_KEY`, `SEED_ADMIN_PASSWORD` і `SEED_USER_PASSWORD` Render згенерує сам.
-3. Після першого деплою сайт доступний за адресою [https://pislya-tytriv.onrender.com](https://pislya-tytriv.onrender.com) (назва сервісу `pislya-tytriv` з `render.yaml`); `/health` показує стан сервісу й бази.
-4. **Щоб сайт не засинав:** у GitHub → Settings → Secrets and variables → Actions → **Variables** додати `SITE_URL` = `https://pislya-tytriv.onrender.com`. Тоді workflow `keep-alive.yml` кожні 10 хвилин звертається до `/health/live`, а невдалий запуск сигналізує, що сайт не відповідає.
+3. Після першого деплою сайт доступний за адресою [https://pislya-tytriv-4duj.onrender.com](https://pislya-tytriv-4duj.onrender.com) (назва сервісу `pislya-tytriv` з `render.yaml`; суфікс `-4duj` Render додає, бо коротка адреса зайнята іншим акаунтом); `/health` показує стан сервісу й бази.
+4. **Щоб сайт не засинав:** у GitHub → Settings → Secrets and variables → Actions → **Variables** додати `SITE_URL` = `https://pislya-tytriv-4duj.onrender.com`. Тоді workflow `keep-alive.yml` кожні 10 хвилин звертається до `/health/live`, а невдалий запуск сигналізує, що сайт не відповідає.
 
 **Демо-акаунти на публічному сайті:** вікно входу показує тільки звичайного користувача (`DEMO_ROLES=user`). Пароль адміністратора (`SEED_ADMIN_PASSWORD`) видно в Render → сервіс → **Environment**, і він передається викладачу окремо, щоб відвідувачі сайту не отримували прав адміністратора.
 
