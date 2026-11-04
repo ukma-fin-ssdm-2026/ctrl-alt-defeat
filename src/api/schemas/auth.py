@@ -56,7 +56,17 @@ class TokenResponse(BaseModel):
 class RegisterResponse(BaseModel):
     message: str = Field(..., description="Status message")
     email: str = Field(..., description="Registered email address")
-    verification_token: Optional[str] = Field(None, description="Verification token for email confirmation")
+    verification_token: Optional[str] = Field(
+        None, description="Returned only on demo deployments (DEMO_MODE=true) for one-click confirmation"
+    )
+
+
+class ResendVerificationRequest(BaseModel):
+    email: str = Field(..., max_length=255, description="Email the account was registered with")
+
+
+class MessageResponse(BaseModel):
+    message: str = Field(..., description="Status message")
 
 
 class VerifyEmailResponse(BaseModel):

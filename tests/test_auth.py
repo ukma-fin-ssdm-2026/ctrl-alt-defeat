@@ -31,6 +31,15 @@ def setup_database():
     Base.metadata.drop_all(bind=engine_test)
 
 
+@pytest.fixture(autouse=True)
+def demo_mode(monkeypatch):
+    """These flows confirm the email with the token from the response, which only demo mode returns
+    (FR-001); real delivery is covered in test_email_verification.py. No email transport is configured."""
+    monkeypatch.setenv("DEMO_MODE", "true")
+    for name in ("BREVO_API_KEY", "SMTP_HOST"):
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture
 def db_session():
     db = TestingSessionLocal()

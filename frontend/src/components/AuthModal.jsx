@@ -10,6 +10,9 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
   const [error, setError] = useState('');
   const [successInfo, setSuccessInfo] = useState(null);
   const [loading, setLoading] = useState(false);
+  // FR-001: address that still needs confirmation, for "send the link again"
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  const [resendStatus, setResendStatus] = useState('');
   // Demo accounts come from the server configuration (DEMO_MODE), never from the frontend code
   const [demoAccounts, setDemoAccounts] = useState([]);
 
@@ -43,6 +46,8 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
     e.preventDefault();
     setError('');
     setSuccessInfo(null);
+    setUnverifiedEmail('');
+    setResendStatus('');
     setLoading(true);
 
     if (isLogin) {
@@ -53,6 +58,7 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
           setError(isUkr 
             ? 'Будь ласка, підтвердіть вашу пошту перед входом. Скористайтеся посиланням активації.' 
             : 'Please verify your email before logging in. Use your activation link.');
+          setUnverifiedEmail(email.trim().toLowerCase());
         } else if (result.code === 'ACCOUNT_BANNED') {
           setError(isUkr 
             ? 'Ваш обліковий запис заблоковано адміністратором.' 
@@ -76,9 +82,10 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
           email: data.email,
           token: data.verification_token,
           message: isUkr
-            ? 'Акаунт створено! На вашу пошту надіслано посилання підтвердження (FR-001).'
-            : 'Account created! Verification link sent to your email (FR-001).',
+            ? `Акаунт створено! Ми надіслали лист із посиланням на ${data.email}. Перейдіть за ним, щоб активувати акаунт.`
+            : `Account created! We sent a link to ${data.email}. Open it to activate your account.`,
         });
+        setUnverifiedEmail(data.email);
       } catch (err) {
         setLoading(false);
         const errCode = err.response?.data?.error?.code || err.response?.data?.detail?.code;
@@ -90,6 +97,16 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
           setError(err.response?.data?.error?.message || (isUkr ? 'Помилка реєстрації.' : 'Registration error.'));
         }
       }
+    }
+  };
+
+  const handleResend = async () => {
+    setResendStatus('');
+    try {
+      await apiClient.post('/auth/resend-verification', { email: unverifiedEmail });
+      setResendStatus(isUkr ? `Лист надіслано ще раз на ${unverifiedEmail}.` : `The link was sent again to ${unverifiedEmail}.`);
+    } catch {
+      setResendStatus(isUkr ? 'Не вдалося надіслати лист. Спробуйте пізніше.' : 'Could not send the email. Please try later.');
     }
   };
 
@@ -167,6 +184,15 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
         )}
 
         {error && <p className="text-red-500 text-sm mb-4 text-center font-semibold">{error}</p>}
+
+        {unverifiedEmail && (
+          <div className="mb-4 text-center text-xs text-gray-600 dark:text-gray-300">
+            <button type="button" onClick={handleResend} className="font-bold text-yellow-600 dark:text-yellow-400 hover:underline">
+              {isUkr ? '✉️ Надіслати лист ще раз' : '✉️ Send the link again'}
+            </button>
+            {resendStatus && <p role="status" className="mt-1">{resendStatus}</p>}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {!isLogin && (

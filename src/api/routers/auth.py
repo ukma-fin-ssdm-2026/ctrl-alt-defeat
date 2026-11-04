@@ -2,7 +2,7 @@ import uuid
 from typing import Optional
 
 import jwt
-from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from src.api.db.database import SessionLocal
@@ -10,6 +10,8 @@ from src.api.db.models import User
 from src.api.schemas.auth import (
     DemoAccount,
     DemoAccountsResponse,
+    MessageResponse,
+    ResendVerificationRequest,
     RegisterResponse,
     TokenResponse,
     UserLoginRequest,
@@ -26,7 +28,8 @@ from src.api.services.auth import (
     verify_password,
 )
 from src.api.services.bans import active_ban
-from src.api.services.demo_accounts import get_public_demo_accounts
+from src.api.services.demo_accounts import demo_mode_enabled, get_public_demo_accounts
+from src.api.services.email import send_verification_email
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication & User Management"])
 
@@ -132,8 +135,9 @@ def get_current_admin(user: User = Depends(get_current_active_user)) -> User:
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user account (FR-001)",
     description=(
-        "Registers a new account with email and password. Generates a verification token "
-        "and leaves account in pending unverified state until email verification."
+        "Registers a new account with email and password and sends an activation link to the email "
+        "(FR-001). The account stays pending until the link is opened. The token itself is returned "
+        "only on demo deployments (DEMO_MODE=true)."
     ),
     responses={
         **STANDARD_ERRORS,
@@ -142,6 +146,7 @@ def get_current_admin(user: User = Depends(get_current_active_user)) -> User:
 )
 def register_user(
     req: UserRegisterRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     email_clean = req.email.strip().lower()
@@ -173,11 +178,38 @@ def register_user(
     db.commit()
     db.refresh(user)
 
+    # Sent after the response, so a slow mail provider does not delay registration
+    background_tasks.add_task(send_verification_email, user.email, user.nickname, verification_token)
+
     return RegisterResponse(
-        message="Account created successfully. Please verify your email before logging in.",
+        message="Account created. We sent an activation link to your email; open it before logging in.",
         email=user.email,
-        verification_token=verification_token,
+        verification_token=verification_token if demo_mode_enabled() else None,
     )
+
+
+@router.post(
+    "/resend-verification",
+    response_model=MessageResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Send the activation link again (FR-001)",
+    description=(
+        "Issues a new activation link for an account that is not verified yet. The answer is the same "
+        "whether or not the email is registered, so it cannot be used to find accounts."
+    ),
+    responses={**STANDARD_ERRORS},
+)
+def resend_verification(
+    req: ResendVerificationRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.email == req.email.strip().lower()).first()
+    if user is not None and not user.email_verified:
+        user.verification_token = generate_verification_token()
+        db.commit()
+        background_tasks.add_task(send_verification_email, user.email, user.nickname, user.verification_token)
+    return MessageResponse(message="If the account exists and is not verified yet, a new activation link was sent.")
 
 
 @router.get(
