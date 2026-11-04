@@ -1,3 +1,5 @@
+import { translateGenre } from '../utils/genres';
+
 export default function MovieCard({ movie, onSelect, language = 'UKR', isWatchlisted, onToggleWatchlist }) {
   const isUkr = language === 'UKR';
   
@@ -13,22 +15,8 @@ export default function MovieCard({ movie, onSelect, language = 'UKR', isWatchli
     return cat;
   };
 
-  const genreTranslations = {
-    'Бойовик': 'Action',
-    'Комедія': 'Comedy',
-    'Драма': 'Drama',
-    'Фантастика': 'Sci-Fi',
-    'Жахи': 'Horror',
-    'Трилер': 'Thriller',
-    'Детектив': 'Detective',
-    'Документальний': 'Documentary'
-  };
 
-  const getGenreLabel = (genre) => {
-    if (!genre) return '';
-    if (isUkr) return genre;
-    return genreTranslations[genre] || genre;
-  };
+  const getGenreLabel = (genre) => translateGenre(genre, isUkr ? 'UKR' : 'EN');
 
   return (
     <div 
