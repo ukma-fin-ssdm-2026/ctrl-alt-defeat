@@ -1,4 +1,5 @@
 # Local production-like run: the application image + PostgreSQL.
+#   cp .env.example .env         # then put your own values into .env (it is gitignored)
 #   docker compose up --build    ->  http://localhost:8000
 services:
   db:
@@ -7,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: reviews_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres # local development only
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -23,8 +24,8 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/reviews_db
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-local-only}
+      DATABASE_URL: postgresql+psycopg2://postgres:${POSTGRES_PASSWORD}@db:5432/reviews_db
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
       TMDB_API_KEY: ${TMDB_API_KEY:-}
     ports:
       - "8000:8000"

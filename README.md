@@ -138,9 +138,10 @@ npm run dev
 
 Один Docker-образ містить бекенд і зібраний фронтенд, тому сайт і API доступні з однієї адреси:
 ```bash
+cp .env.example .env    # впишіть свої POSTGRES_PASSWORD і JWT_SECRET_KEY
 docker compose up --build
 ```
-Сайт відкриється за адресою [http://localhost:8000](http://localhost:8000), стан сервісу — [http://localhost:8000/health](http://localhost:8000/health). `docker-compose.yml` також піднімає PostgreSQL 16; обидва контейнери мають політику перезапуску `restart: unless-stopped`.
+Сайт відкриється за адресою [http://localhost:8000](http://localhost:8000), стан сервісу — [http://localhost:8000/health](http://localhost:8000/health). `docker-compose.yml` також піднімає PostgreSQL 16; обидва контейнери мають політику перезапуску `restart: unless-stopped`. Образ встановлює залежності з `requirements-lock.txt` (фіксовані версії з sha256-хешами); після зміни `requirements.txt` lock-файл оновлюється командою з `scripts/check_requirements_lock.py`, а CI перевіряє їх відповідність.
 
 ### 5. Тестові облікові записи (Demo Accounts)
 

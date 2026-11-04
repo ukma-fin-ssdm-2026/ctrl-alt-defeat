@@ -24,6 +24,10 @@ jobs:
         run: |
           python -m pip install --only-binary :all: -r requirements.txt
 
+      - name: Check that requirements-lock.txt matches requirements.txt
+        run: |
+          python scripts/check_requirements_lock.py
+
       - name: Check formatting (black)
         run: |
           black --check .
@@ -95,9 +99,15 @@ jobs:
       - name: Scan the repository history for secrets (gitleaks)
         env:
           GITLEAKS_VERSION: '8.21.1'
+          # sha256 from the official gitleaks_8.21.1_checksums.txt release asset
+          GITLEAKS_SHA256: 'b1e20dfbd81fa5eeefc91ace3371d4db75d2250c0d426cb6acf1e51722726779'
         run: |
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            | tar -xz gitleaks
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          # HTTPS only, including every redirect (GitHub releases redirect to objects.githubusercontent.com)
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 -sSfL -o "$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" gitleaks
           ./gitleaks detect --source . --redact --verbose
 
   docker:
