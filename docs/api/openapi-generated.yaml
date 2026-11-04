@@ -56,8 +56,9 @@ paths:
       tags:
       - Authentication & User Management
       summary: Register a new user account (FR-001)
-      description: Registers a new account with email and password. Generates a verification
-        token and leaves account in pending unverified state until email verification.
+      description: Registers a new account with email and password and sends an activation
+        link to the email (FR-001). The account stays pending until the link is opened.
+        The token itself is returned only on demo deployments (DEMO_MODE=true).
       operationId: register_user_api_v1_auth_register_post
       requestBody:
         content:
@@ -92,6 +93,46 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Email or nickname already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/resend-verification:
+    post:
+      tags:
+      - Authentication & User Management
+      summary: Send the activation link again (FR-001)
+      description: Issues a new activation link for an account that is not verified
+        yet. The answer is the same whether or not the email is registered, so it
+        cannot be used to find accounts.
+      operationId: resend_verification_api_v1_auth_resend_verification_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendVerificationRequest'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/src__api__schemas__auth__MessageResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
           content:
             application/json:
               schema:
@@ -1734,7 +1775,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/src__api__routers__admin__MessageResponse'
         '422':
           description: Validation Error (Unprocessable Entity)
           content:
@@ -2217,15 +2258,6 @@ components:
       required:
       - status
       title: LivenessResponse
-    MessageResponse:
-      properties:
-        message:
-          type: string
-          title: Message
-      type: object
-      required:
-      - message
-      title: MessageResponse
     PaginatedContentResponse:
       properties:
         items:
@@ -2330,12 +2362,24 @@ components:
           - type: string
           - type: 'null'
           title: Verification Token
-          description: Verification token for email confirmation
+          description: Returned only on demo deployments (DEMO_MODE=true) for one-click
+            confirmation
       type: object
       required:
       - message
       - email
       title: RegisterResponse
+    ResendVerificationRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 255
+          title: Email
+          description: Email the account was registered with
+      type: object
+      required:
+      - email
+      title: ResendVerificationRequest
     ReviewCreate:
       properties:
         content_id:
@@ -2825,3 +2869,22 @@ components:
       - items
       - total
       title: WatchlistResponse
+    src__api__routers__admin__MessageResponse:
+      properties:
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - message
+      title: MessageResponse
+    src__api__schemas__auth__MessageResponse:
+      properties:
+        message:
+          type: string
+          title: Message
+          description: Status message
+      type: object
+      required:
+      - message
+      title: MessageResponse
