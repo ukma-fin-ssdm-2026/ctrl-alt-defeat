@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, UUID4, field_validator
 
@@ -116,3 +116,25 @@ class PaginatedReviewsResponse(BaseModel):
     skip: int = Field(..., description="Offset used for pagination")
     limit: int = Field(..., description="Limit used for pagination")
     has_more: bool = Field(..., description="Flag indicating if there are more items available")
+
+
+class ReviewSummaryResponse(BaseModel):
+    """Audience rating of a movie or series (US-008)."""
+
+    content_id: UUID4 = Field(..., description="Identifier of the content (movie/series)")
+    average_rating: Optional[float] = Field(None, description="Average audience rating 1-10; null if nobody rated yet")
+    ratings_count: int = Field(..., description="Number of ratings (every review has a rating)")
+    reviews_count: int = Field(..., description="Number of reviews with text")
+    distribution: Dict[int, int] = Field(..., description="Number of ratings for each score from 1 to 10")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "content_id": "987e6543-e21b-34c2-b123-526614174111",
+                "average_rating": 8.67,
+                "ratings_count": 3,
+                "reviews_count": 2,
+                "distribution": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 1, "9": 2, "10": 0},
+            }
+        }
+    }
