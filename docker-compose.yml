@@ -23,10 +23,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # JWT_SECRET_KEY, DEMO_MODE, SEED_* and TMDB_API_KEY come from .env (see .env.example)
+    env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:${POSTGRES_PASSWORD}@db:5432/reviews_db
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
-      TMDB_API_KEY: ${TMDB_API_KEY:-}
     ports:
       - "8000:8000"
 
