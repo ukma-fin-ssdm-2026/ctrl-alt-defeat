@@ -5,7 +5,7 @@
 # expire after 30 days, so registered users and reviews are kept.
 services:
   - type: web
-    name: ctrl-alt-defeat
+    name: pislya-tytriv
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
