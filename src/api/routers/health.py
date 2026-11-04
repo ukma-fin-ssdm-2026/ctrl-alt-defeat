@@ -10,6 +10,10 @@ from src.api.db.database import SessionLocal
 router = APIRouter(tags=["health"])
 
 
+class LivenessResponse(BaseModel):
+    status: str = Field(..., description="Always 'ok' while the process answers")
+
+
 class HealthResponse(BaseModel):
     status: str = Field(..., description="'ok' if the service can serve requests, otherwise 'degraded'")
     database: str = Field(..., description="'ok' if the database answers, otherwise 'unavailable'")
@@ -21,6 +25,19 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+@router.get(
+    "/health/live",
+    response_model=LivenessResponse,
+    summary="Liveness check without touching the database (REL-001)",
+    description=(
+        "For the hosting platform health check and the keep-alive ping: answers while the process is up "
+        "and does not wake a serverless database that has scaled to zero. Use /health to check the database too."
+    ),
+)
+def liveness():
+    return LivenessResponse(status="ok")
 
 
 @router.get(

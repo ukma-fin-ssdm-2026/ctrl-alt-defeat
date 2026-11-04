@@ -1,0 +1,27 @@
+# Keeps the free Render web service awake (it sleeps after 15 minutes without requests) and works as a
+# simple uptime monitor (REL-001): a failed run means the site did not answer.
+# Enable it by setting the repository variable SITE_URL (Settings -> Secrets and variables -> Actions ->
+# Variables), e.g. https://ctrl-alt-defeat.onrender.com. Without the variable the job is skipped.
+name: Keep-alive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    if: ${{ vars.SITE_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping the liveness endpoint (does not wake the database)
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          # A sleeping service needs up to a minute to start, hence the retries
+          curl --proto '=https' --tlsv1.2 -sSf --retry 6 --retry-delay 15 --retry-all-errors \
+            --max-time 90 "${SITE_URL%/}/health/live"
