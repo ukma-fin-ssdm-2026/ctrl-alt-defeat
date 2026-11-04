@@ -70,3 +70,23 @@ describe('AuthModal demo accounts (SEC-001)', () => {
     expect(screen.queryByText(/Демо доступ/)).not.toBeInTheDocument();
   });
 });
+
+describe('AuthModal accessibility (S6848)', () => {
+  it('switches between login and registration using an accessible button', () => {
+    render(<AuthModal close={() => {}} onLogin={vi.fn()} />);
+
+    const signUpButton = screen.getByRole('button', { name: 'Створити' });
+
+    expect(signUpButton).toBeInTheDocument();
+    expect(signUpButton).toHaveAttribute('type', 'button');
+    expect(signUpButton).not.toHaveAttribute('tabindex', '-1');
+
+    fireEvent.click(signUpButton);
+
+    expect(screen.getByRole('button', { name: 'Увійти' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Увійти' }));
+
+    expect(screen.getByRole('button', { name: 'Створити' })).toBeInTheDocument();
+  });
+});

@@ -213,14 +213,15 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
           {isLogin 
             ? (isUkr ? 'Немає акаунту? ' : 'No account? ') 
             : (isUkr ? 'Вже зареєстровані? ' : 'Already have an account? ')}
-          <span 
+          <button
+            type="button"
             className="text-yellow-600 dark:text-yellow-400 font-bold cursor-pointer hover:underline ml-1"
             onClick={() => { setIsLogin(!isLogin); setError(''); setSuccessInfo(null); }}
           >
-            {isLogin 
-              ? (isUkr ? 'Створити' : 'Sign up') 
+            {isLogin
+              ? (isUkr ? 'Створити' : 'Sign up')
               : (isUkr ? 'Увійти' : 'Login')}
-          </span>
+          </button>
         </p>
       </div>
     </div>
