@@ -46,3 +46,33 @@ jobs:
             exit 1
           fi
           echo "OpenAPI specification is synchronized with application code."
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # --ignore-scripts: dependency lifecycle scripts never run in CI (supply-chain safety)
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Unit & component tests (Vitest)
+        run: npm test
+
+      - name: Production build (Vite)
+        run: npm run build
