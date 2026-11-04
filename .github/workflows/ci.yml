@@ -128,6 +128,7 @@ jobs:
             sleep 2
           done
           curl -sf http://127.0.0.1:8000/health | grep -q '"database":"ok"'
+          curl -sf http://127.0.0.1:8000/health/live | grep -q '"status":"ok"'
           curl -sf "http://127.0.0.1:8000/api/v1/movies?limit=1" | grep -q '"total":[1-9]'
           curl -sf http://127.0.0.1:8000/ | grep -qi '<div id="root">'
           curl -sf http://127.0.0.1:8000/movies/42 | grep -qi '<div id="root">'
