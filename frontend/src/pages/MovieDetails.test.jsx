@@ -30,6 +30,7 @@ const adminUserId = '99999999-9999-9999-9999-999999999999';
 
 const mockReview = {
   review_id: '44444444-4444-4444-4444-444444444444',
+  content_id: mockMovie.content_id,
   user_id: authorUserId,
   author: 'AuthorUser',
   rating: 9,
@@ -272,6 +273,25 @@ describe('MovieDetails review form (FR-003, FR-004)', () => {
 
     expect(await screen.findByText('olena')).toBeInTheDocument();
     expect(screen.queryByText('Глядач')).not.toBeInTheDocument();
+  });
+
+  it('never shows reviews of other movies', async () => {
+    // Trace: T-038
+    apiClient.get.mockResolvedValue({
+      data: { items: [{ review_id: 'x1', user_id: 'other', author_nickname: 'olena', content_id: 'another-movie', rating: 9, review_text: 'Відгук на інший фільм' }] },
+    });
+    renderDetails();
+
+    expect(await screen.findByText(/Ще немає жодної рецензії/)).toBeInTheDocument();
+    expect(screen.queryByText('Відгук на інший фільм')).not.toBeInTheDocument();
+  });
+
+  it('does not load all reviews for a movie without a catalog id', async () => {
+    // Trace: T-038
+    renderDetails({ movie: { ...mockMovie, content_id: undefined } });
+
+    expect(await screen.findByText(/Ще немає жодної рецензії/)).toBeInTheDocument();
+    expect(apiClient.get).not.toHaveBeenCalled();
   });
 
   it('does not offer rating for titles outside the catalog', () => {
