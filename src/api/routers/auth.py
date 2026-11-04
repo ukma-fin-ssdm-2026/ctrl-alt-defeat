@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from src.api.db.database import SessionLocal
 from src.api.db.models import User
 from src.api.schemas.auth import (
+    DemoAccount,
+    DemoAccountsResponse,
     RegisterResponse,
     TokenResponse,
     UserLoginRequest,
@@ -23,6 +25,7 @@ from src.api.services.auth import (
     hash_password,
     verify_password,
 )
+from src.api.services.demo_accounts import get_public_demo_accounts
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication & User Management"])
 
@@ -272,6 +275,24 @@ def login(
         access_token=access_token,
         token_type="bearer",
         user=UserResponse.model_validate(user),
+    )
+
+
+@router.get(
+    "/demo-accounts",
+    response_model=DemoAccountsResponse,
+    summary="Demo accounts for the login window",
+    description=(
+        "Public hint for demo deployments: the seed accounts configured in the environment. "
+        "Returns `enabled: false` and no accounts unless the server runs with DEMO_MODE=true."
+    ),
+    responses={**STANDARD_ERRORS},
+)
+def list_demo_accounts():
+    accounts = get_public_demo_accounts()
+    return DemoAccountsResponse(
+        enabled=bool(accounts),
+        accounts=[DemoAccount(role=a.role, email=a.email, password=a.password) for a in accounts],
     )
 
 
