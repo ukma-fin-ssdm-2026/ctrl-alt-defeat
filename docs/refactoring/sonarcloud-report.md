@@ -190,7 +190,7 @@
 ## 5. Регресійне тестування
 
 | Набір | Команда | До | Після рефакторингів 1–2 | Після рефакторингів 3–4 | Після рефакторингу 5 |
-|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|
 | Бекенд (pytest, покриття ≥ 80 %) | `pytest --cov=src.api tests/` | 276 passed, 98 % | 279 passed, 98 % | 283 passed, 98 % | 284 passed, 98 % |
 | Фронтенд (Vitest) | `npm --prefix frontend test` | 113 passed | 117 passed | 121 passed | 121 passed |
 | Лінтери | `ruff`, `black --check`, `eslint`, `bandit -ll` | OK | OK | OK | OK |
