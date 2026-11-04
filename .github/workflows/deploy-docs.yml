@@ -8,9 +8,15 @@ on:
 permissions:
   contents: write
 
+# One docs deployment at a time; a newer push replaces a pending one
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: true
+
 jobs:
   deploy-docs:
-    runs-on: [self-hosted, macOS, ARM64]
+    # GitHub-hosted runner: the repository is public, and self-hosted runners must not run public repository code
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
