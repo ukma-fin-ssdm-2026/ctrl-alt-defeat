@@ -175,3 +175,21 @@ describe('ReviewComments (FR-011)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('заборонений вміст');
   });
 });
+
+describe('ReviewComments for a banned user (FR-009)', () => {
+  beforeEach(() => {
+    apiClient.get.mockReset();
+    apiClient.post.mockReset();
+  });
+
+  it('shows the ban instead of the comment form', async () => {
+    // Trace: T-036
+    apiClient.get.mockResolvedValue(thread([]));
+    renderComments({ user: { ...user, ban: { ban_type: 'permanent', ends_at: null, reason: null } } });
+
+    await openThread();
+
+    expect(await screen.findByText('Ваш акаунт заблоковано назавжди.')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+});
