@@ -5,6 +5,7 @@ import urllib.error
 import urllib.request
 import uuid
 from typing import Any, Dict, List, Optional
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.api.db.models import Content
@@ -709,3 +710,27 @@ def seed_movies_to_database(db: Session, movies_data: Optional[List[Dict[str, An
 
     db.commit()
     return count
+
+
+def seed_catalog_if_empty(db: Session) -> int:
+    """
+    Fill an empty catalog on application startup (FR-012), so a fresh database is usable
+    without running scripts/seed_movies.py manually. Returns the number of titles added.
+    Disabled with AUTO_SEED_CATALOG=false.
+    """
+    if os.getenv("AUTO_SEED_CATALOG", "true").lower() in ("false", "0", "no"):
+        return 0
+    try:
+        if db.query(Content.id).first() is not None:
+            return 0
+        added = seed_movies_to_database(db, fetch_tmdb_movies())
+    except SQLAlchemyError as error:
+        # Never block the API startup: e.g. an old local database without newer columns
+        db.rollback()
+        logger.warning(
+            "Catalog auto-seed skipped (%s). If the database schema is outdated, recreate app.db.",
+            error.__class__.__name__,
+        )
+        return 0
+    logger.info("Catalog was empty: seeded %s titles.", added)
+    return added
