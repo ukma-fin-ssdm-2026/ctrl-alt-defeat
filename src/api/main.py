@@ -17,6 +17,7 @@ from src.api.routers.auth import router as auth_router
 from src.api.routers.watchlist import router as watchlist_router
 from src.api.routers.watched import router as watched_router
 from src.api.services.auth import seed_default_users
+from src.api.services.tmdb import seed_catalog_if_empty
 from src.api.db.database import SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -43,6 +44,8 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_default_users(db)
+        # A fresh database gets the movie catalog automatically (no manual seed step)
+        seed_catalog_if_empty(db)
     finally:
         db.close()
     save_openapi_spec(app)
