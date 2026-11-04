@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { mockMovies } from '../data/mockData';
 import { getDisplayName } from '../utils/displayName';
+import { translateGenre } from '../utils/genres';
 
 export default function Header({ 
   toggleTheme, 
@@ -34,28 +35,8 @@ export default function Header({
     { name: isUkr ? 'Мультфільми' : 'Cartoons', key: 'Мультфільми' }
   ];
   
-  const genreTranslations = {
-    'Бойовик': 'Action',
-    'Комедія': 'Comedy',
-    'Драма': 'Drama',
-    'Фантастика': 'Sci-Fi',
-    'Жахи': 'Horror',
-    'Трилер': 'Thriller',
-    'Детектив': 'Detective',
-    'Документальний': 'Documentary',
-    'Біографія': 'Biography',
-    'Історія': 'History',
-    'Мелодрама': 'Romance',
-    'Кримінал': 'Crime',
-    'Музика': 'Music',
-    'Пригоди': 'Adventure'
-  };
 
-  const getGenreLabel = (genre) => {
-    if (!genre) return '';
-    if (isUkr) return genre;
-    return genreTranslations[genre] || genre;
-  };
+  const getGenreLabel = (genre) => translateGenre(genre, isUkr ? 'UKR' : 'EN');
 
   const genres = [
     'Бойовик', 'Комедія', 'Драма', 'Фантастика', 'Жахи', 
