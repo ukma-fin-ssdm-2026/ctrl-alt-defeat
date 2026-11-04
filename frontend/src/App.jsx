@@ -67,6 +67,19 @@ export default function App() {
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null); // Додали стан для року
 
+  // FR-001: the activation link from the email opens /verify-email?token=...
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token');
+    if (window.location.pathname !== '/verify-email' || !token) return;
+    apiClient.get('/auth/verify', { params: { token } })
+      .then(() => setAuthNotice('Пошту підтверджено! Тепер ви можете увійти.'))
+      .catch(() => setAuthNotice('Посилання недійсне або вже використане. Увійдіть або надішліть лист ще раз.'))
+      .finally(() => {
+        setIsAuthOpen(true);
+        window.history.replaceState(null, '', '/');
+      });
+  }, []);
+
   useEffect(() => {
     // Validate session on startup with backend via HttpOnly cookie (FR-001, US-011)
     apiClient.get('/auth/me')

@@ -90,3 +90,52 @@ describe('AuthModal accessibility (S6848)', () => {
     expect(screen.getByRole('button', { name: 'Створити' })).toBeInTheDocument();
   });
 });
+describe('AuthModal email confirmation (FR-001)', () => {
+  beforeEach(() => {
+    vi.mocked(apiClient.post).mockReset();
+  });
+
+  const signUp = async () => {
+    render(<AuthModal close={() => {}} onLogin={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Створити' }));
+    fireEvent.change(screen.getByPlaceholderText("Ваш нікнейм (Ім'я)"), { target: { value: 'newbie' } });
+    fireEvent.change(screen.getByPlaceholderText('Email'), { target: { value: 'New@Example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('Пароль'), { target: { value: 'Password123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Зареєструватись' }));
+  };
+
+  it('tells the user to open the emailed link and offers to send it again', async () => {
+    vi.mocked(apiClient.post)
+      .mockResolvedValueOnce({ data: { email: 'new@example.com', verification_token: null } })
+      .mockResolvedValueOnce({ data: { message: 'sent' } });
+    await signUp();
+
+    expect(await screen.findByText(/Ми надіслали лист із посиланням на new@example.com/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /демо в 1 клік/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Надіслати лист ще раз/ }));
+
+    expect(await screen.findByText('Лист надіслано ще раз на new@example.com.')).toBeInTheDocument();
+    expect(apiClient.post).toHaveBeenLastCalledWith('/auth/resend-verification', { email: 'new@example.com' });
+  });
+
+  it('keeps one-click confirmation on demo deployments', async () => {
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { email: 'new@example.com', verification_token: 'demo-token' } });
+    await signUp();
+
+    expect(await screen.findByRole('button', { name: /демо в 1 клік/ })).toBeInTheDocument();
+  });
+
+  it('offers a new link when login fails because the email is not confirmed', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { message: 'sent' } });
+    const onLogin = vi.fn().mockResolvedValue({ success: false, code: 'EMAIL_NOT_VERIFIED' });
+    render(<AuthModal close={() => {}} onLogin={onLogin} />);
+    fireEvent.change(await screen.findByPlaceholderText('Email'), { target: { value: 'late@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('Пароль'), { target: { value: 'Password123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Увійти' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: /Надіслати лист ще раз/ }));
+
+    expect(apiClient.post).toHaveBeenCalledWith('/auth/resend-verification', { email: 'late@example.com' });
+  });
+});
