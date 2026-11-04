@@ -4,6 +4,28 @@ info:
   description: REST API for managing content reviews and movies catalog.
   version: 1.0.0
 paths:
+  /health/live:
+    get:
+      tags:
+      - health
+      summary: Liveness check without touching the database (REL-001)
+      description: 'For the hosting platform health check and the keep-alive ping:
+        answers while the process is up and does not wake a serverless database that
+        has scaled to zero. Use /health to check the database too.'
+      operationId: liveness_health_live_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivenessResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /health:
     get:
       tags:
@@ -1836,6 +1858,16 @@ components:
       - status
       - database
       title: HealthResponse
+    LivenessResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: Always 'ok' while the process answers
+      type: object
+      required:
+      - status
+      title: LivenessResponse
     PaginatedContentResponse:
       properties:
         items:
