@@ -304,4 +304,3 @@ def logout(response: Response):
         secure=True,
     )
     return {"message": "Successfully logged out"}
-

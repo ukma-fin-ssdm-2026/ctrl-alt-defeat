@@ -56,12 +56,15 @@ def test_reviews_distribution_scale_1_to_10():
         assert i in result["distribution"]
 
 
-@pytest.mark.parametrize("reviews, expected_total, expected_avg", [
-    ([{"rating": 10}], 1, 10.0),
-    ([{"rating": 1}, {"rating": 10}], 2, 5.5),
-    ([{"rating": 7}, {"rating": 8}, {"rating": 9}], 3, 8.0),
-    ([{"rating": 6}, {"rating": 6}], 2, 6.0),
-])
+@pytest.mark.parametrize(
+    "reviews, expected_total, expected_avg",
+    [
+        ([{"rating": 10}], 1, 10.0),
+        ([{"rating": 1}, {"rating": 10}], 2, 5.5),
+        ([{"rating": 7}, {"rating": 8}, {"rating": 9}], 3, 8.0),
+        ([{"rating": 6}, {"rating": 6}], 2, 6.0),
+    ],
+)
 def test_parameterized_summary_averages(reviews, expected_total, expected_avg):
     # Trace: T-005
     result = generate_review_summary(reviews)
@@ -80,12 +83,15 @@ def test_policy_empty_text():
     assert check_review_policy_violations("") == []
 
 
-@pytest.mark.parametrize("bad_text, expected_violation", [
-    ("This movie is terrible and the director is an idiot.", "profanity"),
-    ("Watch this movie for free at http://spam-site.com/watch!", "spam_links"),
-    ("THIS IS THE BEST MOVIE EVER I CANNOT BELIEVE IT!!!", "shouting"),
-    ("This movie is absolute sh1t and the director is a f*ckin genius.", "profanity"),
-])
+@pytest.mark.parametrize(
+    "bad_text, expected_violation",
+    [
+        ("This movie is terrible and the director is an idiot.", "profanity"),
+        ("Watch this movie for free at http://spam-site.com/watch!", "spam_links"),
+        ("THIS IS THE BEST MOVIE EVER I CANNOT BELIEVE IT!!!", "shouting"),
+        ("This movie is absolute sh1t and the director is a f*ckin genius.", "profanity"),
+    ],
+)
 def test_parameterized_policy_violations(bad_text, expected_violation):
     # Trace: T-007
     violations = check_review_policy_violations(bad_text)

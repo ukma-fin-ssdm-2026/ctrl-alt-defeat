@@ -58,4 +58,3 @@ class VerifyEmailResponse(BaseModel):
     message: str = Field(..., description="Status message")
     email: str = Field(..., description="Verified email address")
     status: str = Field(..., description="Updated account status")
-

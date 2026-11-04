@@ -215,6 +215,7 @@ def test_get_movie_by_invalid_string_id(client):
 
 def test_movies_get_db_generator():
     from src.api.routers.movies import get_db
+
     gen = get_db()
     session = next(gen)
     assert session is not None
@@ -222,4 +223,3 @@ def test_movies_get_db_generator():
         next(gen)
     except StopIteration:
         pass
-
