@@ -40,3 +40,51 @@ describe('Header profile button (FR-001)', () => {
     expect(screen.getByRole('button', { name: 'Увійти' })).toBeInTheDocument();
   });
 });
+
+const dune = { id: 7, title: 'Дюна', titleEn: 'Dune', year: 2021, genre: 'Фантастика', img: '/dune.jpg' };
+
+describe('Header behaviour kept by the Lab 8 refactoring (S6848)', () => {
+  it('goes to the home page from the logo', async () => {
+    const onGoHome = vi.fn();
+    render(<Header {...baseProps} user={null} onGoHome={onGoHome} />);
+
+    await userEvent.click(screen.getByAltText('Після титрів'));
+    expect(onGoHome).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens a movie from the search suggestions and clears the search', async () => {
+    const onSelectMovie = vi.fn();
+    render(<Header {...baseProps} user={null} movies={[dune]} onSelectMovie={onSelectMovie} />);
+    const search = screen.getByPlaceholderText('Пошук ...');
+
+    await userEvent.type(search, 'дю');
+    await userEvent.click(screen.getByText('Дюна'));
+
+    expect(onSelectMovie).toHaveBeenCalledWith(dune);
+    expect(search).toHaveValue('');
+    expect(screen.queryByText('Дюна')).not.toBeInTheDocument();
+  });
+});
+
+describe('Header interactive elements are native buttons (SonarQube S6848)', () => {
+  it('the logo is a button reachable with the keyboard', async () => {
+    const onGoHome = vi.fn();
+    render(<Header {...baseProps} user={null} onGoHome={onGoHome} />);
+
+    const logo = screen.getByRole('button', { name: /Після титрів/ });
+    logo.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(onGoHome).toHaveBeenCalledTimes(1);
+  });
+
+  it('each search suggestion is a button reachable with the keyboard', async () => {
+    const onSelectMovie = vi.fn();
+    render(<Header {...baseProps} user={null} movies={[dune]} onSelectMovie={onSelectMovie} />);
+
+    await userEvent.type(screen.getByPlaceholderText('Пошук ...'), 'dune');
+    const suggestion = screen.getByRole('button', { name: /Дюна/ });
+    suggestion.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(onSelectMovie).toHaveBeenCalledWith(dune);
+  });
+});

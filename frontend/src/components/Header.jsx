@@ -54,6 +54,12 @@ export default function Header({
     return title.toLowerCase().includes(q) || titleEn.toLowerCase().includes(q);
   });
 
+  const selectSuggestion = (movie) => {
+    onSelectMovie(movie);
+    setSearchQuery('');
+    setIsOpenSuggestions(false);
+  };
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -68,15 +74,16 @@ export default function Header({
     <header className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-md transition-colors duration-300">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
         
-        <div 
-          onClick={onGoHome} 
+        <button
+          type="button"
+          onClick={onGoHome}
           className="flex items-center gap-3 font-bold text-xl cursor-pointer"
         >
           <img src="/logo-icon.png" alt="Після титрів" className="h-10 w-10 rounded-lg object-cover" />
           <span className="hidden sm:block text-gray-900 dark:text-white font-black tracking-wider">
             ПІСЛЯ <span className="text-cyan-500">ТИТРІВ</span>
           </span>
-        </div>
+        </button>
 
         <div className="flex-1 max-w-md relative" ref={searchRef}>
           <input 
@@ -98,23 +105,20 @@ export default function Header({
                 const subTitle = !isUkr ? movie.title : movie.titleEn;
 
                 return (
-                  <div 
+                  <button
+                    type="button"
                     key={movie.id}
-                    onClick={() => {
-                      onSelectMovie(movie);
-                      setSearchQuery('');
-                      setIsOpenSuggestions(false);
-                    }}
-                    className="px-4 py-2.5 hover:bg-yellow-50 dark:hover:bg-gray-700/60 cursor-pointer flex items-center gap-3 transition-colors border-b border-gray-50 dark:border-gray-700/50 last:border-none"
+                    onClick={() => selectSuggestion(movie)}
+                    className="w-full text-left px-4 py-2.5 hover:bg-yellow-50 dark:hover:bg-gray-700/60 cursor-pointer flex items-center gap-3 transition-colors border-b border-gray-50 dark:border-gray-700/50 last:border-none"
                   >
                     <img src={movie.img} alt={mainTitle} className="w-8 h-10 object-cover rounded shadow-sm" />
-                    <div className="flex-1 overflow-hidden">
-                      <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate">{mainTitle}</h4>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                    <span className="block flex-1 overflow-hidden">
+                      <span className="block text-xs font-bold text-gray-900 dark:text-white truncate">{mainTitle}</span>
+                      <span className="block text-[10px] text-gray-500 dark:text-gray-400 truncate">
                         {subTitle ? `${subTitle} • ` : ''}{movie.year} • {getGenreLabel(movie.genre)}
-                      </p>
-                    </div>
-                  </div>
+                      </span>
+                    </span>
+                  </button>
                 )
               })}
             </div>
