@@ -40,3 +40,17 @@ def test_ci_workflow_installs_dependencies_with_hashes():
 
     assert "requirements-lock.txt" in run_cmd, "CI should install dependencies from requirements-lock.txt"
     assert "--require-hashes" in run_cmd, "CI should enforce hash verification with --require-hashes"
+
+
+def test_render_does_not_wait_for_the_deployment_check():
+    """
+    "Production deployment" is a check of the main commit that waits for Render to serve that commit.
+    With autoDeployTrigger: checksPass Render would wait for this check as well, so nothing would deploy.
+    """
+    root = Path(__file__).resolve().parents[1]
+    services = yaml.safe_load((root / "render.yaml").read_text(encoding="utf-8"))["services"]
+    recorder = root / ".github" / "workflows" / "production-deployment.yml"
+
+    assert recorder.exists()
+    for service in services:
+        assert service.get("autoDeployTrigger") != "checksPass", service["name"]
