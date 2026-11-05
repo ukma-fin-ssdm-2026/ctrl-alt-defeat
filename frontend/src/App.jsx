@@ -6,6 +6,7 @@ import Recommendations from './components/Recommendations';
 import AuthModal from './components/AuthModal';
 import UserProfile from './pages/UserProfile';
 import AdminUsers from './pages/AdminUsers';
+import AdminCatalogSync from './components/AdminCatalogSync';
 import AchievementToast from './components/AchievementToast';
 import { mockMovies } from './data/mockData';
 import apiClient, { SESSION_EXPIRED_EVENT } from './api/client';
@@ -221,7 +222,10 @@ export default function App() {
       
       <main className="container mx-auto px-4 flex-1 py-6">
         {showAdmin && user?.role === 'admin' ? (
-          <AdminUsers language={language} />
+          <>
+            <AdminCatalogSync language={language} />
+            <AdminUsers language={language} />
+          </>
         ) : showProfile && user ? (
           <UserProfile 
             key={profileTarget.visit}
@@ -285,7 +289,13 @@ export default function App() {
       </main>
 
       <footer className="border-t border-gray-200 dark:border-gray-800 py-6 text-center text-xs text-gray-500 dark:text-gray-400 mt-12">
-        © 2026 Після титрів. Усі права захищено.
+        <p>© 2026 Після титрів. Усі права захищено.</p>
+        {/* Attribution required by the TMDB API terms of use */}
+        <p className="mt-2">
+          {isUkr ? 'Дані про фільми та постери: ' : 'Movie data and posters: '}
+          <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer" className="font-semibold underline hover:text-yellow-600">TMDB</a>.
+          {' '}This product uses the TMDB API but is not endorsed or certified by TMDB.
+        </p>
       </footer>
 
       {listError && (
