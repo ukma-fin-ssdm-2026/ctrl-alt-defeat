@@ -153,3 +153,51 @@ describe('UserProfile registration date', () => {
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 });
+
+describe('UserProfile achievements', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('unlocks badges only from my real activity', async () => {
+    apiClient.get.mockResolvedValue({ data: { items: [{ review_id: 'r1', rating: 8, review_text: 'Сильне кіно', created_at: '2026-11-01T10:00:00Z' }] } });
+    render(
+      <UserProfile
+        user={{ ...user, created_at: new Date().toISOString() }}
+        language="UKR"
+        watchlistMovies={[{ id: 1, genres: ['Драма'] }]}
+        watchedMovies={[]}
+        onSelectMovie={() => {}}
+        onToggleWatchlist={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: /Нагороди/ }));
+
+    expect(await screen.findByText('Отримано 1 з 7')).toBeInTheDocument();
+    expect(screen.getByTestId('badge-first-review')).toHaveAttribute('data-unlocked', 'true');
+    expect(screen.getByTestId('badge-reviewer')).toHaveAttribute('data-unlocked', 'false');
+    expect(screen.getByTestId('badge-planner')).toHaveTextContent('1 / 5');
+    expect(screen.queryByText('Усі медальки розблоковані!')).not.toBeInTheDocument();
+  });
+});
+
+describe('UserProfile opened from an achievement pop-up', () => {
+  it('opens the achievements tab and highlights the new badge', async () => {
+    apiClient.get.mockResolvedValue({ data: { items: [] } });
+    render(
+      <UserProfile
+        user={user}
+        language="UKR"
+        watchlistMovies={[]}
+        initialTab="achievements"
+        highlightAchievement="planner"
+        onSelectMovie={() => {}}
+        onToggleWatchlist={() => {}}
+      />,
+    );
+
+    expect(await screen.findByText('Нагороди та досягнення 🏆')).toBeInTheDocument();
+    expect(screen.getByTestId('badge-planner')).toHaveClass('achievement-highlight');
+    expect(screen.getByTestId('badge-reviewer')).not.toHaveClass('achievement-highlight');
+  });
+});

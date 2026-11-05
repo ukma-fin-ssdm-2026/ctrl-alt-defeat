@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import { getDisplayName } from '../utils/displayName';
+import { computeAchievements } from '../utils/achievements';
 
 export default function UserProfile({ 
   user, 
@@ -10,9 +11,11 @@ export default function UserProfile({
   onSelectMovie, 
   onToggleWatchlist, 
   onToggleWatched,
-  onDeleteProfile 
+  onDeleteProfile,
+  initialTab = 'general',
+  highlightAchievement = null,
 }) {
-  const [activeTab, setActiveTab] = useState('general'); // 'general', 'security', 'watchlist', 'watched', 'reviews', 'achievements'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'general', 'security', 'watchlist', 'watched', 'reviews', 'achievements'
   
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -45,62 +48,14 @@ export default function UserProfile({
   const reviewsLoaded = reviewsState.userId === userId;
   const userReviews = reviewsLoaded ? reviewsState.items : [];
 
-  const achievements = [
-    { 
-      id: 1, 
-      icon: '🥇', 
-      titleUkr: 'Легендарний рецензент', 
-      titleEn: 'Legendary Reviewer', 
-      descUkr: 'Написано понад 10 детальних рецензій', 
-      descEn: 'Written over 10 detailed reviews',
-      unlocked: true 
-    },
-    { 
-      id: 2, 
-      icon: '🔥', 
-      titleUkr: 'Людина-лайк', 
-      titleEn: 'Like Magnet', 
-      descUkr: 'Ваші рецензії отримали понад 100 вподобайок', 
-      descEn: 'Your reviews received over 100 likes',
-      unlocked: true 
-    },
-    { 
-      id: 3, 
-      icon: '🎬', 
-      titleUkr: 'Кіноман', 
-      titleEn: 'Cinephile', 
-      descUkr: 'Додано понад 20 фільмів до списку перегляду', 
-      descEn: 'Added over 20 movies to your watchlist',
-      unlocked: true 
-    },
-    { 
-      id: 4, 
-      icon: '⭐', 
-      titleUkr: 'Експерт року', 
-      titleEn: 'Expert of the Year', 
-      descUkr: 'Активна участь у житті спільноти «Після титрів»', 
-      descEn: 'Active participation in the After Credits community',
-      unlocked: true 
-    },
-    { 
-      id: 5, 
-      icon: '🛡️', 
-      titleUkr: 'Ветеран платформи', 
-      titleEn: 'Platform Veteran', 
-      descUkr: 'Реєстрація серед перших користувачів сервісу', 
-      descEn: 'Registered among the first users',
-      unlocked: true 
-    },
-    { 
-      id: 6, 
-      icon: '💎', 
-      titleUkr: 'Критик вищої категорії', 
-      titleEn: 'Top Critic', 
-      descUkr: 'Точність оцінок збігається з рейтингом IMDb на 95%', 
-      descEn: 'Review accuracy matches IMDb rating by 95%',
-      unlocked: true 
-    }
-  ];
+  // Badges computed from real activity instead of hardcoded "unlocked" examples
+  const achievements = computeAchievements({
+    reviews: userReviews,
+    watched: watchedMovies,
+    watchlist: watchlistMovies || [],
+    createdAt: user?.created_at,
+  });
+  const unlockedCount = achievements.filter(badge => badge.unlocked).length;
 
   const accountErrorText = (code) => {
     if (code === 'INVALID_PASSWORD') return isUkr ? 'Поточний пароль неправильний.' : 'The current password is incorrect.';
@@ -218,7 +173,7 @@ export default function UserProfile({
             onClick={() => setActiveTab('achievements')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'achievements' ? 'bg-yellow-500 text-gray-900 shadow-md' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}
           >
-            <span>🏆</span> {isUkr ? 'Нагороди' : 'Achievements'} <span className="ml-auto text-xs px-2 py-0.5 bg-yellow-400 text-gray-900 rounded-full font-black">{achievements.length}</span>
+            <span>🏆</span> {isUkr ? 'Нагороди' : 'Achievements'} <span className="ml-auto text-xs px-2 py-0.5 bg-yellow-400 text-gray-900 rounded-full font-black">{unlockedCount}/{achievements.length}</span>
           </button>
 
           {canDeleteAccount && (
@@ -512,27 +467,43 @@ export default function UserProfile({
                   {isUkr ? 'Нагороди та досягнення 🏆' : 'Badges & Achievements 🏆'}
                 </h2>
                 <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">
-                  {isUkr ? 'Усі медальки розблоковані!' : 'All badges unlocked!'}
+                  {unlockedCount === achievements.length
+                    ? (isUkr ? 'Усі медальки розблоковані!' : 'All badges unlocked!')
+                    : (isUkr ? `Отримано ${unlockedCount} з ${achievements.length}` : `Unlocked ${unlockedCount} of ${achievements.length}`)}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {achievements.map(badge => (
-                  <div 
+                  <div
                     key={badge.id}
-                    className="group relative p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl border border-gray-200 dark:border-gray-600 flex flex-col items-center text-center cursor-pointer hover:border-yellow-500 transition-all shadow-sm"
+                    data-testid={`badge-${badge.id}`}
+                    data-unlocked={badge.unlocked}
+                    className={`group relative p-4 rounded-2xl border flex flex-col items-center text-center transition-all shadow-sm ${badge.id === highlightAchievement ? 'achievement-highlight ring-2 ring-yellow-400 ring-offset-2 dark:ring-offset-gray-800 ' : ''}${badge.unlocked ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 hover:border-yellow-500' : 'bg-gray-50/60 dark:bg-gray-800/60 border-dashed border-gray-200 dark:border-gray-700'}`}
                   >
-                    <span className="text-4xl mb-2 filter drop-shadow-md group-hover:scale-110 transition-transform">
+                    <span className={`text-4xl mb-2 filter transition-transform ${badge.unlocked ? 'drop-shadow-md group-hover:scale-110' : 'grayscale opacity-40'}`}>
                       {badge.icon}
                     </span>
-                    <h4 className="text-xs font-bold text-gray-900 dark:text-white">
+                    <h4 className={`text-xs font-bold ${badge.unlocked ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                       {isUkr ? badge.titleUkr : badge.titleEn}
                     </h4>
-                    <span className="text-[10px] text-green-600 dark:text-green-400 font-semibold mt-1">
-                      {isUkr ? 'Отримано ✓' : 'Unlocked ✓'}
-                    </span>
+                    {badge.unlocked ? (
+                      <span className="text-[10px] text-green-600 dark:text-green-400 font-semibold mt-1">
+                        {isUkr ? 'Отримано ✓' : 'Unlocked ✓'}
+                      </span>
+                    ) : (
+                      <div className="w-full mt-2">
+                        <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${Math.round((badge.progress / badge.target) * 100)}%` }}></div>
+                        </div>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold">
+                          {badge.progress} / {badge.target}
+                        </span>
+                      </div>
+                    )}
+                    <p className="sr-only">{isUkr ? badge.descUkr : badge.descEn}</p>
 
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2.5 bg-gray-900 text-white text-[11px] rounded-xl shadow-2xl z-50 text-center pointer-events-none">
+                    <div aria-hidden="true" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2.5 bg-gray-900 text-white text-[11px] rounded-xl shadow-2xl z-50 text-center pointer-events-none">
                       <p className="font-bold mb-0.5 text-yellow-400">{isUkr ? badge.titleUkr : badge.titleEn}</p>
                       <p className="text-gray-300">{isUkr ? badge.descUkr : badge.descEn}</p>
                       <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
