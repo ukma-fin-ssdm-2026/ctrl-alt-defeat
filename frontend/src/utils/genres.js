@@ -5,6 +5,8 @@ export const GENRE_TRANSLATIONS = {
   'Біографія': 'Biography',
   'Детектив': 'Detective',
   'Документальний': 'Documentary',
+  'Вестерн': 'Western',
+  'Воєнний': 'War',
   'Драма': 'Drama',
   'Жахи': 'Horror',
   'Історія': 'History',
@@ -15,8 +17,10 @@ export const GENRE_TRANSLATIONS = {
   'Мультфільм': 'Animation',
   'Пригоди': 'Adventure',
   'Сімейний': 'Family',
+  'Телефільм': 'TV Movie',
   'Трилер': 'Thriller',
   'Фантастика': 'Sci-Fi',
+  'Фентезі': 'Fantasy',
 };
 
 export function translateGenre(genre, language = 'UKR') {
