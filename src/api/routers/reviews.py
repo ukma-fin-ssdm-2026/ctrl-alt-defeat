@@ -4,6 +4,7 @@ from typing import Optional, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from pydantic import UUID4
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -12,12 +13,15 @@ from src.api.db.database import SessionLocal
 from src.api.routers.auth import get_current_active_user
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
 from src.api.schemas.review import (
+    MyReviewVotesResponse,
     PaginatedReviewsResponse,
     ReviewCreate,
     ReviewResponse,
     ReviewStatus,
     ReviewSummaryResponse,
     ReviewUpdate,
+    ReviewVoteRequest,
+    ReviewVoteResponse,
 )
 from src.api.services.bans import ensure_can_contribute
 from src.api.utils import check_review_policy_violations, generate_review_summary
@@ -193,6 +197,92 @@ async def get_review_summary(
     )
 
 
+REVIEW_NOT_FOUND_ERROR = {"code": "REVIEW_NOT_FOUND", "message": "Review not found"}
+OWN_REVIEW_VOTE_ERROR = {"code": "OWN_REVIEW_VOTE", "message": "You cannot vote for your own review"}
+
+
+def _vote_totals(db: Session, review_id) -> tuple[int, int]:
+    rows = (
+        db.query(models.ReviewVote.value, func.count())
+        .filter(models.ReviewVote.review_id == review_id)
+        .group_by(models.ReviewVote.value)
+        .all()
+    )
+    counts = dict(rows)
+    return counts.get(1, 0), counts.get(-1, 0)
+
+
+@router.put(
+    "/votes",
+    response_model=ReviewVoteResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Support or don't support a review (one vote per user, 0 removes the vote)",
+    responses={
+        **STANDARD_ERRORS,
+        401: {"model": ErrorResponse, "description": "User is not authenticated"},
+        403: {"model": ErrorResponse, "description": "Own review, banned or unverified user"},
+    },
+)
+async def vote_for_review(
+    vote: ReviewVoteRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    review = db.query(models.Review).filter(models.Review.review_id == vote.review_id).first()
+    if review is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=REVIEW_NOT_FOUND_ERROR)
+    if review.user_id == current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=OWN_REVIEW_VOTE_ERROR)
+    # FR-009: a banned user cannot take part in discussions, voting included
+    ensure_can_contribute(db, current_user)
+
+    existing = (
+        db.query(models.ReviewVote)
+        .filter(models.ReviewVote.review_id == vote.review_id, models.ReviewVote.user_id == current_user.user_id)
+        .first()
+    )
+    if vote.value == 0:
+        if existing is not None:
+            db.delete(existing)
+    elif existing is not None:
+        existing.value = vote.value
+    else:
+        db.add(models.ReviewVote(review_id=vote.review_id, user_id=current_user.user_id, value=vote.value))
+    try:
+        db.commit()
+    except IntegrityError:
+        # Two simultaneous first votes of the same user: the primary key keeps only one, apply this value to it
+        db.rollback()
+        db.query(models.ReviewVote).filter(
+            models.ReviewVote.review_id == vote.review_id, models.ReviewVote.user_id == current_user.user_id
+        ).update({models.ReviewVote.value: vote.value}, synchronize_session=False)
+        db.commit()
+
+    likes, dislikes = _vote_totals(db, vote.review_id)
+    return ReviewVoteResponse(review_id=vote.review_id, likes=likes, dislikes=dislikes, my_vote=vote.value)
+
+
+@router.get(
+    "/votes/mine",
+    response_model=MyReviewVotesResponse,
+    status_code=status.HTTP_200_OK,
+    summary="My votes for the reviews of a movie or series",
+    responses={**STANDARD_ERRORS, 401: {"model": ErrorResponse, "description": "User is not authenticated"}},
+)
+async def get_my_votes(
+    content_id: UUID4 = Query(..., description="Movie or series whose reviews to check"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    rows = (
+        db.query(models.ReviewVote.review_id, models.ReviewVote.value)
+        .join(models.Review, models.Review.review_id == models.ReviewVote.review_id)
+        .filter(models.ReviewVote.user_id == current_user.user_id, models.Review.content_id == content_id)
+        .all()
+    )
+    return MyReviewVotesResponse(items=[{"review_id": review_id, "value": value} for review_id, value in rows])
+
+
 @router.get(
     "/{review_id}",
     response_model=ReviewResponse,
@@ -272,8 +362,9 @@ def _delete_review(db: Session, current_user: models.User, review_id) -> Respons
             detail={"code": "FORBIDDEN", "message": "You do not have permission to delete this review"},
         )
 
-    # Remove the comment thread too (bulk delete works on SQLite without FK enforcement)
+    # Remove the comment thread and votes too (bulk delete works on SQLite without FK enforcement)
     db.query(models.Comment).filter(models.Comment.review_id == review_id).delete(synchronize_session=False)
+    db.query(models.ReviewVote).filter(models.ReviewVote.review_id == review_id).delete(synchronize_session=False)
     db.delete(existing_review)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

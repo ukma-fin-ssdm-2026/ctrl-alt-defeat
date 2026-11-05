@@ -13,8 +13,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    select,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import column_property, relationship
 from sqlalchemy.sql import func
 
 from src.api.db.database import Base
@@ -46,6 +47,33 @@ class Content(Base):
 Movie = Content
 
 
+class ReviewVote(Base):
+    """
+    "Support" (+1) or "Don't support" (-1) of a review by a user. One vote per user and review;
+    the author cannot vote for their own review.
+    """
+
+    __tablename__ = "review_votes"
+    __table_args__ = (
+        CheckConstraint("value IN (1, -1)", name="ck_review_votes_value"),
+        {"extend_existing": True},
+    )
+
+    review_id = Column(Uuid(as_uuid=True), ForeignKey("reviews.review_id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
+    value = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+def _vote_count(review_id_column, value):
+    return (
+        select(func.count())
+        .where(ReviewVote.review_id == review_id_column, ReviewVote.value == value)
+        .correlate_except(ReviewVote)
+        .scalar_subquery()
+    )
+
+
 class Review(Base):
     __tablename__ = "reviews"
     __table_args__ = (
@@ -71,6 +99,10 @@ class Review(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    # Vote counters, loaded together with the review (one correlated subquery each)
+    likes = column_property(_vote_count(review_id, 1))
+    dislikes = column_property(_vote_count(review_id, -1))
 
     # Read-only links used to show who wrote the review and about which title (no DB schema change)
     author = relationship("User", primaryjoin="foreign(Review.user_id) == User.user_id", viewonly=True, lazy="selectin")
