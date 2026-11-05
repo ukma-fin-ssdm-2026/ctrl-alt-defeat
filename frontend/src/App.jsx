@@ -6,11 +6,14 @@ import Recommendations from './components/Recommendations';
 import AuthModal from './components/AuthModal';
 import UserProfile from './pages/UserProfile';
 import AdminUsers from './pages/AdminUsers';
+import AchievementToast from './components/AchievementToast';
 import { mockMovies } from './data/mockData';
 import apiClient, { SESSION_EXPIRED_EVENT } from './api/client';
 import { getStoredUser, setStoredAuth, clearStoredAuth } from './auth/currentUser';
 import useWatchlist from './hooks/useWatchlist';
 import useWatchedList from './hooks/useWatchedList';
+import useUserReviews from './hooks/useUserReviews';
+import useAchievementNotifications from './hooks/useAchievementNotifications';
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -37,6 +40,7 @@ export default function App() {
   // Watched list stored on the backend (FR-006)
   const {
     watchedMovies,
+    loaded: watchedLoaded,
     isWatched,
     toggleWatched,
     error: watchedError,
@@ -47,6 +51,7 @@ export default function App() {
   const {
     watchlistIds: watchlist,
     watchlistMovies,
+    loaded: watchlistLoaded,
     toggleWatchlist,
     error: watchlistError,
     clearError: clearWatchlistError,
@@ -59,6 +64,18 @@ export default function App() {
   // One message for failed list updates (watchlist or watched)
   const listError = watchlistError || watchedError;
   const clearListError = () => { clearWatchlistError(); clearWatchedError(); };
+
+  // Profile achievements: notify about newly unlocked badges anywhere on the site
+  const { reviews: userReviews, loaded: reviewsLoaded, refresh: refreshUserReviews } = useUserReviews({ user });
+  const achievementToast = useAchievementNotifications({
+    user,
+    reviews: userReviews,
+    watched: watchedMovies,
+    watchlist: watchlistMovies,
+    ready: reviewsLoaded && watchedLoaded && watchlistLoaded,
+  });
+  // Which profile tab to open and which badge to highlight ("View" in the pop-up)
+  const [profileTarget, setProfileTarget] = useState({ tab: 'general', highlight: null, visit: 0 });
 
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -177,7 +194,12 @@ export default function App() {
         user={user}
         onLogout={handleLogout}
         onGoHome={handleGoHome}
-        onGoProfile={() => { setSelectedMovie(null); setShowAdmin(false); setShowProfile(true); }}
+        onGoProfile={() => {
+          setSelectedMovie(null);
+          setShowAdmin(false);
+          setProfileTarget(current => ({ tab: 'general', highlight: null, visit: current.visit + 1 }));
+          setShowProfile(true);
+        }}
         onGoAdmin={() => { setSelectedMovie(null); setShowProfile(false); setShowAdmin(true); }}
         
         language={language}
@@ -202,6 +224,9 @@ export default function App() {
           <AdminUsers language={language} />
         ) : showProfile && user ? (
           <UserProfile 
+            key={profileTarget.visit}
+            initialTab={profileTarget.tab}
+            highlightAchievement={profileTarget.highlight}
             user={user}
             language={language}
             watchlistMovies={watchlistMovies}
@@ -230,6 +255,7 @@ export default function App() {
             onToggleWatchlist={() => toggleWatchlist(selectedMovie)}
             isWatched={isWatched(selectedMovie)}
             onToggleWatched={() => toggleWatched(selectedMovie)}
+            onReviewsChanged={refreshUserReviews}
           />
         ) : (
           <>
@@ -271,6 +297,23 @@ export default function App() {
           </span>
           <button onClick={clearListError} aria-label={isUkr ? 'Закрити' : 'Close'} className="font-bold">✕</button>
         </div>
+      )}
+
+      {user && (
+        <AchievementToast
+          badge={achievementToast.current}
+          pending={achievementToast.pending}
+          language={language}
+          onClose={achievementToast.dismiss}
+          onView={badge => {
+            achievementToast.dismiss();
+            setSelectedMovie(null);
+            setShowAdmin(false);
+            setProfileTarget(current => ({ tab: 'achievements', highlight: badge.id, visit: current.visit + 1 }));
+            setShowProfile(true);
+            window.scrollTo?.({ top: 0, behavior: 'smooth' });
+          }}
+        />
       )}
 
       {isAuthOpen && (

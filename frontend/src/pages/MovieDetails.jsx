@@ -59,7 +59,8 @@ export default function MovieDetails({
   isWatchlisted = false, 
   onToggleWatchlist,
   isWatched = false,
-  onToggleWatched
+  onToggleWatched,
+  onReviewsChanged
 }) {
   const [rating, setRating] = useState(10);
   // FR-009: the review author the administrator is banning
@@ -160,6 +161,7 @@ export default function MovieDetails({
     })
       .then(response => {
         setReviews([response.data, ...reviews]);
+        onReviewsChanged?.();
         setReviewText('');
         setIsSpoiler(false);
         setRating(10);
@@ -204,6 +206,7 @@ export default function MovieDetails({
       // Constant URL: the id travels as a query parameter (no user data in the request path)
       await apiClient.delete('/reviews', { params: { review_id: reviewId } });
       setReviews(prev => prev.filter(r => (r.review_id || r.id) !== reviewId));
+      onReviewsChanged?.();
     } catch (err) {
       const errMsg = err.response?.data?.error?.message 
         || (isUkr ? 'Не вдалося видалити рецензію' : 'Failed to delete review');
