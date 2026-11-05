@@ -11,6 +11,7 @@ from src.api.db.database import Base, engine
 from src.api.schemas.errors import ErrorDetail, ErrorPayload, ErrorResponse, STANDARD_ERRORS
 from src.api.routers.reviews import router as reviews_router
 from src.api.routers.movies import router as movies_router
+from src.api.routers.genres import router as genres_router
 from src.api.routers.recommendations import router as recommendations_router
 from src.api.routers.comments import router as comments_router
 from src.api.routers.auth import router as auth_router
@@ -20,6 +21,7 @@ from src.api.routers.admin import router as admin_router
 from src.api.routers.health import router as health_router
 from src.api.frontend import mount_frontend
 from src.api.services.demo_accounts import seed_default_users
+from src.api.services.genres import link_catalog_genres
 from src.api.services.tmdb import seed_catalog_if_empty
 from src.api.db.database import SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
@@ -49,6 +51,8 @@ async def lifespan(app: FastAPI):
         seed_default_users(db)
         # A fresh database gets the movie catalog automatically (no manual seed step)
         seed_catalog_if_empty(db)
+        # Genre dictionary + links for titles added before the genre tables existed (issue #61)
+        link_catalog_genres(db)
     finally:
         db.close()
     save_openapi_spec(app)
@@ -69,6 +73,7 @@ app = FastAPI(
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(movies_router)
+app.include_router(genres_router)
 app.include_router(reviews_router)
 app.include_router(recommendations_router)
 app.include_router(comments_router)

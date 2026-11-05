@@ -47,6 +47,32 @@ class Content(Base):
 Movie = Content
 
 
+class Genre(Base):
+    """Genre dictionary (FR-012). Names are stored in Ukrainian; tmdb_id links TMDB `genre_ids`."""
+
+    __tablename__ = "genres"
+    __table_args__ = {"extend_existing": True}
+
+    genre_id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, unique=True)
+    name_en = Column(String(100), nullable=True)
+    tmdb_id = Column(Integer, unique=True, nullable=True)
+
+
+class ContentGenre(Base):
+    """
+    Many-to-many link between Content and Genre (FR-002, FR-012).
+    position keeps the order of genres of a title: 0 is the primary genre.
+    """
+
+    __tablename__ = "content_genres"
+    __table_args__ = {"extend_existing": True}
+
+    content_id = Column(Uuid(as_uuid=True), ForeignKey("content.content_id", ondelete="CASCADE"), primary_key=True)
+    genre_id = Column(Integer, ForeignKey("genres.genre_id", ondelete="CASCADE"), primary_key=True)
+    position = Column(Integer, nullable=False, default=0)
+
+
 class ReviewVote(Base):
     """
     "Support" (+1) or "Don't support" (-1) of a review by a user. One vote per user and review;

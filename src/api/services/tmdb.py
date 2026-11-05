@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.api.db.models import Content
+from src.api.services.genres import DEFAULT_GENRE, genres_from_tmdb, set_content_genres
 
 logger = logging.getLogger(__name__)
 
@@ -644,6 +645,8 @@ def fetch_tmdb_movies(api_key: Optional[str] = None) -> List[Dict[str, Any]]:
                     year = int(release_date.split("-")[0]) if release_date else 2024
                     poster_path = item.get("poster_path")
                     img_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
+                    # Real genres of the title (TMDB genre_ids -> catalog names)
+                    genres = genres_from_tmdb(item.get("genre_ids")) or [DEFAULT_GENRE]
 
                     movies.append(
                         {
@@ -651,8 +654,8 @@ def fetch_tmdb_movies(api_key: Optional[str] = None) -> List[Dict[str, Any]]:
                             "title": item.get("title") or item.get("original_title", "Без назви"),
                             "title_en": item.get("original_title"),
                             "category": "Movie",
-                            "genre": "Фантастика",
-                            "genres": ["Фантастика", "Драма"],
+                            "genre": genres[0],
+                            "genres": genres,
                             "year": year,
                             "runtime": item.get("runtime"),  # not returned by /movie/popular
                             "rating": round(float(item.get("vote_average", 0.0)), 1),
@@ -686,7 +689,7 @@ def seed_movies_to_database(db: Session, movies_data: Optional[List[Dict[str, An
                 title=item["title"],
                 title_en=item.get("title_en"),
                 category=item.get("category", "Movie"),
-                genre=item.get("genre", "Драма"),
+                genre=item.get("genre") or DEFAULT_GENRE,
                 genres=item.get("genres", []),
                 year=item.get("year", 2024),
                 runtime=item.get("runtime"),
@@ -698,6 +701,7 @@ def seed_movies_to_database(db: Session, movies_data: Optional[List[Dict[str, An
                 tmdb_id=item.get("tmdb_id"),
             )
             db.add(content_item)
+            set_content_genres(db, content_item, [item.get("genre"), *item.get("genres", [])])
             count += 1
         else:
             # Update fields if needed
@@ -707,6 +711,9 @@ def seed_movies_to_database(db: Session, movies_data: Optional[List[Dict[str, An
                 existing.img = item.get("img")
             if item.get("runtime") is not None:
                 existing.runtime = item.get("runtime")
+            # FR-012: genres are refreshed from the source as well
+            if item.get("genres") and existing.content_id is not None:
+                set_content_genres(db, existing, item["genres"])
 
     db.commit()
     return count

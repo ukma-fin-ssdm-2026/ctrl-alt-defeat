@@ -9,9 +9,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.api.db.database import Base
-from src.api.db.models import Content
+from src.api.db.models import Content, ContentGenre
 from src.api.main import app
 from src.api.routers.movies import get_db
+from src.api.services.genres import sync_genre_links
 from src.api.services.tmdb import FALLBACK_MOVIES, seed_movies_to_database
 
 engine_test = create_engine(
@@ -61,6 +62,7 @@ def client(db_session):
 
 @pytest.fixture(autouse=True)
 def seed_sample(db_session):
+    db_session.query(ContentGenre).delete()
     db_session.query(Content).delete()
     for item_id, title, category, genre, year, rating, runtime in SAMPLE:
         db_session.add(
@@ -76,6 +78,7 @@ def seed_sample(db_session):
             )
         )
     db_session.commit()
+    sync_genre_links(db_session)
 
 
 def ids(response):
