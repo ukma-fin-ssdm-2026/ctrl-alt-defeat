@@ -291,11 +291,16 @@ export default function App() {
       <footer className="border-t border-gray-200 dark:border-gray-800 py-6 text-center text-xs text-gray-500 dark:text-gray-400 mt-12">
         <p>© 2026 Після титрів. Усі права захищено.</p>
         {/* Attribution required by the TMDB API terms of use */}
-        <p className="mt-2">
-          {isUkr ? 'Дані про фільми та постери: ' : 'Movie data and posters: '}
-          <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer" className="font-semibold underline hover:text-yellow-600">TMDB</a>.
-          {' '}This product uses the TMDB API but is not endorsed or certified by TMDB.
-        </p>
+        <div className="mt-3 flex flex-col items-center gap-1.5">
+          {/* Official TMDB logo, unchanged and smaller than our own logo */}
+          <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer" aria-label="The Movie Database (TMDB)">
+            <img src="/tmdb-logo.svg" alt="The Movie Database (TMDB)" className="h-3 w-auto" />
+          </a>
+          <p>
+            {isUkr ? 'Дані про фільми та постери надає TMDB. ' : 'Movie data and posters are provided by TMDB. '}
+            This product uses the TMDB API but is not endorsed or certified by TMDB.
+          </p>
+        </div>
       </footer>
 
       {listError && (
