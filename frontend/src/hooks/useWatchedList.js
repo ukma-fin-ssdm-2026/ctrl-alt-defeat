@@ -49,6 +49,7 @@ export default function useWatchedList({ user, catalog = [], onAuthRequired }) {
 
   return {
     watchedMovies: items,
+    loaded: list.loaded,
     isWatched,
     toggleWatched,
     error: list.error,

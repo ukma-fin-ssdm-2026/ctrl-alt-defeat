@@ -56,6 +56,8 @@ export default function useUserList({ path, user, onAuthRequired }) {
 
   return {
     items,
+    // True once the list of the current user came from the server (or failed to load)
+    loaded: Boolean(userId) && state.userId === userId,
     error,
     reportUnavailable: () => setError('UNAVAILABLE'),
     clearError: () => setError(null),
