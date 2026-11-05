@@ -38,7 +38,7 @@ services:
         sync: false
       # FR-001 activation emails through the Google Apps Script relay (scripts/google-apps-script/mailer.gs):
       # Render free services block SMTP ports and email APIs need an own domain. Set both in the dashboard;
-      # without them the link is only logged and the demo one-click button is used.
+      # without them the link is only written to the service log and new accounts cannot be confirmed.
       # Links point to RENDER_EXTERNAL_URL, which Render sets automatically.
       - key: GOOGLE_SCRIPT_URL
         sync: false

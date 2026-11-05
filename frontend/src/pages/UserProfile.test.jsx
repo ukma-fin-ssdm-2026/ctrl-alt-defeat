@@ -128,3 +128,28 @@ describe('UserProfile account settings', () => {
     expect(screen.queryByRole('button', { name: /Видалити акаунт/ })).not.toBeInTheDocument();
   });
 });
+
+describe('UserProfile registration date', () => {
+  beforeEach(() => {
+    apiClient.get.mockResolvedValue({ data: { items: [] } });
+  });
+
+  it('shows the real registration date from the server', () => {
+    render(<UserProfile user={{ ...user, created_at: '2026-11-05T10:30:00Z' }} language="UKR" watchlistMovies={[]} onSelectMovie={() => {}} onToggleWatchlist={() => {}} />);
+
+    expect(screen.getByText(/5 листопада 2026/)).toBeInTheDocument();
+    expect(screen.queryByText('Жовтень 2026')).not.toBeInTheDocument();
+  });
+
+  it('shows the date in English in the English interface', () => {
+    render(<UserProfile user={{ ...user, created_at: '2026-11-05T10:30:00Z' }} language="EN" watchlistMovies={[]} onSelectMovie={() => {}} onToggleWatchlist={() => {}} />);
+
+    expect(screen.getByText('5 November 2026')).toBeInTheDocument();
+  });
+
+  it('shows a dash when the date is unknown', () => {
+    render(<UserProfile user={user} language="UKR" watchlistMovies={[]} onSelectMovie={() => {}} onToggleWatchlist={() => {}} />);
+
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+});

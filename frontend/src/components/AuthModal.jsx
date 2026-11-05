@@ -80,7 +80,6 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
         const data = response.data;
         setSuccessInfo({
           email: data.email,
-          token: data.verification_token,
           message: isUkr
             ? `Акаунт створено! Ми надіслали лист із посиланням на ${data.email}. Перейдіть за ним, щоб активувати акаунт.`
             : `Account created! We sent a link to ${data.email}. Open it to activate your account.`,
@@ -107,22 +106,6 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
       setResendStatus(isUkr ? `Лист надіслано ще раз на ${unverifiedEmail}.` : `The link was sent again to ${unverifiedEmail}.`);
     } catch {
       setResendStatus(isUkr ? 'Не вдалося надіслати лист. Спробуйте пізніше.' : 'Could not send the email. Please try later.');
-    }
-  };
-
-  const handleVerifyNow = async (token) => {
-    setLoading(true);
-    setError('');
-    try {
-      await apiClient.get('/auth/verify', { params: { token } });
-      setLoading(false);
-      setSuccessInfo(null);
-      setIsLogin(true);
-      setError('');
-      alert(isUkr ? '✅ Пошту успішно підтверджено! Тепер ви можете увійти.' : '✅ Email verified! You can now log in.');
-    } catch {
-      setLoading(false);
-      setError(isUkr ? 'Недійсний токен активації.' : 'Invalid verification token.');
     }
   };
 
@@ -170,16 +153,10 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
 
         {successInfo && (
           <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 text-green-800 dark:text-green-300 text-xs p-4 rounded-xl mb-4 text-center">
-            <p className="font-semibold mb-2">{successInfo.message}</p>
-            {successInfo.token && (
-              <button
-                type="button"
-                onClick={() => handleVerifyNow(successInfo.token)}
-                className="mt-2 bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-4 rounded-lg shadow-sm transition text-xs"
-              >
-                {isUkr ? '✉️ Підтвердити email (демо в 1 клік)' : '✉️ Confirm email (1-click demo)'}
-              </button>
-            )}
+            <p className="font-semibold">{successInfo.message}</p>
+            <p className="mt-1 opacity-80">
+              {isUkr ? 'Лист може потрапити в «Спам» або «Небажані».' : 'The email may land in Spam or Junk.'}
+            </p>
           </div>
         )}
 

@@ -106,7 +106,7 @@ describe('AuthModal email confirmation (FR-001)', () => {
 
   it('tells the user to open the emailed link and offers to send it again', async () => {
     vi.mocked(apiClient.post)
-      .mockResolvedValueOnce({ data: { email: 'new@example.com', verification_token: null } })
+      .mockResolvedValueOnce({ data: { email: 'new@example.com' } })
       .mockResolvedValueOnce({ data: { message: 'sent' } });
     await signUp();
 
@@ -119,11 +119,12 @@ describe('AuthModal email confirmation (FR-001)', () => {
     expect(apiClient.post).toHaveBeenLastCalledWith('/auth/resend-verification', { email: 'new@example.com' });
   });
 
-  it('keeps one-click confirmation on demo deployments', async () => {
-    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { email: 'new@example.com', verification_token: 'demo-token' } });
+  it('never offers to skip the email, the link comes only by email', async () => {
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { email: 'new@example.com' } });
     await signUp();
 
-    expect(await screen.findByRole('button', { name: /демо в 1 клік/ })).toBeInTheDocument();
+    expect(await screen.findByText(/Лист може потрапити в «Спам»/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Підтвердити email/ })).not.toBeInTheDocument();
   });
 
   it('offers a new link when login fails because the email is not confirmed', async () => {
