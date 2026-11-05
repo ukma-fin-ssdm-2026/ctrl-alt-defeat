@@ -3,6 +3,8 @@ import apiClient from '../api/client';
 import ReviewComments from '../components/ReviewComments';
 import BanNotice from '../components/BanNotice';
 import BanUserDialog from '../components/BanUserDialog';
+import ReviewVotes from '../components/ReviewVotes';
+import { applyVote, nextVote } from '../utils/reviewVotes';
 import { isUuid } from '../utils/uuid';
 import { formatAudienceRating } from '../utils/audienceRating';
 import { translateGenre } from '../utils/genres';
@@ -121,6 +123,25 @@ export default function MovieDetails({
     };
   }, [movie, reviewsKey]);
 
+  // My votes for the reviews of this movie, to highlight the chosen button
+  const voterId = user?.user_id ?? null;
+  const votesKey = `${movie.content_id}|${voterId}`;
+  const [votesState, setVotesState] = useState({ key: null, votes: {} });
+  const [voteError, setVoteError] = useState('');
+  useEffect(() => {
+    if (!voterId || !isUuid(movie.content_id)) return undefined;
+    let ignore = false;
+    apiClient.get('/reviews/votes/mine', { params: { content_id: movie.content_id } })
+      .then(response => {
+        if (ignore) return;
+        const votes = Object.fromEntries((response.data.items || []).map(item => [item.review_id, item.value]));
+        setVotesState({ key: votesKey, votes });
+      })
+      .catch(() => { if (!ignore) setVotesState({ key: votesKey, votes: {} }); });
+    return () => { ignore = true; };
+  }, [movie.content_id, voterId, votesKey]);
+  const myVotes = votesState.key === votesKey ? votesState.votes : {};
+
   // Audience rating of this movie (US-008), refreshed whenever the list of reviews changes
   const reviewIdsKey = reviews.map(r => r.review_id || r.id).join(',');
   const [summaryState, setSummaryState] = useState({ key: null, data: null });
@@ -185,12 +206,40 @@ export default function MovieDetails({
       });
   };
 
-  const handleLike = (id) => {
+  const setReviewCounts = (reviewId, counts) =>
+    setReviews(prev => prev.map(rev => ((rev.review_id || rev.id) === reviewId ? { ...rev, ...counts } : rev)));
+  const setMyVote = (reviewId, value) =>
+    setVotesState(prev => ({ key: votesKey, votes: { ...(prev.key === votesKey ? prev.votes : {}), [reviewId]: value } }));
+
+  // Support / don't support: optimistic update, rolled back with a message if the server refuses
+  const handleVote = async (review, clicked) => {
     if (!isLoggedIn) {
       openAuth();
       return;
     }
-    setReviews(reviews.map(rev => (rev.review_id === id || rev.id === id) ? { ...rev, likes: (rev.likes || 0) + 1 } : rev));
+    const reviewId = review.review_id;
+    const from = myVotes[reviewId] || 0;
+    const to = nextVote(from, clicked);
+    const before = { likes: review.likes || 0, dislikes: review.dislikes || 0 };
+    setVoteError('');
+    setMyVote(reviewId, to);
+    setReviewCounts(reviewId, applyVote(before, from, to));
+    try {
+      // Constant URL: the review id travels in the body
+      const response = await apiClient.put('/reviews/votes', { review_id: reviewId, value: to });
+      setReviewCounts(reviewId, { likes: response.data.likes, dislikes: response.data.dislikes });
+    } catch (err) {
+      setMyVote(reviewId, from);
+      setReviewCounts(reviewId, before);
+      const code = err.response?.data?.error?.code;
+      if (code === 'ACCOUNT_BANNED') {
+        setVoteError(err.response.data.error.message);
+      } else if (err.response?.status === 401) {
+        openAuth();
+      } else {
+        setVoteError(isUkr ? 'Не вдалося зберегти голос. Спробуйте ще раз.' : 'Could not save your vote. Please try again.');
+      }
+    }
   };
 
   const handleDeleteReview = async (reviewId) => {
@@ -396,6 +445,13 @@ export default function MovieDetails({
           {isUkr ? `Рецензії глядачів (${reviews.length})` : `Audience Reviews (${reviews.length})`}
         </h3>
 
+        {voteError && (
+          <div role="alert" className="flex items-start justify-between gap-3 text-sm px-4 py-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+            <span>{voteError}</span>
+            <button type="button" onClick={() => setVoteError('')} aria-label={isUkr ? 'Закрити' : 'Close'} className="font-bold">✕</button>
+          </div>
+        )}
+
         {loadingReviews ? (
           <p className="text-gray-500 text-sm">{isUkr ? 'Завантаження рецензій...' : 'Loading reviews...'}</p>
         ) : reviews.length === 0 ? (
@@ -426,12 +482,16 @@ export default function MovieDetails({
                     <ReviewContent text={rev.review_text} isSpoiler={rev.contains_spoilers} language={language} />
                     
                     <div className="flex items-center justify-between gap-4 mt-3 text-xs text-gray-500">
-                      <button 
-                        onClick={() => handleLike(reviewId)} 
-                        className="hover:text-green-500 flex items-center gap-1 font-semibold transition-colors"
-                      >
-                        👍 {isUkr ? 'Підтримую' : 'Support'} ({rev.likes || 0}) {!isLoggedIn && <span className="text-[10px] text-gray-400">({isUkr ? 'потрібен вхід' : 'login required'})</span>}
-                      </button>
+                      <ReviewVotes
+                        likes={rev.likes || 0}
+                        dislikes={rev.dislikes || 0}
+                        myVote={myVotes[reviewId] || 0}
+                        isOwn={Boolean(isAuthor)}
+                        isLoggedIn={isLoggedIn}
+                        disabled={!isUuid(reviewId)}
+                        language={language}
+                        onVote={value => handleVote(rev, value)}
+                      />
 
                       {canDelete && (
                         <button 

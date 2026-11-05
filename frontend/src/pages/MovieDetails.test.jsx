@@ -8,6 +8,7 @@ vi.mock('../api/client', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -366,5 +367,83 @@ describe('MovieDetails bans (FR-009, US-006)', () => {
     renderDetails({ user: { user_id: authorUserId, role: 'admin', nickname: 'AuthorUser' } });
     await screen.findByText('Неймовірний візуальний шедевр!');
     expect(screen.queryByRole('button', { name: /Заблокувати автора/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('MovieDetails review votes', () => {
+  const voter = { user_id: otherUserId, nickname: 'voter', role: 'user' };
+  const review = { ...mockReview, likes: 5, dislikes: 1 };
+
+  const mockApi = (myVotes = []) => {
+    apiClient.get.mockImplementation(url => {
+      if (url === '/reviews/votes/mine') return Promise.resolve({ data: { items: myVotes } });
+      if (url === '/reviews/summary') return Promise.resolve({ data: null });
+      return Promise.resolve({ data: { items: [review] } });
+    });
+  };
+  const renderAs = (currentUser, extra = {}) => render(
+    <MovieDetails movie={mockMovie} user={currentUser} isLoggedIn={Boolean(currentUser)} openAuth={vi.fn()} onBack={() => {}} {...extra} />,
+  );
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it('supports a review once and takes the vote back on the second click', async () => {
+    mockApi();
+    apiClient.put
+      .mockResolvedValueOnce({ data: { review_id: review.review_id, likes: 6, dislikes: 1, my_vote: 1 } })
+      .mockResolvedValueOnce({ data: { review_id: review.review_id, likes: 5, dislikes: 1, my_vote: 0 } });
+    renderAs(voter);
+
+    const support = await screen.findByRole('button', { name: 'Підтримую (5)' });
+    await userEvent.click(support);
+
+    expect(apiClient.put).toHaveBeenCalledWith('/reviews/votes', { review_id: review.review_id, value: 1 });
+    const active = await screen.findByRole('button', { name: 'Підтримую (6)' });
+    expect(active).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.click(active);
+    expect(apiClient.put).toHaveBeenLastCalledWith('/reviews/votes', { review_id: review.review_id, value: 0 });
+    expect(await screen.findByRole('button', { name: 'Підтримую (5)' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('shows my earlier vote and switches it to "don\'t support"', async () => {
+    mockApi([{ review_id: review.review_id, value: 1 }]);
+    apiClient.put.mockResolvedValue({ data: { review_id: review.review_id, likes: 4, dislikes: 2, my_vote: -1 } });
+    renderAs(voter);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Підтримую (5)' })).toHaveAttribute('aria-pressed', 'true'));
+    await userEvent.click(screen.getByRole('button', { name: 'Не підтримую (1)' }));
+
+    expect(apiClient.put).toHaveBeenCalledWith('/reviews/votes', { review_id: review.review_id, value: -1 });
+    expect(await screen.findByRole('button', { name: 'Не підтримую (2)' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Підтримую (4)' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('rolls the vote back and explains a ban', async () => {
+    mockApi();
+    apiClient.put.mockRejectedValue({
+      response: { status: 403, data: { error: { code: 'ACCOUNT_BANNED', message: 'Ваш акаунт заблоковано назавжди.' } } },
+    });
+    renderAs(voter);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Підтримую (5)' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ваш акаунт заблоковано назавжди.');
+    expect(screen.getByRole('button', { name: 'Підтримую (5)' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('asks a guest to log in and does not let the author vote', async () => {
+    mockApi();
+    const openAuth = vi.fn();
+    const { unmount } = renderAs(null, { openAuth });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Підтримую (5)' }));
+    expect(openAuth).toHaveBeenCalled();
+    expect(apiClient.put).not.toHaveBeenCalled();
+    unmount();
+
+    renderAs({ user_id: authorUserId, nickname: 'author', role: 'user' });
+    expect(await screen.findByRole('button', { name: 'Не підтримую (1)' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Підтримую (5)' })).toBeDisabled();
   });
 });
