@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, UUID4, field_validator
 
@@ -92,6 +92,14 @@ class ReviewResponse(ReviewBase):
     review_id: UUID4 = Field(..., description="Unique identifier of the review")
     status: ReviewStatus = Field(..., description="Current status of the review")
     created_at: datetime = Field(..., description="Publication date and time")
+    likes: int = Field(0, ge=0, description='Number of "Support" votes')
+    dislikes: int = Field(0, ge=0, description='Number of "Don\'t support" votes')
+
+    @field_validator("likes", "dislikes", mode="before")
+    @classmethod
+    def missing_count_is_zero(cls, value):
+        # A review object that was not loaded from the database has no counters yet
+        return value or 0
 
     model_config = {
         "from_attributes": True,
@@ -105,9 +113,40 @@ class ReviewResponse(ReviewBase):
                 "contains_spoilers": False,
                 "status": "published",
                 "created_at": "2026-10-05T18:00:00Z",
+                "likes": 4,
+                "dislikes": 1,
             }
         },
     }
+
+
+class ReviewVoteRequest(BaseModel):
+    """Vote for a review: 1 = support, -1 = don't support, 0 = take the vote back."""
+
+    review_id: UUID4 = Field(..., description="Review to vote for")
+    value: Literal[-1, 0, 1] = Field(..., description="1 = support, -1 = don't support, 0 = remove my vote")
+
+
+class ReviewVoteResponse(BaseModel):
+    review_id: UUID4 = Field(..., description="Review the vote belongs to")
+    likes: int = Field(..., ge=0, description='Number of "Support" votes after the change')
+    dislikes: int = Field(..., ge=0, description='Number of "Don\'t support" votes after the change')
+    my_vote: Literal[-1, 0, 1] = Field(..., description="Current vote of the user (0 = none)")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"review_id": "550e8400-e29b-41d4-a716-446655440000", "likes": 5, "dislikes": 1, "my_vote": 1}
+        }
+    }
+
+
+class MyReviewVote(BaseModel):
+    review_id: UUID4 = Field(..., description="Review the user voted for")
+    value: Literal[-1, 1] = Field(..., description="1 = support, -1 = don't support")
+
+
+class MyReviewVotesResponse(BaseModel):
+    items: List[MyReviewVote] = Field(..., description="Votes of the current user")
 
 
 class PaginatedReviewsResponse(BaseModel):

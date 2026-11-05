@@ -857,6 +857,136 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/reviews/votes:
+    put:
+      tags:
+      - reviews
+      summary: Support or don't support a review (one vote per user, 0 removes the
+        vote)
+      operationId: vote_for_review_api_v1_reviews_votes_put
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewVoteRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewVoteResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Own review, banned or unverified user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/reviews/votes/mine:
+    get:
+      tags:
+      - reviews
+      summary: My votes for the reviews of a movie or series
+      operationId: get_my_votes_api_v1_reviews_votes_mine_get
+      parameters:
+      - name: content_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Movie or series whose reviews to check
+          title: Content Id
+        description: Movie or series whose reviews to check
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyReviewVotesResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: User is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/reviews/{review_id}:
     get:
       tags:
@@ -2493,6 +2623,37 @@ components:
       required:
       - status
       title: LivenessResponse
+    MyReviewVote:
+      properties:
+        review_id:
+          type: string
+          format: uuid4
+          title: Review Id
+          description: Review the user voted for
+        value:
+          type: integer
+          enum:
+          - -1
+          - 1
+          title: Value
+          description: 1 = support, -1 = don't support
+      type: object
+      required:
+      - review_id
+      - value
+      title: MyReviewVote
+    MyReviewVotesResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/MyReviewVote'
+          type: array
+          title: Items
+          description: Votes of the current user
+      type: object
+      required:
+      - items
+      title: MyReviewVotesResponse
     PaginatedContentResponse:
       properties:
         items:
@@ -2704,6 +2865,18 @@ components:
           format: date-time
           title: Created At
           description: Publication date and time
+        likes:
+          type: integer
+          minimum: 0.0
+          title: Likes
+          description: Number of "Support" votes
+          default: 0
+        dislikes:
+          type: integer
+          minimum: 0.0
+          title: Dislikes
+          description: Number of "Don't support" votes
+          default: 0
       type: object
       required:
       - content_id
@@ -2717,6 +2890,8 @@ components:
         contains_spoilers: false
         content_id: 987e6543-e21b-34c2-b123-526614174111
         created_at: '2026-10-05T18:00:00Z'
+        dislikes: 1
+        likes: 4
         rating: 9
         review_id: 550e8400-e29b-41d4-a716-446655440000
         review_text: Great movie, very deep plot and amazing acting!
@@ -2811,6 +2986,65 @@ components:
         contains_spoilers: true
         rating: 10
         review_text: 'Updated review: loved it even more after the second watch!'
+    ReviewVoteRequest:
+      properties:
+        review_id:
+          type: string
+          format: uuid4
+          title: Review Id
+          description: Review to vote for
+        value:
+          type: integer
+          enum:
+          - -1
+          - 0
+          - 1
+          title: Value
+          description: 1 = support, -1 = don't support, 0 = remove my vote
+      type: object
+      required:
+      - review_id
+      - value
+      title: ReviewVoteRequest
+      description: 'Vote for a review: 1 = support, -1 = don''t support, 0 = take
+        the vote back.'
+    ReviewVoteResponse:
+      properties:
+        review_id:
+          type: string
+          format: uuid4
+          title: Review Id
+          description: Review the vote belongs to
+        likes:
+          type: integer
+          minimum: 0.0
+          title: Likes
+          description: Number of "Support" votes after the change
+        dislikes:
+          type: integer
+          minimum: 0.0
+          title: Dislikes
+          description: Number of "Don't support" votes after the change
+        my_vote:
+          type: integer
+          enum:
+          - -1
+          - 0
+          - 1
+          title: My Vote
+          description: Current vote of the user (0 = none)
+      type: object
+      required:
+      - review_id
+      - likes
+      - dislikes
+      - my_vote
+      title: ReviewVoteResponse
+      example:
+        dislikes: 1
+        likes: 5
+        my_vote: 1
+        review_id: 550e8400-e29b-41d4-a716-446655440000
     SortOrder:
       type: string
       enum:

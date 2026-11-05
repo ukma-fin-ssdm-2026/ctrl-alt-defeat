@@ -65,7 +65,7 @@ def admin_delete_user(db: Session, admin: models.User, user_id) -> None:
 
 
 def remove_user_with_data(db: Session, user: models.User) -> None:
-    """Delete the user with reviews, ratings, comments (also replies under their reviews), lists and bans."""
+    """Delete the user with reviews, votes, ratings, comments (also replies under their reviews), lists and bans."""
     user_id = user.user_id
     review_ids = [row.review_id for row in db.query(models.Review.review_id).filter(models.Review.user_id == user_id)]
     # Explicit deletes: SQLite does not enforce ON DELETE CASCADE without a pragma
@@ -75,6 +75,13 @@ def remove_user_with_data(db: Session, user: models.User) -> None:
             (models.Comment.user_id == user_id) | (models.Comment.review_id.in_(review_ids))
         )
     comments.delete(synchronize_session=False)
+    # Votes of the user and votes under the user's reviews
+    votes = db.query(models.ReviewVote).filter(models.ReviewVote.user_id == user_id)
+    if review_ids:
+        votes = db.query(models.ReviewVote).filter(
+            (models.ReviewVote.user_id == user_id) | (models.ReviewVote.review_id.in_(review_ids))
+        )
+    votes.delete(synchronize_session=False)
     db.query(models.Review).filter(models.Review.user_id == user_id).delete(synchronize_session=False)
     db.query(models.Rating).filter(models.Rating.user_id == user_id).delete(synchronize_session=False)
     db.query(models.WatchedItem).filter(models.WatchedItem.user_id == user_id).delete(synchronize_session=False)
