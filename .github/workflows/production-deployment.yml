@@ -1,0 +1,57 @@
+# Records each production deploy in GitHub (Deployments -> "production") with the real time the new
+# version went live. Render deploys main on its own after CI passes (render.yaml: checksPass); this
+# workflow waits until the site reports the new commit on /health/live and then marks the deploy successful.
+name: Production deployment
+
+on:
+  workflow_run:
+    workflows: ['CI Test']
+    types: [completed]
+    branches: [main]
+
+permissions:
+  deployments: write
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: true
+
+jobs:
+  record:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && vars.SITE_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Wait for the new version on the site and record the deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          site="${SITE_URL%/}"
+          # The checks already passed (this runs after CI), hence no required contexts
+          deployment_id=$(jq -n --arg ref "$SHA" --arg desc "Render auto-deploy of ${SHA:0:7}" \
+              '{ref: $ref, environment: "production", auto_merge: false, required_contexts: [], description: $desc}' \
+            | gh api "repos/$REPO/deployments" --input - --jq .id)
+          set_status() {
+            jq -n --arg state "$1" --arg url "$site" --arg desc "$2" \
+                '{state: $state, environment_url: $url, description: $desc, auto_inactive: true}' \
+              | gh api "repos/$REPO/deployments/$deployment_id/statuses" --input - > /dev/null
+          }
+          set_status in_progress "Waiting for Render to serve ${SHA:0:7}"
+
+          # Render builds the Docker image in a few minutes; a sleeping free instance needs up to a minute to wake
+          for attempt in $(seq 1 60); do
+            commit=$(curl --proto '=https' --tlsv1.2 -sf --max-time 70 "$site/health/live" | jq -r '.commit // empty' || true)
+            if [ "$commit" = "$SHA" ]; then
+              set_status success "Live: ${SHA:0:7}"
+              echo "Version ${SHA:0:7} is live at $site"
+              exit 0
+            fi
+            echo "Attempt $attempt: site serves '${commit:-unknown}', waiting for $SHA"
+            sleep 15
+          done
+          set_status failure "The site did not switch to ${SHA:0:7} in time"
+          exit 1
