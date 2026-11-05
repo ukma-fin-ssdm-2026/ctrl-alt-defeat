@@ -1,3 +1,6 @@
+import os
+from typing import Optional
+
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -12,6 +15,9 @@ router = APIRouter(tags=["health"])
 
 class LivenessResponse(BaseModel):
     status: str = Field(..., description="Always 'ok' while the process answers")
+    commit: Optional[str] = Field(
+        None, description="Git commit of the running build (RENDER_GIT_COMMIT on Render), used to confirm a deploy"
+    )
 
 
 class HealthResponse(BaseModel):
@@ -37,7 +43,7 @@ def get_db():
     ),
 )
 def liveness():
-    return LivenessResponse(status="ok")
+    return LivenessResponse(status="ok", commit=os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT") or None)
 
 
 @router.get(

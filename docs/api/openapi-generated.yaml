@@ -2482,6 +2482,13 @@ components:
           type: string
           title: Status
           description: Always 'ok' while the process answers
+        commit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Commit
+          description: Git commit of the running build (RENDER_GIT_COMMIT on Render),
+            used to confirm a deploy
       type: object
       required:
       - status
