@@ -157,6 +157,7 @@ CI (`.github/workflows/ci.yml`) запускає ці самі перевірк�
 Сайт працює на [Render](https://render.com) як один Docker-сервіс (бекенд і фронтенд на одній адресі) за файлом `render.yaml`. База — безкоштовна PostgreSQL від [Neon](https://neon.tech), яка, на відміну від безкоштовної бази Render, не видаляється через 30 днів. Обидва сервіси в регіоні Frankfurt.
 
 - **Деплой:** автоматично після злиття в `main`, але тільки коли CI пройшов; трафік перемикається на нову версію після успішної перевірки `/health/live`.
+- **Історія деплоїв:** workflow `production-deployment.yml` після кожного зеленого CI на `main` чекає, поки `/health/live` почне повертати новий коміт (`RENDER_GIT_COMMIT`), і записує деплой у GitHub (**Deployments → production**) з посиланням на сайт і часом, коли версія стала доступною.
 - **Секрети:** `DATABASE_URL` (рядок підключення з Neon) задано в Render; `JWT_SECRET_KEY` і паролі демо-акаунтів Render згенерував сам. Пароль адміністратора — у Render → сервіс `pislya-tytriv` → **Environment** → `SEED_ADMIN_PASSWORD`; він передається викладачу окремо.
 - **Листи:** безкоштовні сервіси Render блокують SMTP-порти, а сервіси розсилки вимагають власного домену. Тому сайт надсилає листи через невеликий веб-застосунок Google Apps Script (`scripts/google-apps-script/mailer.gs`). Він приймає лист по HTTPS із секретним ключем і відправляє його з Gmail команди (близько 100 листів на день). Налаштування:
   1. [script.google.com](https://script.google.com) → **New project** → вставити вміст `mailer.gs` → зберегти.

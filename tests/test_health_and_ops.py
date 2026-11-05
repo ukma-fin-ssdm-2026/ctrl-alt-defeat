@@ -30,8 +30,21 @@ def test_liveness_answers_without_the_database():
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json()["status"] == "ok"
     broken.execute.assert_not_called()
+
+
+def test_liveness_reports_the_deployed_commit(monkeypatch):
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "ed457e1f00d")
+
+    assert TestClient(app).get("/health/live").json() == {"status": "ok", "commit": "ed457e1f00d"}
+
+
+def test_liveness_without_commit_information(monkeypatch):
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
+    monkeypatch.delenv("GIT_COMMIT", raising=False)
+
+    assert TestClient(app).get("/health/live").json() == {"status": "ok", "commit": None}
 
 
 def test_health_reports_503_when_database_is_down():
