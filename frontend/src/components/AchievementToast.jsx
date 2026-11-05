@@ -29,7 +29,9 @@ export default function AchievementToast({ badge, pending = 0, language = 'UKR',
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-black uppercase tracking-wider text-yellow-600 dark:text-yellow-400">
-            {isUkr ? '🏆 Нова нагорода!' : '🏆 New achievement!'}
+            {badge.kind === 'rank'
+              ? (isUkr ? '⭐ Новий ранг!' : '⭐ New rank!')
+              : (isUkr ? '🏆 Нова нагорода!' : '🏆 New achievement!')}
           </p>
           <p className="font-black text-gray-900 dark:text-white leading-tight mt-0.5">
             {isUkr ? badge.titleUkr : badge.titleEn}

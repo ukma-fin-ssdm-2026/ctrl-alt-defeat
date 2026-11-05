@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import { getDisplayName } from '../utils/displayName';
 import { computeAchievements } from '../utils/achievements';
+import { RANKS, XP_RULES, activityXp, rankForXp } from '../utils/ranks';
 
 export default function UserProfile({ 
   user, 
@@ -56,6 +57,9 @@ export default function UserProfile({
     createdAt: user?.created_at,
   });
   const unlockedCount = achievements.filter(badge => badge.unlocked).length;
+  // Rank from XP for real activity (reviews, watched list, watchlist)
+  const rankInfo = rankForXp(activityXp({ reviews: userReviews, watched: watchedMovies, watchlist: watchlistMovies || [] }));
+  const rankTitle = rank => (isUkr ? rank.titleUkr : rank.titleEn);
 
   const accountErrorText = (code) => {
     if (code === 'INVALID_PASSWORD') return isUkr ? 'Поточний пароль неправильний.' : 'The current password is incorrect.';
@@ -122,8 +126,29 @@ export default function UserProfile({
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {user?.email || 'user@gmail.com'}
           </p>
-          <div className="inline-flex items-center gap-2 mt-3 px-3 py-1 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-full text-xs font-bold">
-            <span>🏆</span> {isUkr ? 'Ранг: Кіноексперт' : 'Rank: Movie Expert'}
+          <button
+            type="button"
+            onClick={() => setActiveTab('achievements')}
+            data-testid="rank-chip"
+            data-rank={rankInfo.rank.id}
+            title={isUkr ? 'Як підвищити ранг' : 'How to rank up'}
+            className={`inline-flex items-center gap-2 mt-3 px-3 py-1 rounded-full text-xs font-bold ring-1 transition-transform hover:scale-105 ${rankInfo.rank.chip}`}
+          >
+            <span aria-hidden="true">{rankInfo.rank.icon}</span>
+            {isUkr ? 'Ранг' : 'Rank'}: {rankTitle(rankInfo.rank)}
+            <span className="opacity-70 font-semibold">· {rankInfo.xp} XP</span>
+          </button>
+          <div className="mt-2 max-w-xs mx-auto sm:mx-0">
+            <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full ${rankInfo.rank.bar}`} style={{ width: `${Math.round(rankInfo.progress * 100)}%` }}></div>
+            </div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+              {rankInfo.next
+                ? (isUkr
+                  ? `До рангу «${rankTitle(rankInfo.next)}» ще ${rankInfo.toNext} XP`
+                  : `${rankInfo.toNext} XP to "${rankTitle(rankInfo.next)}"`)
+                : (isUkr ? 'Найвищий ранг досягнуто!' : 'Top rank reached!')}
+            </p>
           </div>
         </div>
       </div>
@@ -464,7 +489,7 @@ export default function UserProfile({
             <div className="space-y-6">
               <div className="border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center justify-between">
                 <h2 className="text-xl font-black text-gray-900 dark:text-white">
-                  {isUkr ? 'Нагороди та досягнення 🏆' : 'Badges & Achievements 🏆'}
+                  {isUkr ? 'Ранг і нагороди 🏆' : 'Rank & Achievements 🏆'}
                 </h2>
                 <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">
                   {unlockedCount === achievements.length
@@ -473,6 +498,44 @@ export default function UserProfile({
                 </span>
               </div>
 
+              <section aria-labelledby="ranks-heading" className="space-y-3">
+                <h3 id="ranks-heading" className="text-sm font-black uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  {isUkr ? 'Ранги' : 'Ranks'}
+                </h3>
+                <ol className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {RANKS.map(rank => {
+                    const reached = rankInfo.xp >= rank.minXp;
+                    const current = rank.id === rankInfo.rank.id;
+                    const highlighted = `rank-${rank.id}` === highlightAchievement;
+                    return (
+                      <li
+                        key={rank.id}
+                        data-testid={`rank-${rank.id}`}
+                        data-reached={reached}
+                        aria-current={current ? 'step' : undefined}
+                        className={`relative p-3 rounded-2xl ring-1 flex items-center gap-3 ${reached ? rank.chip : 'bg-gray-50/60 dark:bg-gray-800/60 text-gray-400 ring-gray-200 dark:ring-gray-700'} ${current ? 'ring-2 shadow-md' : ''} ${highlighted ? 'achievement-highlight' : ''}`}
+                      >
+                        <span className={`text-2xl ${reached ? '' : 'grayscale opacity-40'}`} aria-hidden="true">{rank.icon}</span>
+                        <span className="min-w-0">
+                          <span className="block text-xs font-black leading-tight">{rankTitle(rank)}</span>
+                          <span className="block text-[10px] font-semibold opacity-80">
+                            {current ? (isUkr ? 'Ваш ранг' : 'Your rank') : `${isUkr ? 'від' : 'from'} ${rank.minXp} XP`}
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  {isUkr
+                    ? `XP: рецензія з текстом +${XP_RULES.textReview}, лише оцінка +${XP_RULES.ratingOnly}, розгорнута рецензія ще +${XP_RULES.detailedBonus}, переглянутий фільм +${XP_RULES.watched}, у «До перегляду» +${XP_RULES.watchlist}.`
+                    : `XP: review with text +${XP_RULES.textReview}, rating only +${XP_RULES.ratingOnly}, in-depth review +${XP_RULES.detailedBonus} more, watched title +${XP_RULES.watched}, watchlist title +${XP_RULES.watchlist}.`}
+                </p>
+              </section>
+
+              <h3 className="text-sm font-black uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                {isUkr ? 'Нагороди' : 'Badges'}
+              </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {achievements.map(badge => (
                   <div

@@ -56,3 +56,16 @@ describe('achievement notifications', () => {
     expect(window.localStorage.length).toBe(0);
   });
 });
+
+describe('rank notifications', () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it('announces a new rank like a badge', () => {
+    const { result, rerender } = renderHook(props => useAchievementNotifications(props), { initialProps: base });
+    const watched = Array.from({ length: 9 }, (_, id) => ({ id, genres: ['Драма'] }));
+
+    // 9 watched * 3 XP = 27 XP → "Кінолюб"
+    rerender({ ...base, watched });
+    expect(result.current.current).toMatchObject({ kind: 'rank', id: 'rank-fan', titleUkr: 'Кінолюб' });
+  });
+});

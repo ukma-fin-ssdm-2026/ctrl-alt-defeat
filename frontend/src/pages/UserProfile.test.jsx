@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import apiClient from '../api/client';
@@ -196,8 +196,41 @@ describe('UserProfile opened from an achievement pop-up', () => {
       />,
     );
 
-    expect(await screen.findByText('Нагороди та досягнення 🏆')).toBeInTheDocument();
+    expect(await screen.findByText('Ранг і нагороди 🏆')).toBeInTheDocument();
     expect(screen.getByTestId('badge-planner')).toHaveClass('achievement-highlight');
     expect(screen.getByTestId('badge-reviewer')).not.toHaveClass('achievement-highlight');
+  });
+});
+
+describe('UserProfile rank', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const renderWith = (props = {}) => render(
+    <UserProfile user={user} language="UKR" watchlistMovies={[]} watchedMovies={[]} onSelectMovie={() => {}} onToggleWatchlist={() => {}} {...props} />,
+  );
+
+  it('starts a new account as a viewer with progress to the next rank', async () => {
+    apiClient.get.mockResolvedValue({ data: { items: [] } });
+    renderWith();
+
+    const chip = await screen.findByTestId('rank-chip');
+    expect(chip).toHaveAttribute('data-rank', 'viewer');
+    expect(chip).toHaveTextContent('Ранг: Глядач· 0 XP');
+    expect(screen.getByText('До рангу «Кінолюб» ще 25 XP')).toBeInTheDocument();
+  });
+
+  it('computes the rank from real reviews and lists, and shows the ladder', async () => {
+    apiClient.get.mockResolvedValue({ data: { items: [{ review_id: 'r1', rating: 9, review_text: 'Дуже сильне кіно', created_at: '2026-11-01T10:00:00Z' }] } });
+    const movies = Array.from({ length: 5 }, (_, id) => ({ id, genres: ['Драма'] }));
+    // 10 (review) + 5 * 3 (watched) + 5 * 1 (watchlist) = 30 XP → "Кінолюб"
+    renderWith({ watchedMovies: movies, watchlistMovies: movies });
+
+    await waitFor(() => expect(screen.getByTestId('rank-chip')).toHaveAttribute('data-rank', 'fan'));
+    expect(screen.getByText('До рангу «Рецензент» ще 45 XP')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId('rank-chip'));
+    expect(screen.getByTestId('rank-fan')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByTestId('rank-viewer')).toHaveAttribute('data-reached', 'true');
+    expect(screen.getByTestId('rank-reviewer')).toHaveAttribute('data-reached', 'false');
   });
 });

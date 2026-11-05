@@ -1,5 +1,17 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { computeAchievements } from '../utils/achievements';
+import { activityXp, reachedRanks } from '../utils/ranks';
+
+// A reached rank is announced like a badge (kind: 'rank', id 'rank-<rank id>')
+const rankBadge = rank => ({
+  kind: 'rank',
+  id: `rank-${rank.id}`,
+  icon: rank.icon,
+  titleUkr: rank.titleUkr,
+  titleEn: rank.titleEn,
+  descUkr: `Ви отримали ранг «${rank.titleUkr}» (від ${rank.minXp} XP)`,
+  descEn: `You reached the "${rank.titleEn}" rank (${rank.minXp}+ XP)`,
+});
 
 const storageKey = userId => `achievements-seen:${userId}`;
 
@@ -44,7 +56,7 @@ function createQueue() {
   };
 }
 
-// Watches the user's activity and returns newly unlocked achievements one by one.
+// Watches the user's activity and returns newly unlocked achievements and ranks one by one.
 // Badges the user already had when this browser first saw the account are not announced,
 // and a badge is announced only once even if it is lost and earned again.
 export default function useAchievementNotifications({ user, reviews, watched, watchlist, ready, now }) {
@@ -55,8 +67,11 @@ export default function useAchievementNotifications({ user, reviews, watched, wa
 
   useEffect(() => {
     if (!userId || !ready) return;
-    const unlocked = computeAchievements({ reviews, watched, watchlist, createdAt, now: now ?? Date.now() })
-      .filter(badge => badge.unlocked);
+    const unlocked = [
+      ...computeAchievements({ reviews, watched, watchlist, createdAt, now: now ?? Date.now() })
+        .filter(badge => badge.unlocked),
+      ...reachedRanks(activityXp({ reviews, watched, watchlist })).map(rankBadge),
+    ];
     const seen = readSeen(userId);
     if (!seen) {
       // First visit of this account in this browser: remember the current state silently
