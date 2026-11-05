@@ -3,7 +3,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ from src.api.db.models import User
 from src.api.routers.auth import get_current_admin
 from src.api.schemas.ban import AdminUser, AdminUserList, BanCreate, BanInfo
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
+from src.api.services.account import admin_delete_user
 from src.api.services.bans import active_ban, ban_user, unban_user
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Administration"])
@@ -97,3 +98,22 @@ def delete_ban(
 ):
     unban_user(db, user_id)
     return MessageResponse(message="Ban lifted")
+
+
+@router.delete(
+    "/users",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a user with all their data",
+    description=(
+        "Removes the account with its reviews, ratings, comments, lists and ban history (e.g. spam accounts). "
+        "Administrators, the administrator themselves and demo (seed) accounts cannot be deleted."
+    ),
+    responses={**STANDARD_ERRORS, **ADMIN_ERRORS},
+)
+def delete_user(
+    user_id: uuid.UUID = Query(..., description="User to delete"),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    admin_delete_user(db, admin, user_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
