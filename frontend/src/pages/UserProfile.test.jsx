@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import apiClient from '../api/client';
 import UserProfile from './UserProfile';
 
-vi.mock('../api/client', () => ({ default: { get: vi.fn() } }));
+vi.mock('../api/client', () => ({ default: { get: vi.fn(), post: vi.fn(), delete: vi.fn() } }));
 
 const user = { user_id: 'u-1', nickname: 'cinema_fan', email: 'user@example.com' };
 const renderProfile = () =>
@@ -51,5 +51,80 @@ describe('UserProfile', () => {
     await openReviewsTab();
 
     expect(await screen.findByText('Ви ще не залишили жодної рецензії.')).toBeInTheDocument();
+  });
+});
+
+describe('UserProfile account settings', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    apiClient.get.mockResolvedValue({ data: { items: [] } });
+  });
+
+  const fillPasswords = async (current, next, confirm = next) => {
+    await userEvent.click(screen.getByRole('button', { name: /Безпека/ }));
+    await userEvent.type(screen.getByLabelText('Поточний пароль'), current);
+    await userEvent.type(screen.getByLabelText('Новий пароль'), next);
+    await userEvent.type(screen.getByLabelText('Підтвердіть новий пароль'), confirm);
+    await userEvent.click(screen.getByRole('button', { name: 'Змінити пароль' }));
+  };
+
+  it('changes the password on the server', async () => {
+    apiClient.post.mockResolvedValue({ data: { message: 'Password changed' } });
+    renderProfile();
+
+    await fillPasswords('OldPass123', 'NewPass456');
+
+    expect(apiClient.post).toHaveBeenCalledWith('/auth/change-password', { current_password: 'OldPass123', new_password: 'NewPass456' });
+    expect(await screen.findByRole('status')).toHaveTextContent('Пароль успішно змінено!');
+  });
+
+  it('does not claim success when the server refuses', async () => {
+    apiClient.post.mockRejectedValue({ response: { data: { error: { code: 'INVALID_PASSWORD' } } } });
+    renderProfile();
+
+    await fillPasswords('wrong', 'NewPass456');
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Поточний пароль неправильний.');
+  });
+
+  it('checks that the new passwords match before calling the server', async () => {
+    renderProfile();
+
+    await fillPasswords('OldPass123', 'NewPass456', 'Other789');
+
+    expect(screen.getByRole('status')).toHaveTextContent('Нові паролі не збігаються!');
+    expect(apiClient.post).not.toHaveBeenCalled();
+  });
+
+  it('deletes the account after password confirmation', async () => {
+    apiClient.delete.mockResolvedValue({ status: 204 });
+    const onDeleteProfile = vi.fn();
+    render(<UserProfile user={user} language="UKR" watchlistMovies={[]} onSelectMovie={() => {}} onToggleWatchlist={() => {}} onDeleteProfile={onDeleteProfile} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Видалити акаунт/ }));
+    await userEvent.type(screen.getByLabelText('Пароль для підтвердження'), 'MyPass123');
+    await userEvent.click(screen.getByRole('button', { name: 'Видалити акаунт назавжди' }));
+
+    expect(apiClient.delete).toHaveBeenCalledWith('/auth/me', { data: { password: 'MyPass123' } });
+    expect(onDeleteProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the account and explains why when the server refuses', async () => {
+    apiClient.delete.mockRejectedValue({ response: { data: { error: { code: 'SEED_ACCOUNT_LOCKED' } } } });
+    const onDeleteProfile = vi.fn();
+    render(<UserProfile user={user} language="UKR" watchlistMovies={[]} onSelectMovie={() => {}} onToggleWatchlist={() => {}} onDeleteProfile={onDeleteProfile} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Видалити акаунт/ }));
+    await userEvent.type(screen.getByLabelText('Пароль для підтвердження'), 'MyPass123');
+    await userEvent.click(screen.getByRole('button', { name: 'Видалити акаунт назавжди' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Демо-акаунт не можна змінити чи видалити');
+    expect(onDeleteProfile).not.toHaveBeenCalled();
+  });
+
+  it('does not offer deletion to administrators', () => {
+    render(<UserProfile user={{ ...user, role: 'admin' }} language="UKR" watchlistMovies={[]} onSelectMovie={() => {}} onToggleWatchlist={() => {}} />);
+
+    expect(screen.queryByRole('button', { name: /Видалити акаунт/ })).not.toBeInTheDocument();
   });
 });

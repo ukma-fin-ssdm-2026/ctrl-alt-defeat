@@ -210,8 +210,12 @@ export default function App() {
             onToggleWatchlist={toggleWatchlist}
             onToggleWatched={toggleWatched}
             onDeleteProfile={() => {
-               setUser(null); handleGoHome(); 
-               alert(language === 'UKR' ? 'Профіль видалено' : 'Profile deleted');
+              // The server already removed the account and cleared the session cookie
+              clearStoredAuth();
+              setUser(null);
+              handleGoHome();
+              setAuthNotice(language === 'UKR' ? 'Акаунт видалено.' : 'The account was deleted.');
+              setIsAuthOpen(true);
             }}
           />
         ) : selectedMovie ? (

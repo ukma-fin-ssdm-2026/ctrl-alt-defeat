@@ -17,7 +17,13 @@ export default function UserProfile({
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState({ ok: false, text: '' });
+  const [savingPassword, setSavingPassword] = useState(false);
+  // Account deletion is confirmed with the current password
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const canDeleteAccount = user?.role !== 'admin';
 
   const isUkr = language === 'UKR';
 
@@ -92,20 +98,54 @@ export default function UserProfile({
     }
   ];
 
-  const handlePasswordChange = (e) => {
+  const accountErrorText = (code) => {
+    if (code === 'INVALID_PASSWORD') return isUkr ? 'Поточний пароль неправильний.' : 'The current password is incorrect.';
+    if (code === 'SAME_PASSWORD') return isUkr ? 'Новий пароль має відрізнятися від поточного.' : 'The new password must differ from the current one.';
+    if (code === 'SEED_ACCOUNT_LOCKED') return isUkr ? 'Демо-акаунт не можна змінити чи видалити: ним користуються всі відвідувачі.' : 'The demo account cannot be changed or deleted: all visitors use it.';
+    if (code === 'ADMIN_ACCOUNT') return isUkr ? 'Акаунт адміністратора не можна видалити з профілю.' : 'An administrator account cannot be deleted from the profile.';
+    if (code === 'VALIDATION_ERROR') return isUkr ? 'Новий пароль — щонайменше 6 символів.' : 'The new password needs at least 6 characters.';
+    return isUkr ? 'Не вдалося виконати дію. Спробуйте ще раз.' : 'Something went wrong. Please try again.';
+  };
+
+  const handlePasswordChange = async (e) => {
     e.preventDefault();
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordMessage(isUkr ? 'Заповніть усі поля!' : 'Fill in all fields!');
+      setPasswordMessage({ ok: false, text: isUkr ? 'Заповніть усі поля!' : 'Fill in all fields!' });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordMessage(isUkr ? 'Нові паролі не збігаються!' : 'New passwords do not match!');
+      setPasswordMessage({ ok: false, text: isUkr ? 'Нові паролі не збігаються!' : 'New passwords do not match!' });
       return;
     }
-    setPasswordMessage(isUkr ? 'Пароль успішно змінено!' : 'Password successfully changed!');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    setSavingPassword(true);
+    try {
+      await apiClient.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword });
+      setPasswordMessage({ ok: true, text: isUkr ? 'Пароль успішно змінено!' : 'Password successfully changed!' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      setPasswordMessage({ ok: false, text: accountErrorText(err.response?.data?.error?.code) });
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    if (!deletePassword) {
+      setDeleteError(isUkr ? 'Введіть пароль для підтвердження.' : 'Enter your password to confirm.');
+      return;
+    }
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await apiClient.delete('/auth/me', { data: { password: deletePassword } });
+      onDeleteProfile?.();
+    } catch (err) {
+      setDeleteError(accountErrorText(err.response?.data?.error?.code));
+      setDeleting(false);
+    }
   };
 
   return (
@@ -177,14 +217,16 @@ export default function UserProfile({
             <span>🏆</span> {isUkr ? 'Нагороди' : 'Achievements'} <span className="ml-auto text-xs px-2 py-0.5 bg-yellow-400 text-gray-900 rounded-full font-black">{achievements.length}</span>
           </button>
 
-          <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-700">
-            <button 
-              onClick={onDeleteProfile}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-            >
-              <span>🗑️</span> {isUkr ? 'Видалити акаунт' : 'Delete Account'}
-            </button>
-          </div>
+          {canDeleteAccount && (
+            <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-700">
+              <button 
+                onClick={() => { setActiveTab('delete'); setDeleteError(''); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-red-600 transition-all ${activeTab === 'delete' ? 'bg-red-50 dark:bg-red-900/20' : 'hover:bg-red-50 dark:hover:bg-red-900/20'}`}
+              >
+                <span>🗑️</span> {isUkr ? 'Видалити акаунт' : 'Delete Account'}
+              </button>
+            </div>
+          )}
 
         </div>
 
@@ -228,11 +270,13 @@ export default function UserProfile({
 
               <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  <label htmlFor="current-password" className="block text-xs font-bold text-gray-500 uppercase mb-1">
                     {isUkr ? 'Поточний пароль' : 'Current Password'}
                   </label>
                   <input 
+                    id="current-password"
                     type="password"
+                    autoComplete="current-password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="••••••••"
@@ -241,11 +285,13 @@ export default function UserProfile({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  <label htmlFor="new-password" className="block text-xs font-bold text-gray-500 uppercase mb-1">
                     {isUkr ? 'Новий пароль' : 'New Password'}
                   </label>
                   <input 
+                    id="new-password"
                     type="password"
+                    autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="••••••••"
@@ -254,11 +300,13 @@ export default function UserProfile({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  <label htmlFor="confirm-password" className="block text-xs font-bold text-gray-500 uppercase mb-1">
                     {isUkr ? 'Підтвердіть новий пароль' : 'Confirm New Password'}
                   </label>
                   <input 
+                    id="confirm-password"
                     type="password"
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
@@ -266,18 +314,59 @@ export default function UserProfile({
                   />
                 </div>
 
-                {passwordMessage && (
-                  <p className={`text-xs font-bold ${passwordMessage.includes('успішно') || passwordMessage.includes('successfully') ? 'text-green-600' : 'text-red-500'}`}>
-                    {passwordMessage}
+                {passwordMessage.text && (
+                  <p role="status" className={`text-xs font-bold ${passwordMessage.ok ? 'text-green-600' : 'text-red-500'}`}>
+                    {passwordMessage.text}
                   </p>
                 )}
 
                 <button 
                   type="submit"
-                  className="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold rounded-xl text-sm transition-colors shadow-sm"
+                  disabled={savingPassword}
+                  className="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-gray-900 font-bold rounded-xl text-sm transition-colors shadow-sm"
                 >
                   {isUkr ? 'Змінити пароль' : 'Change Password'}
                 </button>
+              </form>
+            </div>
+          )}
+
+          {/* DELETE ACCOUNT */}
+          {activeTab === 'delete' && canDeleteAccount && (
+            <div className="space-y-4 max-w-md">
+              <h2 className="text-xl font-black text-red-600 border-b border-gray-100 dark:border-gray-700 pb-4">
+                {isUkr ? 'Видалення акаунта' : 'Delete account'}
+              </h2>
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                {isUkr
+                  ? 'Акаунт буде видалено назавжди разом з вашими рецензіями, оцінками, коментарями, списками «До перегляду» і «Переглянуте». Відновити їх неможливо.'
+                  : 'The account will be deleted permanently with your reviews, ratings, comments, watchlist and watched list. This cannot be undone.'}
+              </p>
+              <form onSubmit={handleDeleteAccount} className="space-y-3">
+                <label htmlFor="delete-password" className="block text-xs font-bold text-gray-500 uppercase">
+                  {isUkr ? 'Пароль для підтвердження' : 'Password to confirm'}
+                </label>
+                <input
+                  id="delete-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
+                />
+                {deleteError && <p role="alert" className="text-xs font-bold text-red-500">{deleteError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={deleting}
+                    className="px-6 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-colors shadow-sm"
+                  >
+                    {isUkr ? 'Видалити акаунт назавжди' : 'Delete account permanently'}
+                  </button>
+                  <button type="button" onClick={() => setActiveTab('general')} className="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:underline">
+                    {isUkr ? 'Скасувати' : 'Cancel'}
+                  </button>
+                </div>
               </form>
             </div>
           )}
