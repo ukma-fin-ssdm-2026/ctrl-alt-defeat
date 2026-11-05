@@ -112,7 +112,7 @@ pip install -r requirements.txt
 uvicorn src.api.main:app --reload --host 127.0.0.1 --port 8000 --env-file .env
 ```
 - API: `http://127.0.0.1:8000`, Swagger UI: [/api-docs](http://127.0.0.1:8000/api-docs), ReDoc: [/redoc](http://127.0.0.1:8000/redoc)
-- Під час старту сервер сам створює таблиці, акаунти з `.env` (розділ 6) і, якщо каталог порожній, імпортує 30 тайтлів: з TMDB за наявності `TMDB_API_KEY`, інакше з вбудованого набору.
+- Під час старту сервер сам створює таблиці, акаунти з `.env` (розділ 6) і, якщо каталог порожній, заповнює його: з TMDB за наявності `TMDB_API_KEY` (100 фільмів, 100 серіалів, 100 мультфільмів), інакше 30 тайтлами з вбудованого набору.
 - Для старої локальної бази без колонки `runtime` один раз виконайте `python3 scripts/seed_movies.py` (або просто видаліть `app.db`).
 
 ### 4. Запуск Frontend (React + Vite)
@@ -166,5 +166,6 @@ CI (`.github/workflows/ci.yml`) запускає ці самі перевірк�
   4. Render → сервіс → **Environment**: `GOOGLE_SCRIPT_URL` = Web app URL, `GOOGLE_SCRIPT_SECRET` = той самий секрет → **Save Changes**.
 
   Посилання в листах ведуть на адресу сервісу (`RENDER_EXTERNAL_URL`). Сервер надсилає секрет лише на `https://script.google.com/macros/…`, будь-яку іншу адресу він відхиляє.
+- **Каталог з TMDB:** безкоштовний для некомерційного використання ключ — [themoviedb.org](https://www.themoviedb.org) → **Settings → API** (підходить і API Key, і API Read Access Token). Ключ задається в Render → **Environment** → `TMDB_API_KEY` і ніде більше не зберігається. Після цього адміністратор на сторінці **Користувачі** натискає **«Оновити каталог з TMDB»**: у фоні (близько хвилини) імпортуються 100 популярних фільмів, 100 серіалів і 100 мультфільмів з постерами, описами, жанрами й тривалістю. Наявні фільми оновлюються за `tmdb_id`, нічого не видаляється, тож рецензії та списки користувачів зберігаються. Постери відображаються прямо з `image.tmdb.org`. Згідно з умовами TMDB у футері сайту вказано джерело даних.
 - **Keep-alive:** безкоштовний сервіс Render засинає після 15 хвилин без запитів. Workflow `keep-alive.yml` кожні 10 хвилин звертається до `/health/live` (адреса задана змінною репозиторію `SITE_URL`). Невдалий запуск означає, що сайт не відповідав.
 - **Повторне розгортання з нуля** (лише якщо сервісу `pislya-tytriv` більше немає; адреса тоді буде інша): створити проєкт у Neon (Frankfurt, PostgreSQL 16), потім Render → **New → Blueprint** → цей репозиторій і ввести значення змінних: `DATABASE_URL` з Neon, `JWT_SECRET_KEY`, `SEED_ADMIN_PASSWORD`, `SEED_USER_PASSWORD` — випадкові рядки (`python -c "import secrets; print(secrets.token_urlsafe(32))"`), `DEMO_MODE` = `true`, `DEMO_ROLES` = `user`, за потреби `TMDB_API_KEY` і `GOOGLE_SCRIPT_*`. Потім оновити змінну репозиторію `SITE_URL`.
