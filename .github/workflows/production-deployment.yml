@@ -1,6 +1,8 @@
 # Records each production deploy in GitHub (Deployments -> "production") with the real time the new
-# version went live. Render deploys main on its own after CI passes (render.yaml: checksPass); this
-# workflow waits until the site reports the new commit on /health/live and then marks the deploy successful.
+# version went live. Render deploys every new commit on main on its own (render.yaml: autoDeployTrigger: commit;
+# main only takes PRs with a green "build" check). This workflow waits until the site reports the new commit
+# on /health/live and then marks the deploy successful. Render must not wait for checks (checksPass): this job
+# is a check of the same commit, so both would wait for each other until the job times out.
 name: Production deployment
 
 on:
