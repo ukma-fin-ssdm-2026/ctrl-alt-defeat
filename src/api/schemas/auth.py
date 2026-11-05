@@ -61,6 +61,15 @@ class RegisterResponse(BaseModel):
     )
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., max_length=100, description="Current password for confirmation")
+    new_password: str = Field(..., min_length=6, max_length=100, description="New password (minimum 6 characters)")
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(..., max_length=100, description="Current password for confirmation")
+
+
 class ResendVerificationRequest(BaseModel):
     email: str = Field(..., max_length=255, description="Email the account was registered with")
 

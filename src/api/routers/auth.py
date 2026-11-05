@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from src.api.db.database import SessionLocal
 from src.api.db.models import User
 from src.api.schemas.auth import (
+    ChangePasswordRequest,
+    DeleteAccountRequest,
     DemoAccount,
     DemoAccountsResponse,
     MessageResponse,
@@ -27,6 +29,7 @@ from src.api.services.auth import (
     hash_password,
     verify_password,
 )
+from src.api.services.account import change_password, delete_account
 from src.api.services.bans import active_ban
 from src.api.services.demo_accounts import demo_mode_enabled, get_public_demo_accounts
 from src.api.services.email import send_verification_email
@@ -340,6 +343,51 @@ def get_current_user_profile(
     db: Session = Depends(get_db),
 ):
     return user_response(db, current_user)
+
+
+ACCOUNT_ERRORS = {
+    400: {"model": ErrorResponse, "description": "Wrong current password or invalid new password"},
+    401: {"model": ErrorResponse, "description": "Not authenticated"},
+    403: {"model": ErrorResponse, "description": "Demo (seed) or administrator account"},
+}
+
+
+@router.post(
+    "/change-password",
+    response_model=MessageResponse,
+    summary="Change my password",
+    description="Requires the current password. Demo (seed) accounts are managed by the server settings.",
+    responses={**STANDARD_ERRORS, **ACCOUNT_ERRORS},
+)
+def change_my_password(
+    req: ChangePasswordRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    change_password(db, current_user, req.current_password, req.new_password)
+    return MessageResponse(message="Password changed")
+
+
+@router.delete(
+    "/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete my account and all my data",
+    description=(
+        "Requires the current password. Removes the account with its reviews, ratings, comments, "
+        "watchlist, watched list and ban history, and clears the session cookie."
+    ),
+    responses={**STANDARD_ERRORS, **ACCOUNT_ERRORS},
+)
+def delete_my_account(
+    req: DeleteAccountRequest,
+    response: Response,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    delete_account(db, current_user, req.password)
+    response.delete_cookie(key="access_token", httponly=True, samesite="lax", secure=True)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
 
 
 @router.post(
