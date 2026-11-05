@@ -1,7 +1,7 @@
 # Keeps the free Render web service awake (it sleeps after 15 minutes without requests) and works as a
 # simple uptime monitor (REL-001): a failed run means the site did not answer.
 # Enable it by setting the repository variable SITE_URL (Settings -> Secrets and variables -> Actions ->
-# Variables), e.g. https://pislya-tytriv-4duj.onrender.com. Without the variable the job is skipped.
+# Variables), e.g. https://pislya-tytriv.onrender.com. Without the variable the job is skipped.
 name: Keep-alive
 
 on:
