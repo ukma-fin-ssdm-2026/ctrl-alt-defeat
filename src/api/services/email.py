@@ -2,8 +2,11 @@
 Email delivery for account verification (FR-001).
 
 The transport is chosen from the environment:
-    BREVO_API_KEY            Brevo transactional HTTP API (port 443; works on hosts that block SMTP,
-                             e.g. Render free web services)
+    GOOGLE_SCRIPT_URL + GOOGLE_SCRIPT_SECRET
+                             Google Apps Script web app (scripts/google-apps-script/mailer.gs) that sends from
+                             a Gmail account over HTTPS; needs no own domain and works where SMTP is blocked
+                             (Render free web services)
+    BREVO_API_KEY            Brevo transactional HTTP API (needs a sender on an own domain)
     SMTP_HOST [+ SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_SECURITY=starttls|ssl|none]
     neither                  the message is only written to the server log (local development)
 Common settings: EMAIL_FROM (sender address), EMAIL_FROM_NAME, APP_BASE_URL (public site address for links;
@@ -19,11 +22,12 @@ import ssl
 import urllib.request
 from email.message import EmailMessage
 from typing import Optional
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 logger = logging.getLogger(__name__)
 
 BREVO_URL = "https://api.brevo.com/v3/smtp/email"
+GOOGLE_SCRIPT_HOST = "script.google.com"
 TIMEOUT_SECONDS = 10
 
 
@@ -32,6 +36,8 @@ class EmailError(Exception):
 
 
 def email_backend() -> str:
+    if os.getenv("GOOGLE_SCRIPT_URL"):
+        return "google_script"
     if os.getenv("BREVO_API_KEY"):
         return "brevo"
     if os.getenv("SMTP_HOST"):
@@ -84,6 +90,40 @@ def _send_brevo(to: str, subject: str, text: str, html: str) -> None:
         raise EmailError(f"Brevo request failed: {error}") from error
 
 
+def _google_script_url() -> str:
+    url = os.environ["GOOGLE_SCRIPT_URL"].strip()
+    parsed = urlparse(url)
+    # Only a deployed Apps Script web app: the secret must never be posted anywhere else
+    if parsed.scheme != "https" or parsed.hostname != GOOGLE_SCRIPT_HOST or not parsed.path.startswith("/macros/"):
+        raise EmailError("GOOGLE_SCRIPT_URL must be https://script.google.com/macros/s/<id>/exec")
+    return url
+
+
+def _send_google_script(to: str, subject: str, text: str, html: str) -> None:
+    _, sender_name = _sender()
+    body = json.dumps(
+        {
+            "secret": os.getenv("GOOGLE_SCRIPT_SECRET", ""),
+            "to": to,
+            "subject": subject,
+            "text": text,
+            "html": html,
+            "name": sender_name,
+        }
+    ).encode("utf-8")
+    request = urllib.request.Request(
+        _google_script_url(), data=body, method="POST", headers={"Content-Type": "application/json"}
+    )
+    try:
+        # Apps Script answers through a redirect to script.googleusercontent.com, which urllib follows
+        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:  # nosec B310
+            result = json.loads(response.read().decode("utf-8") or "{}")
+    except Exception as error:  # network errors, HTTP errors, a non-JSON answer
+        raise EmailError(f"Google Apps Script request failed: {error}") from error
+    if not result.get("ok"):
+        raise EmailError(f"Google Apps Script refused the message: {result.get('error', 'unknown error')}")
+
+
 def _send_smtp(to: str, subject: str, text: str, html: str) -> None:
     sender_email, sender_name = _sender()
     message = EmailMessage()
@@ -116,12 +156,16 @@ def _send_smtp(to: str, subject: str, text: str, html: str) -> None:
 def send_email(to: str, subject: str, text: str, html: str) -> str:
     """Deliver one message; returns the transport used. Raises EmailError on failure."""
     backend = email_backend()
-    if backend == "brevo":
+    if backend == "google_script":
+        _send_google_script(to, subject, text, html)
+    elif backend == "brevo":
         _send_brevo(to, subject, text, html)
     elif backend == "smtp":
         _send_smtp(to, subject, text, html)
     else:
-        logger.warning("Email is not configured (BREVO_API_KEY / SMTP_HOST). Message to %s:\n%s", to, text)
+        logger.warning(
+            "Email is not configured (GOOGLE_SCRIPT_URL / BREVO_API_KEY / SMTP_HOST). Message to %s:\n%s", to, text
+        )
     return backend
 
 
