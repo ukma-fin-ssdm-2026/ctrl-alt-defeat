@@ -151,9 +151,9 @@ def test_verification_link_points_to_the_public_site(monkeypatch):
 
 
 def test_render_address_is_used_when_app_base_url_is_not_set(monkeypatch):
-    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://pislya-tytriv-4duj.onrender.com")
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://pislya-tytriv.onrender.com")
 
-    assert email_service.verification_link("t").startswith("https://pislya-tytriv-4duj.onrender.com/verify-email?")
+    assert email_service.verification_link("t").startswith("https://pislya-tytriv.onrender.com/verify-email?")
 
 
 def test_without_configuration_the_message_goes_to_the_log(caplog):
