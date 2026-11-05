@@ -32,6 +32,8 @@ EMAIL_VARIABLES = [
     "EMAIL_FROM_NAME",
     "APP_BASE_URL",
     "RENDER_EXTERNAL_URL",
+    "GOOGLE_SCRIPT_URL",
+    "GOOGLE_SCRIPT_SECRET",
 ]
 
 
@@ -254,3 +256,83 @@ def test_unique_tokens_are_not_reused(client, db_session, sent):
     register(client, email=f"{uuid.uuid4().hex[:6]}@example.com", nickname="a2")
 
     assert sent[0][2] != sent[1][2]
+
+
+SCRIPT_URL = "https://script.google.com/macros/s/AKfy-test/exec"
+
+
+class JsonResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def read(self):
+        return json.dumps(self.payload).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def test_google_apps_script_sends_from_gmail_without_a_domain(monkeypatch):
+    monkeypatch.setenv("GOOGLE_SCRIPT_URL", SCRIPT_URL)
+    monkeypatch.setenv("GOOGLE_SCRIPT_SECRET", "s3cret")
+    monkeypatch.setenv("BREVO_API_KEY", "also-set")  # the Apps Script relay takes priority
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        captured.update(url=request.full_url, body=json.loads(request.data))
+        return JsonResponse({"ok": True})
+
+    monkeypatch.setattr(email_service.urllib.request, "urlopen", fake_urlopen)
+
+    assert email_service.send_verification_email("x@example.com", "Ann", "tok123") == "google_script"
+    assert captured["url"] == SCRIPT_URL
+    assert captured["body"]["secret"] == "s3cret"
+    assert captured["body"]["to"] == "x@example.com"
+    assert "verify-email?token=tok123" in captured["body"]["text"]
+    assert captured["body"]["name"] == "Після титрів"
+
+
+def test_google_apps_script_refusal_is_an_error(monkeypatch):
+    monkeypatch.setenv("GOOGLE_SCRIPT_URL", SCRIPT_URL)
+    monkeypatch.setattr(
+        email_service.urllib.request,
+        "urlopen",
+        lambda request, timeout: JsonResponse({"ok": False, "error": "unauthorized"}),
+    )
+
+    with pytest.raises(email_service.EmailError, match="unauthorized"):
+        email_service.send_email("x@example.com", "S", "t", "h")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://script.google.com/macros/s/id/exec",
+        "https://evil.example.com/macros/s/id/exec",
+        "https://script.google.com.evil.example/macros/s/id/exec",
+        "https://script.google.com/other",
+    ],
+)
+def test_secret_is_never_posted_outside_apps_script(monkeypatch, url):
+    monkeypatch.setenv("GOOGLE_SCRIPT_URL", url)
+    called = MagicMock()
+    monkeypatch.setattr(email_service.urllib.request, "urlopen", called)
+
+    with pytest.raises(email_service.EmailError, match="must be https://script.google.com"):
+        email_service.send_email("x@example.com", "S", "t", "h")
+    called.assert_not_called()
+
+
+def test_google_apps_script_network_error(monkeypatch):
+    monkeypatch.setenv("GOOGLE_SCRIPT_URL", SCRIPT_URL)
+
+    def failing(request, timeout):
+        raise OSError("timed out")
+
+    monkeypatch.setattr(email_service.urllib.request, "urlopen", failing)
+
+    with pytest.raises(email_service.EmailError, match="timed out"):
+        email_service.send_email("x@example.com", "S", "t", "h")
