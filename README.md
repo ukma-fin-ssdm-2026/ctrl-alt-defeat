@@ -141,7 +141,7 @@ docker compose up --build
 
 З `DEMO_MODE=true` вікно входу показує ці акаунти з паролями й кнопкою «Підставити». `DEMO_ROLES` обмежує, які саме акаунти показуються: за замовчуванням `admin,user`, на публічному сайті `user`. Новий акаунт можна також зареєструвати через інтерфейс.
 
-**Підтвердження пошти (FR-001).** Після реєстрації на вказану адресу надходить лист із посиланням `…/verify-email?token=…`; акаунт активується після переходу за ним. Лист надсилається через HTTP API [Brevo](https://www.brevo.com) (`BREVO_API_KEY`, `EMAIL_FROM`) або через SMTP (`SMTP_HOST` та інші, див. `.env.example`). Якщо нічого не налаштовано, посилання друкується в лог сервера: так зручно працювати локально. З `DEMO_MODE=true` вікно реєстрації додатково показує кнопку підтвердження «в 1 клік».
+**Підтвердження пошти (FR-001).** Після реєстрації на вказану адресу надходить лист із посиланням `…/verify-email?token=…`; акаунт активується після переходу за ним. Лист надсилається через Google Apps Script з Gmail-акаунта (`GOOGLE_SCRIPT_URL`, `GOOGLE_SCRIPT_SECRET`), через HTTP API [Brevo](https://www.brevo.com) (потрібен власний домен) або через SMTP (`SMTP_HOST` та інші, наприклад Gmail з паролем застосунку; див. `.env.example`). Якщо нічого не налаштовано, посилання друкується в лог сервера: так зручно працювати локально. З `DEMO_MODE=true` вікно реєстрації додатково показує кнопку підтвердження «в 1 клік».
 
 ### 7. Тести та перевірка якості
 ```bash
@@ -158,6 +158,12 @@ CI (`.github/workflows/ci.yml`) запускає ці самі перевірк�
 
 - **Деплой:** автоматично після злиття в `main`, але тільки коли CI пройшов; трафік перемикається на нову версію після успішної перевірки `/health/live`.
 - **Секрети:** `DATABASE_URL` (рядок підключення з Neon) задано в Render; `JWT_SECRET_KEY` і паролі демо-акаунтів Render згенерував сам. Пароль адміністратора — у Render → сервіс `pislya-tytriv` → **Environment** → `SEED_ADMIN_PASSWORD`; він передається викладачу окремо.
-- **Листи:** безкоштовні сервіси Render блокують SMTP-порти, тому сайт надсилає листи через HTTP API Brevo. `BREVO_API_KEY` і `EMAIL_FROM` (адреса, підтверджена в Brevo → Senders) задаються в Render → **Environment**. Посилання в листах ведуть на адресу сервісу (`RENDER_EXTERNAL_URL`).
+- **Листи:** безкоштовні сервіси Render блокують SMTP-порти, а сервіси розсилки вимагають власного домену. Тому сайт надсилає листи через невеликий веб-застосунок Google Apps Script (`scripts/google-apps-script/mailer.gs`). Він приймає лист по HTTPS із секретним ключем і відправляє його з Gmail команди (близько 100 листів на день). Налаштування:
+  1. [script.google.com](https://script.google.com) → **New project** → вставити вміст `mailer.gs` → зберегти.
+  2. **Project Settings → Script Properties → Add script property**: `MAILER_SECRET` = довгий випадковий рядок (`python -c "import secrets; print(secrets.token_urlsafe(32))"`).
+  3. **Deploy → New deployment → Web app**: *Execute as* — **Me**, *Who has access* — **Anyone** → **Deploy** → дозволити доступ до Gmail → скопіювати **Web app URL** (`https://script.google.com/macros/s/…/exec`).
+  4. Render → сервіс → **Environment**: `GOOGLE_SCRIPT_URL` = Web app URL, `GOOGLE_SCRIPT_SECRET` = той самий секрет → **Save Changes**.
+
+  Посилання в листах ведуть на адресу сервісу (`RENDER_EXTERNAL_URL`). Сервер надсилає секрет лише на `https://script.google.com/macros/…`, будь-яку іншу адресу він відхиляє.
 - **Keep-alive:** безкоштовний сервіс Render засинає після 15 хвилин без запитів. Workflow `keep-alive.yml` кожні 10 хвилин звертається до `/health/live` (адреса задана змінною репозиторію `SITE_URL`). Невдалий запуск означає, що сайт не відповідав.
 - **Повторне розгортання з нуля:** створити проєкт у Neon (Frankfurt, PostgreSQL 16), потім Render → **New → Blueprint** → цей репозиторій, і на запит `DATABASE_URL` вставити рядок із Neon.
