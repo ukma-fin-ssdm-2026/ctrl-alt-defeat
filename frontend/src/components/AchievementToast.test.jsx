@@ -41,3 +41,10 @@ describe('AchievementToast', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('AchievementToast for a rank', () => {
+  it('says it is a new rank', () => {
+    render(<AchievementToast badge={{ ...badge, kind: 'rank', id: 'rank-fan', titleUkr: 'Кінолюб' }} onView={() => {}} onClose={() => {}} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Новий ранг!');
+  });
+});
