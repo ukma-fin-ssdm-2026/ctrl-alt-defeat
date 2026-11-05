@@ -105,3 +105,9 @@ def seed_default_users(db: Session) -> None:
         user.role = account.role
         user.email_verified = True
     db.commit()
+
+
+def is_seed_account(email: str) -> bool:
+    """Seed accounts are managed by the environment; on a public demo their password is visible to everyone."""
+    email = (email or "").strip().lower()
+    return any(account.email == email for account in get_seed_accounts())
