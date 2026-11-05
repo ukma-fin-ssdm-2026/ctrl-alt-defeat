@@ -2,7 +2,7 @@
 
 [![CI Test](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/workflows/ci.yml/badge.svg)](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/workflows/ci.yml)
 
-### [Відкрити онлайн-версію «Після титрів»](https://pislya-tytriv-4duj.onrender.com/)
+### [Відкрити онлайн-версію «Після титрів»](https://pislya-tytriv.onrender.com/)
 
 Демо-акаунт користувача підказує вікно входу.
 
