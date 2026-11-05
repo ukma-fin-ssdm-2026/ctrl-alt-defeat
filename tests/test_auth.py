@@ -32,12 +32,20 @@ def setup_database():
 
 
 @pytest.fixture(autouse=True)
-def demo_mode(monkeypatch):
-    """These flows confirm the email with the token from the response, which only demo mode returns
-    (FR-001); real delivery is covered in test_email_verification.py. No email transport is configured."""
-    monkeypatch.setenv("DEMO_MODE", "true")
-    for name in ("BREVO_API_KEY", "SMTP_HOST"):
+def no_email_transport(monkeypatch):
+    """No email is sent in these tests: the activation link is only logged (delivery is covered in
+    test_email_verification.py)."""
+    for name in ("GOOGLE_SCRIPT_URL", "BREVO_API_KEY", "SMTP_HOST"):
         monkeypatch.delenv(name, raising=False)
+
+
+def emailed_token(email: str) -> str:
+    """The token from the activation email (FR-001): the API never returns it."""
+    db = TestingSessionLocal()
+    try:
+        return db.query(User).filter(User.email == email).one().verification_token
+    finally:
+        db.close()
 
 
 @pytest.fixture
@@ -92,8 +100,8 @@ def test_register_user_success(client: TestClient, db_session):
 
     data = response.json()
     assert data["email"] == unique_email
-    assert "verification_token" in data
-    assert data["verification_token"] is not None
+    # The token reaches the user only by email
+    assert "verification_token" not in data
 
     user = db_session.query(User).filter(User.email == unique_email).first()
     assert user is not None
@@ -171,11 +179,11 @@ def test_verify_email_success(client: TestClient, db_session):
     FR-001 / US-011: Confirm email address with token and activate account.
     """
     email = f"verify_{uuid.uuid4().hex[:8]}@example.com"
-    reg_res = client.post(
+    client.post(
         "/api/v1/auth/register",
         json={"email": email, "nickname": f"nick_{uuid.uuid4().hex[:6]}", "password": "validPassword123"},
     )
-    token = reg_res.json()["verification_token"]
+    token = emailed_token(email)
 
     verify_res = client.get(f"/api/v1/auth/verify?token={token}")
     assert verify_res.status_code == 200
@@ -217,11 +225,11 @@ def test_login_success_t037(client: TestClient):
     """
     # Trace: T-037
     email = f"login_{uuid.uuid4().hex[:8]}@example.com"
-    reg_res = client.post(
+    client.post(
         "/api/v1/auth/register",
         json={"email": email, "nickname": f"nick_{uuid.uuid4().hex[:6]}", "password": "validPassword123"},
     )
-    token = reg_res.json()["verification_token"]
+    token = emailed_token(email)
     client.get(f"/api/v1/auth/verify?token={token}")
 
     login_res = client.post("/api/v1/auth/login", json={"email": email, "password": "validPassword123"})
@@ -245,11 +253,11 @@ def test_login_invalid_password(client: TestClient):
     SEC-001: Reject login with wrong password.
     """
     email = f"pw_test_{uuid.uuid4().hex[:8]}@example.com"
-    reg_res = client.post(
+    client.post(
         "/api/v1/auth/register",
         json={"email": email, "nickname": f"nick_{uuid.uuid4().hex[:6]}", "password": "correctPassword123"},
     )
-    token = reg_res.json()["verification_token"]
+    token = emailed_token(email)
     client.get(f"/api/v1/auth/verify?token={token}")
 
     login_res = client.post("/api/v1/auth/login", json={"email": email, "password": "wrongPassword123"})
@@ -262,11 +270,11 @@ def test_login_banned_user(client: TestClient, db_session):
     FR-009: a banned user can still log in and sees the ban (type and period) in the profile.
     """
     email = f"banned_{uuid.uuid4().hex[:8]}@example.com"
-    reg_res = client.post(
+    client.post(
         "/api/v1/auth/register",
         json={"email": email, "nickname": f"nick_{uuid.uuid4().hex[:6]}", "password": "password123"},
     )
-    token = reg_res.json()["verification_token"]
+    token = emailed_token(email)
     client.get(f"/api/v1/auth/verify?token={token}")
 
     user = db_session.query(User).filter(User.email == email).first()
@@ -283,11 +291,11 @@ def test_get_current_user_profile_via_bearer(client: TestClient):
     US-011: Retrieve authenticated profile using Bearer Authorization header.
     """
     email = f"me_{uuid.uuid4().hex[:8]}@example.com"
-    reg_res = client.post(
+    client.post(
         "/api/v1/auth/register",
         json={"email": email, "nickname": f"nick_{uuid.uuid4().hex[:6]}", "password": "password123"},
     )
-    client.get(f"/api/v1/auth/verify?token={reg_res.json()['verification_token']}")
+    client.get(f"/api/v1/auth/verify?token={emailed_token(email)}")
     login_res = client.post("/api/v1/auth/login", json={"email": email, "password": "password123"})
     token = login_res.json()["access_token"]
 
@@ -301,11 +309,11 @@ def test_get_current_user_profile_via_cookie(client: TestClient):
     US-011: Retrieve authenticated profile using HttpOnly cookie.
     """
     email = f"cookie_{uuid.uuid4().hex[:8]}@example.com"
-    reg_res = client.post(
+    client.post(
         "/api/v1/auth/register",
         json={"email": email, "nickname": f"nick_{uuid.uuid4().hex[:6]}", "password": "password123"},
     )
-    client.get(f"/api/v1/auth/verify?token={reg_res.json()['verification_token']}")
+    client.get(f"/api/v1/auth/verify?token={emailed_token(email)}")
     login_res = client.post("/api/v1/auth/login", json={"email": email, "password": "password123"})
     cookie_token = login_res.cookies.get("access_token")
 

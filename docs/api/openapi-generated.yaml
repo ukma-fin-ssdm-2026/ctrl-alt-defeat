@@ -57,8 +57,8 @@ paths:
       - Authentication & User Management
       summary: Register a new user account (FR-001)
       description: Registers a new account with email and password and sends an activation
-        link to the email (FR-001). The account stays pending until the link is opened.
-        The token itself is returned only on demo deployments (DEMO_MODE=true).
+        link to the email (FR-001). The account stays pending until the link is opened;
+        the token is never returned by the API.
       operationId: register_user_api_v1_auth_register_post
       requestBody:
         content:
@@ -2585,13 +2585,6 @@ components:
           type: string
           title: Email
           description: Registered email address
-        verification_token:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Verification Token
-          description: Returned only on demo deployments (DEMO_MODE=true) for one-click
-            confirmation
       type: object
       required:
       - message

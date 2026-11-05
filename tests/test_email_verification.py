@@ -90,18 +90,18 @@ def test_registration_emails_the_link_and_hides_the_token(client, db_session, se
     response = register(client)
 
     assert response.status_code == 201
-    assert response.json()["verification_token"] is None
+    assert "verification_token" not in response.json()
     user = db_session.query(User).filter(User.email == "new@example.com").one()
     assert sent == [("new@example.com", "newbie", user.verification_token)]
     assert user.email_verified is False
 
 
-def test_demo_mode_returns_the_token_for_one_click_confirmation(client, db_session, sent, monkeypatch):
+def test_token_is_never_returned_even_in_demo_mode(client, db_session, sent, monkeypatch):
     monkeypatch.setenv("DEMO_MODE", "true")
 
-    token = register(client).json()["verification_token"]
+    response = register(client)
 
-    assert token == db_session.query(User).one().verification_token
+    assert "verification_token" not in response.json()
     assert len(sent) == 1
 
 

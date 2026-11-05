@@ -31,7 +31,7 @@ from src.api.services.auth import (
 )
 from src.api.services.account import change_password, delete_account
 from src.api.services.bans import active_ban
-from src.api.services.demo_accounts import demo_mode_enabled, get_public_demo_accounts
+from src.api.services.demo_accounts import get_public_demo_accounts
 from src.api.services.email import send_verification_email
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication & User Management"])
@@ -139,8 +139,7 @@ def get_current_admin(user: User = Depends(get_current_active_user)) -> User:
     summary="Register a new user account (FR-001)",
     description=(
         "Registers a new account with email and password and sends an activation link to the email "
-        "(FR-001). The account stays pending until the link is opened. The token itself is returned "
-        "only on demo deployments (DEMO_MODE=true)."
+        "(FR-001). The account stays pending until the link is opened; the token is never returned by the API."
     ),
     responses={
         **STANDARD_ERRORS,
@@ -187,7 +186,6 @@ def register_user(
     return RegisterResponse(
         message="Account created. We sent an activation link to your email; open it before logging in.",
         email=user.email,
-        verification_token=verification_token if demo_mode_enabled() else None,
     )
 
 

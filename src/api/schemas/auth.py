@@ -56,9 +56,6 @@ class TokenResponse(BaseModel):
 class RegisterResponse(BaseModel):
     message: str = Field(..., description="Status message")
     email: str = Field(..., description="Registered email address")
-    verification_token: Optional[str] = Field(
-        None, description="Returned only on demo deployments (DEMO_MODE=true) for one-click confirmation"
-    )
 
 
 class ChangePasswordRequest(BaseModel):
