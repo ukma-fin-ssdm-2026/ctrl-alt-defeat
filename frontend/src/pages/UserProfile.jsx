@@ -26,6 +26,10 @@ export default function UserProfile({
   const canDeleteAccount = user?.role !== 'admin';
 
   const isUkr = language === 'UKR';
+  // Real date from the server (users.created_at), e.g. "5 листопада 2026 р."
+  const registrationDate = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString(isUkr ? 'uk-UA' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '—';
 
   // Real reviews of the current user from the API (previously hardcoded examples)
   const userId = user?.user_id;
@@ -251,7 +255,7 @@ export default function UserProfile({
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
                   <span className="text-xs text-gray-400 font-bold uppercase">{isUkr ? 'Дата реєстрації' : 'Registration Date'}</span>
-                  <p className="text-base font-bold text-gray-800 dark:text-gray-100 mt-1">Жовтень 2026</p>
+                  <p className="text-base font-bold text-gray-800 dark:text-gray-100 mt-1">{registrationDate}</p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
                   <span className="text-xs text-gray-400 font-bold uppercase">{isUkr ? 'Обраних фільмів' : 'Watchlist Items'}</span>
