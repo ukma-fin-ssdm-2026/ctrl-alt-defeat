@@ -68,7 +68,9 @@
 | Атрибут | Тип | Опис |
 |---|---|---|
 | genre_id | integer, PK | Ідентифікатор жанру |
-| name | varchar | Назва жанру |
+| name | varchar, unique | Назва жанру українською (так жанр показується в каталозі) |
+| name_en | varchar | Назва жанру англійською |
+| tmdb_id | integer, unique | Ідентифікатор жанру в TMDB (`genre_ids`), для жанрів поза TMDB — порожній |
 
 ### ContentGenre
 
@@ -78,6 +80,9 @@
 |---|---|---|
 | content_id | UUID, PK, FK | Посилання на контент |
 | genre_id | integer, PK, FK | Посилання на жанр |
+| position | integer | Порядок жанру у фільмі: 0 — основний жанр |
+
+Реалізовано в `src/api/db/models.py` (`Genre`, `ContentGenre`, issue #61). Фільтр каталогу за жанром і `GET /api/v1/genres` працюють через ці таблиці; поля `genre`/`genres` у `content` зберігаються як копія для відповідей API.
 
 ### WatchlistItem
 
