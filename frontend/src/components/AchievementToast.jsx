@@ -8,7 +8,8 @@ export default function AchievementToast({ badge, pending = 0, language = 'UKR',
 
   useEffect(() => {
     if (!badge) return undefined;
-    const timer = setTimeout(onClose, ACHIEVEMENT_TOAST_MS);
+    // Always pass a function to setTimeout: the timer never evaluates a string from props
+    const timer = setTimeout(() => onClose?.(), ACHIEVEMENT_TOAST_MS);
     return () => clearTimeout(timer);
   }, [badge, onClose]);
 
