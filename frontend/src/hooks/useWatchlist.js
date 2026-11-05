@@ -36,6 +36,7 @@ export default function useWatchlist({ user, catalog = [], onAuthRequired }) {
   return {
     watchlistIds,
     watchlistMovies: items,
+    loaded: list.loaded,
     toggleWatchlist,
     error: list.error,
     clearError: list.clearError,
