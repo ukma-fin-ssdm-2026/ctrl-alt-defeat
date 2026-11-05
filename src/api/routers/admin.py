@@ -3,7 +3,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
@@ -13,6 +13,8 @@ from src.api.db.models import User
 from src.api.routers.auth import get_current_admin
 from src.api.schemas.ban import AdminUser, AdminUserList, BanCreate, BanInfo
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
+from src.api.schemas.movie import CatalogSyncStatus
+from src.api.services import catalog_sync
 from src.api.services.account import admin_delete_user
 from src.api.services.bans import active_ban, ban_user, unban_user
 
@@ -117,3 +119,46 @@ def delete_user(
 ):
     admin_delete_user(db, admin, user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/catalog/sync",
+    response_model=CatalogSyncStatus,
+    summary="State of the catalog update from TMDB (FR-012)",
+    responses={**STANDARD_ERRORS, **ADMIN_ERRORS},
+)
+def catalog_sync_status(admin: User = Depends(get_current_admin)):
+    return catalog_sync.get_status()
+
+
+@router.post(
+    "/catalog/sync",
+    response_model=CatalogSyncStatus,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Update the catalog from TMDB in the background (FR-012)",
+    description=(
+        "Imports popular movies, series and cartoons (100 of each) with posters, descriptions, genres and runtime. "
+        "Existing titles are matched by TMDB id and updated; titles are never deleted. "
+        "Poll GET /api/v1/admin/catalog/sync for the result."
+    ),
+    responses={
+        **STANDARD_ERRORS,
+        **ADMIN_ERRORS,
+        409: {"model": ErrorResponse, "description": "An update is already running"},
+        503: {"model": ErrorResponse, "description": "TMDB_API_KEY is not configured on the server"},
+    },
+)
+def start_catalog_sync(background_tasks: BackgroundTasks, admin: User = Depends(get_current_admin)):
+    api_key = catalog_sync.tmdb_api_key()
+    if api_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": "TMDB_NOT_CONFIGURED", "message": "TMDB_API_KEY is not set on the server"},
+        )
+    if not catalog_sync.try_start():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "SYNC_IN_PROGRESS", "message": "The catalog update is already running"},
+        )
+    background_tasks.add_task(catalog_sync.run_sync, api_key)
+    return catalog_sync.get_status()

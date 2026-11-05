@@ -1,6 +1,5 @@
 """Genres of the catalog (FR-012, US-012, issue #61): Genre / ContentGenre, TMDB genres, filter and dictionary."""
 
-import json
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -79,14 +78,6 @@ def add_title(db, item_id, title, genre, genres=None, category="Movie"):
     return content
 
 
-def tmdb_response(results):
-    response = MagicMock()
-    response.status = 200
-    response.read.return_value = json.dumps({"results": results}).encode("utf-8")
-    response.__enter__.return_value = response
-    return response
-
-
 def linked_names(db, content):
     rows = (
         db.query(Genre.name)
@@ -100,10 +91,22 @@ def linked_names(db, content):
 def test_tmdb_genre_ids_become_real_genres():
     # Trace: T-039
     results = [
-        {"id": 1, "title": "Фільм", "release_date": "2024-01-01", "vote_average": 7.0, "genre_ids": [878, 53, 99999]},
-        {"id": 2, "title": "Без жанрів", "release_date": "2023-01-01", "vote_average": 6.0, "genre_ids": []},
+        {
+            "id": 1,
+            "title": "Фільм",
+            "release_date": "2024-01-01",
+            "poster_path": "/a.jpg",
+            "genre_ids": [878, 53, 99999],
+        },
+        {"id": 2, "title": "Без жанрів", "release_date": "2023-01-01", "poster_path": "/b.jpg", "genre_ids": []},
     ]
-    with patch("urllib.request.urlopen", return_value=tmdb_response(results)):
+
+    def fake_tmdb(path, params, api_key):
+        if path == "/discover/movie" and params.get("without_genres") == "16" and params["page"] == 1:
+            return {"results": results}
+        return {"results": []} if path.startswith("/discover/") else {}
+
+    with patch("src.api.services.tmdb._tmdb_get", side_effect=fake_tmdb):
         movies = fetch_tmdb_movies(api_key="test-key")
 
     assert movies[0]["genre"] == "Фантастика"
@@ -111,6 +114,7 @@ def test_tmdb_genre_ids_become_real_genres():
     # A title without known genres gets the default one instead of a made-up genre
     assert movies[1]["genres"] == ["Драма"]
     assert genres_from_tmdb([28, 12]) == ["Бойовик", "Пригоди"]
+    assert genres_from_tmdb([10759, 10765], "tv") == ["Бойовик", "Пригоди", "Фантастика", "Фентезі"]
     assert genres_from_tmdb(None) == []
 
 

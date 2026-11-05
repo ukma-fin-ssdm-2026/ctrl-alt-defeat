@@ -1,10 +1,15 @@
 import json
 import logging
+import math
 import os
-import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
-from typing import Any, Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
+from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -619,104 +624,284 @@ FALLBACK_MOVIES = [
 ]
 
 
+TMDB_API = "https://api.themoviedb.org/3"
+TMDB_IMAGES = "https://image.tmdb.org/t/p/w500"
+TMDB_PAGE_SIZE = 20
+# How many titles of each section the catalog keeps (movies, series, cartoons)
+TITLES_PER_SECTION = int(os.getenv("TMDB_TITLES_PER_SECTION", "100"))
+NO_DESCRIPTION = "Опис оновлюється."
+
+# Catalog sections: category in the catalog, TMDB media type and discover filters.
+# Cartoons are animated movies (TMDB genre 16), so "Movie" excludes them; news, reality and talk shows
+# are not offered as series.
+SECTIONS = [
+    ("Movie", "movie", {"without_genres": "16"}),
+    ("Series", "tv", {"without_genres": "10763,10764,10767"}),
+    ("Cartoons", "movie", {"with_genres": "16"}),
+]
+
+
+class TmdbError(Exception):
+    """TMDB is not configured or did not answer."""
+
+
+def tmdb_kind(category: Optional[str]) -> str:
+    """TMDB media type of a catalog title: movie and TV ids are separate sequences."""
+    return "tv" if category == "Series" else "movie"
+
+
+def _tmdb_get(path: str, params: Dict[str, Any], api_key: str) -> Dict[str, Any]:
+    """GET a TMDB v3 endpoint. Accepts both the v3 API key and the v4 read access token."""
+    query = dict(params)
+    headers = {"User-Agent": "PislyaTytriv/1.0", "Accept": "application/json"}
+    if api_key.startswith("eyJ"):
+        headers["Authorization"] = f"Bearer {api_key}"
+    else:
+        query["api_key"] = api_key
+    url = f"{TMDB_API}{path}?{urllib.parse.urlencode(query)}"
+    request = urllib.request.Request(url, headers=headers)
+    # Only the fixed https://api.themoviedb.org address is requested
+    with urllib.request.urlopen(request, timeout=10) as response:  # nosec B310
+        if response.status != 200:
+            raise TmdbError(f"TMDB answered {response.status}")
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _year(date: Optional[str]) -> Optional[int]:
+    try:
+        return int(date[:4]) if date else None
+    except ValueError:
+        return None
+
+
+def _english(details: Dict[str, Any]) -> Dict[str, Any]:
+    """English title and overview from `append_to_response=translations` (US English first)."""
+    translations = (details.get("translations") or {}).get("translations") or []
+    english = [t for t in translations if t.get("iso_639_1") == "en"]
+    english.sort(key=lambda t: t.get("iso_3166_1") != "US")
+    return (english[0].get("data") or {}) if english else {}
+
+
+def _runtime(kind: str, details: Dict[str, Any]) -> Optional[int]:
+    if kind == "tv":
+        runtimes = details.get("episode_run_time") or []
+        return runtimes[0] if runtimes else None
+    return details.get("runtime") or None
+
+
+def build_catalog_item(category: str, kind: str, item: Dict[str, Any], details: Dict[str, Any]) -> Optional[Dict]:
+    """
+    Catalog fields of one TMDB title (list entry + details in Ukrainian with English translations).
+    Titles without a poster or a release year are skipped (None).
+    """
+    data = {**item, **details}
+    poster = data.get("poster_path")
+    year = _year(data.get("release_date") if kind == "movie" else data.get("first_air_date"))
+    if not poster or year is None:
+        return None
+
+    english = _english(details)
+    title_key = "title" if kind == "movie" else "name"
+    original = data.get("original_title" if kind == "movie" else "original_name")
+    title_en = english.get(title_key) or (original if data.get("original_language") == "en" else None)
+    genre_ids = [genre["id"] for genre in details.get("genres") or []] or item.get("genre_ids") or []
+    genres = genres_from_tmdb(genre_ids, kind) or [DEFAULT_GENRE]
+    if category == "Cartoons" and "Мультфільм" not in genres:
+        genres = ["Мультфільм", *genres]
+    vote = float(data.get("vote_average") or 0.0)
+
+    return {
+        "tmdb_id": data["id"],
+        "category": category,
+        "title": data.get(title_key) or title_en or original or "Без назви",
+        "title_en": title_en or original,
+        "genre": genres[0],
+        "genres": genres,
+        "year": year,
+        "runtime": _runtime(kind, details),
+        "rating": round(vote, 1),
+        "rotten_rating": f"{int(vote * 10)}%",
+        "img": f"{TMDB_IMAGES}{poster}",
+        "description": data.get("overview") or english.get("overview") or NO_DESCRIPTION,
+        "description_en": english.get("overview") or None,
+    }
+
+
+def _details(kind: str, tmdb_id: int, api_key: str) -> Dict[str, Any]:
+    """Details with translations; a failure leaves the list data only (no runtime, no English texts)."""
+    try:
+        return _tmdb_get(
+            f"/{kind}/{int(tmdb_id)}", {"language": "uk-UA", "append_to_response": "translations"}, api_key
+        )
+    except Exception as error:  # one title must not stop the whole import
+        logger.warning("TMDB details of %s %s failed: %s", kind, tmdb_id, error)
+        return {}
+
+
+def fetch_tmdb_catalog(api_key: str, per_section: int = TITLES_PER_SECTION) -> List[Dict[str, Any]]:
+    """
+    Popular movies, series and cartoons from TMDB (FR-012): `per_section` titles of each section,
+    Ukrainian texts with English fallback, real genres, runtime and posters. Raises TmdbError if a list fails.
+    """
+    if not api_key:
+        raise TmdbError("TMDB_API_KEY is not configured")
+
+    entries: List[Tuple[str, str, Dict[str, Any]]] = []
+    seen = set()
+    for category, kind, filters in SECTIONS:
+        taken = 0
+        for page in range(1, math.ceil(per_section / TMDB_PAGE_SIZE) + 1):
+            params = {
+                "language": "uk-UA",
+                "sort_by": "popularity.desc",
+                "include_adult": "false",
+                "vote_count.gte": 100,
+                "page": page,
+                **filters,
+            }
+            try:
+                results = _tmdb_get(f"/discover/{kind}", params, api_key).get("results") or []
+            except TmdbError:
+                raise
+            except Exception as error:
+                raise TmdbError(f"TMDB list request failed: {error}") from error
+            for item in results:
+                key = (kind, item.get("id"))
+                if item.get("id") is None or key in seen or taken >= per_section:
+                    continue
+                seen.add(key)
+                entries.append((category, kind, item))
+                taken += 1
+            if len(results) < TMDB_PAGE_SIZE:
+                break
+
+    # Details in parallel: about 300 small requests, well below the TMDB rate limit
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        details = list(pool.map(lambda entry: _details(entry[1], entry[2]["id"], api_key), entries))
+
+    catalog = []
+    for (category, kind, item), extra in zip(entries, details):
+        built = build_catalog_item(category, kind, item, extra)
+        if built is not None:
+            catalog.append(built)
+    return catalog
+
+
 def fetch_tmdb_movies(api_key: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Fetch popular movies from TMDB API with graceful degradation to local metadata fallback.
+    Catalog from TMDB with graceful degradation to the built-in metadata.
     Trace: T-033, T-034 (FR-012).
     """
     key = api_key or os.getenv("TMDB_API_KEY")
     if not key:
         logger.info("TMDB_API_KEY not configured. Using verified cached fallback metadata.")
         return FALLBACK_MOVIES
-
-    url = f"https://api.themoviedb.org/3/movie/popular?api_key={key}&language=uk-UA&page=1"
     try:
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "MoviePlatform/1.0", "Accept": "application/json"},
+        catalog = fetch_tmdb_catalog(key)
+    except Exception as error:  # any TMDB problem falls back to the built-in catalog
+        logger.warning("Error fetching from TMDB API: %s. Falling back to cached catalog.", error)
+        return FALLBACK_MOVIES
+    return catalog or FALLBACK_MOVIES
+
+
+@dataclass
+class SyncResult:
+    added: int = 0
+    updated: int = 0
+    skipped: int = 0
+
+
+def _find_existing(db: Session, item: Dict[str, Any]) -> Tuple[Optional[Content], bool]:
+    """
+    The catalog row of an item and whether it may be updated.
+    Titles are matched by TMDB id of the same media type, never by the internal numeric id
+    (the internal id of an imported title has nothing to do with the existing rows).
+    A row without tmdb_id (old data) is adopted by an exact title match.
+    """
+    tmdb_id = item.get("tmdb_id")
+    if tmdb_id is not None:
+        existing = db.query(Content).filter(Content.tmdb_id == tmdb_id).first()
+        if existing is not None:
+            # Same number, different media type (a movie and a series): a different title
+            return existing, tmdb_kind(existing.category) == tmdb_kind(item.get("category"))
+    legacy = db.query(Content).filter(Content.title == item["title"])
+    if tmdb_id is not None:
+        legacy = legacy.filter(Content.tmdb_id.is_(None))
+    found = legacy.first()
+    return found, found is not None
+
+
+UPDATED_FIELDS = ("title", "title_en", "category", "year", "runtime", "rating", "rotten_rating", "img")
+
+
+def _update(db: Session, content: Content, item: Dict[str, Any]) -> None:
+    for field in UPDATED_FIELDS:
+        value = item.get(field)
+        if value is not None and value != "":
+            setattr(content, field, value)
+    # Keep a real description instead of the placeholder
+    for field in ("description", "description_en"):
+        value = item.get(field)
+        if value and value != NO_DESCRIPTION:
+            setattr(content, field, value)
+    if item.get("tmdb_id") is not None and content.tmdb_id is None:
+        content.tmdb_id = item["tmdb_id"]
+    if item.get("genres") and content.content_id is not None:
+        set_content_genres(db, content, item["genres"])
+
+
+def sync_catalog(db: Session, items: List[Dict[str, Any]]) -> SyncResult:
+    """
+    Add new titles and update existing ones (FR-012). Titles are never deleted:
+    reviews, ratings and lists of users keep pointing to them.
+    """
+    result = SyncResult()
+    next_id = (db.query(func.max(Content.id)).scalar() or 0) + 1
+    for item in items:
+        existing, same_title = _find_existing(db, item)
+        if existing is not None and not same_title:
+            logger.info("Skipped TMDB %s: the id belongs to another title (%s).", item.get("tmdb_id"), existing.title)
+            result.skipped += 1
+            continue
+        if existing is not None:
+            _update(db, existing, item)
+            result.updated += 1
+            continue
+
+        # The built-in catalog keeps its numbers on an empty database; imported titles get the next free one
+        wanted = item.get("id")
+        if wanted is None or db.get(Content, wanted) is not None:
+            wanted = next_id
+        next_id = max(next_id, wanted + 1)
+        content = Content(
+            id=wanted,
+            content_id=uuid.uuid4(),
+            title=item["title"],
+            title_en=item.get("title_en"),
+            category=item.get("category", "Movie"),
+            genre=item.get("genre") or DEFAULT_GENRE,
+            genres=item.get("genres", []),
+            year=item.get("year", 2024),
+            runtime=item.get("runtime"),
+            rating=item.get("rating", 0.0),
+            rotten_rating=item.get("rotten_rating"),
+            img=item.get("img"),
+            description=item.get("description"),
+            description_en=item.get("description_en"),
+            tmdb_id=item.get("tmdb_id"),
         )
-        with urllib.request.urlopen(req, timeout=5) as response:  # nosec B310
-            if response.status == 200:
-                payload = json.loads(response.read().decode("utf-8"))
-                results = payload.get("results", [])
-                movies = []
-                for idx, item in enumerate(results, start=1):
-                    release_date = item.get("release_date")
-                    year = int(release_date.split("-")[0]) if release_date else 2024
-                    poster_path = item.get("poster_path")
-                    img_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
-                    # Real genres of the title (TMDB genre_ids -> catalog names)
-                    genres = genres_from_tmdb(item.get("genre_ids")) or [DEFAULT_GENRE]
+        db.add(content)
+        db.flush()
+        set_content_genres(db, content, [item.get("genre"), *item.get("genres", [])])
+        result.added += 1
 
-                    movies.append(
-                        {
-                            "id": idx,
-                            "title": item.get("title") or item.get("original_title", "Без назви"),
-                            "title_en": item.get("original_title"),
-                            "category": "Movie",
-                            "genre": genres[0],
-                            "genres": genres,
-                            "year": year,
-                            "runtime": item.get("runtime"),  # not returned by /movie/popular
-                            "rating": round(float(item.get("vote_average", 0.0)), 1),
-                            "rotten_rating": f"{int(item.get('vote_average', 0) * 10)}%",
-                            "img": img_url,
-                            "description": item.get("overview") or "Опис оновлюється.",
-                            "description_en": item.get("overview"),
-                            "tmdb_id": item.get("id"),
-                        }
-                    )
-                return movies
-    except Exception as e:
-        logger.warning(f"Error fetching from TMDB API: {e}. Falling back to cached catalog.")
-
-    return FALLBACK_MOVIES
+    db.commit()
+    return result
 
 
 def seed_movies_to_database(db: Session, movies_data: Optional[List[Dict[str, Any]]] = None) -> int:
-    """
-    Seed or update movies in database.
-    """
-    data = movies_data or FALLBACK_MOVIES
-    count = 0
-    for item in data:
-        existing = db.query(Content).filter((Content.id == item["id"]) | (Content.title == item["title"])).first()
-
-        if not existing:
-            content_item = Content(
-                id=item["id"],
-                content_id=uuid.uuid4(),
-                title=item["title"],
-                title_en=item.get("title_en"),
-                category=item.get("category", "Movie"),
-                genre=item.get("genre") or DEFAULT_GENRE,
-                genres=item.get("genres", []),
-                year=item.get("year", 2024),
-                runtime=item.get("runtime"),
-                rating=item.get("rating", 0.0),
-                rotten_rating=item.get("rotten_rating"),
-                img=item.get("img"),
-                description=item.get("description"),
-                description_en=item.get("description_en"),
-                tmdb_id=item.get("tmdb_id"),
-            )
-            db.add(content_item)
-            set_content_genres(db, content_item, [item.get("genre"), *item.get("genres", [])])
-            count += 1
-        else:
-            # Update fields if needed
-            existing.rating = item.get("rating", existing.rating)
-            existing.rotten_rating = item.get("rotten_rating", existing.rotten_rating)
-            if item.get("img"):
-                existing.img = item.get("img")
-            if item.get("runtime") is not None:
-                existing.runtime = item.get("runtime")
-            # FR-012: genres are refreshed from the source as well
-            if item.get("genres") and existing.content_id is not None:
-                set_content_genres(db, existing, item["genres"])
-
-    db.commit()
-    return count
+    """Seed or update the catalog; returns the number of added titles."""
+    return sync_catalog(db, movies_data or FALLBACK_MOVIES).added
 
 
 def seed_catalog_if_empty(db: Session) -> int:

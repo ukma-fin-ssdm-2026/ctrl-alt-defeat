@@ -1,6 +1,7 @@
 import uuid
 from enum import Enum
-from typing import List, Optional
+from datetime import datetime
+from typing import List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -61,3 +62,16 @@ class GenreResponse(BaseModel):
     name: str = Field(..., description="Ukrainian name, used in the catalog and in the genre filter")
     name_en: Optional[str] = Field(None, description="English name")
     titles_count: int = Field(..., ge=0, description="Number of movies and series with this genre")
+
+
+class CatalogSyncStatus(BaseModel):
+    """State of the catalog update from TMDB started by an administrator (FR-012)."""
+
+    configured: bool = Field(..., description="TMDB_API_KEY is set on the server")
+    state: Literal["idle", "running", "done", "failed"] = Field(..., description="State of the last update")
+    started_at: Optional[datetime] = Field(None, description="When the last update started")
+    finished_at: Optional[datetime] = Field(None, description="When the last update finished")
+    added: int = Field(0, ge=0, description="New titles")
+    updated: int = Field(0, ge=0, description="Updated titles")
+    skipped: int = Field(0, ge=0, description="Titles skipped (TMDB id already used by another title)")
+    error: Optional[str] = Field(None, description="Why the last update failed")

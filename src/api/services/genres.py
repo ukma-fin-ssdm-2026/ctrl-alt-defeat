@@ -41,8 +41,35 @@ TMDB_MOVIE_GENRES = {
     37: ("Вестерн", "Western"),
 }
 
-# Genres of the built-in catalog that TMDB does not have as a separate genre
-EXTRA_GENRES = [("Біографія", "Biography")]
+# TMDB TV genres (GET /3/genre/tv/list); combined TV genres map to several catalog genres
+TMDB_TV_GENRES = {
+    10759: ["Бойовик", "Пригоди"],
+    16: ["Мультфільм"],
+    35: ["Комедія"],
+    80: ["Кримінал"],
+    99: ["Документальний"],
+    18: ["Драма"],
+    10751: ["Сімейний"],
+    10762: ["Дитячий"],
+    9648: ["Детектив"],
+    10763: ["Новини"],
+    10764: ["Реаліті"],
+    10765: ["Фантастика", "Фентезі"],
+    10766: ["Мильна опера"],
+    10767: ["Ток-шоу"],
+    10768: ["Воєнний"],
+    37: ["Вестерн"],
+}
+
+# Genres of the catalog that are not TMDB movie genres (built-in catalog and TV-only genres)
+EXTRA_GENRES = [
+    ("Біографія", "Biography"),
+    ("Дитячий", "Kids"),
+    ("Новини", "News"),
+    ("Реаліті", "Reality"),
+    ("Мильна опера", "Soap"),
+    ("Ток-шоу", "Talk"),
+]
 
 
 def clean_genre_names(names: Iterable[Optional[str]]) -> List[str]:
@@ -59,9 +86,15 @@ def clean_genre_names(names: Iterable[Optional[str]]) -> List[str]:
     return result
 
 
-def genres_from_tmdb(genre_ids: Iterable[int]) -> List[str]:
-    """Catalog genre names for TMDB `genre_ids` (unknown ids are skipped)."""
-    return [TMDB_MOVIE_GENRES[genre_id][0] for genre_id in genre_ids or [] if genre_id in TMDB_MOVIE_GENRES]
+def genres_from_tmdb(genre_ids: Iterable[int], kind: str = "movie") -> List[str]:
+    """Catalog genre names for TMDB `genre_ids` of a movie or a TV series (unknown ids are skipped)."""
+    names: List[str] = []
+    for genre_id in genre_ids or []:
+        if kind == "tv":
+            names.extend(TMDB_TV_GENRES.get(genre_id, []))
+        elif genre_id in TMDB_MOVIE_GENRES:
+            names.append(TMDB_MOVIE_GENRES[genre_id][0])
+    return clean_genre_names(names)
 
 
 def ensure_genre_dictionary(db: Session) -> None:
