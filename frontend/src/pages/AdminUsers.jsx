@@ -12,6 +12,8 @@ export default function AdminUsers({ language = 'UKR' }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [banTarget, setBanTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async (search) => {
     setLoading(true);
@@ -40,6 +42,25 @@ export default function AdminUsers({ language = 'UKR' }) {
       load(query.trim());
     } catch {
       setError(isUkr ? 'Не вдалося розблокувати користувача.' : 'Failed to lift the ban.');
+    }
+  };
+
+  const deleteUser = async () => {
+    setDeleting(true);
+    setError('');
+    try {
+      // Constant URL: the user id travels as a query parameter
+      await apiClient.delete('/admin/users', { params: { user_id: deleteTarget.user_id } });
+      setDeleteTarget(null);
+      load(query.trim());
+    } catch (err) {
+      const code = err.response?.data?.error?.code;
+      setError(code === 'SEED_ACCOUNT_LOCKED'
+        ? (isUkr ? 'Демо-акаунт видалити не можна.' : 'The demo account cannot be deleted.')
+        : (isUkr ? 'Не вдалося видалити користувача.' : 'Failed to delete the user.'));
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -89,7 +110,7 @@ export default function AdminUsers({ language = 'UKR' }) {
                     {banStatusLabel(user.ban, language)}
                     {user.ban?.reason && <span className="block text-xs font-normal text-gray-500 dark:text-gray-400">{user.ban.reason}</span>}
                   </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
                     {user.role !== 'admin' && (user.ban ? (
                       <button
                         type="button"
@@ -109,12 +130,45 @@ export default function AdminUsers({ language = 'UKR' }) {
                         {isUkr ? 'Заблокувати' : 'Ban'}
                       </button>
                     ))}
+                    {user.role !== 'admin' && (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(user)}
+                        aria-label={isUkr ? `Видалити ${user.nickname}` : `Delete ${user.nickname}`}
+                        className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold text-xs hover:bg-red-600 hover:text-white"
+                      >
+                        {isUkr ? 'Видалити' : 'Delete'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="px-4 py-2 text-xs text-gray-400">{isUkr ? `Усього: ${total}` : `Total: ${total}`}</p>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="delete-user-title" className="bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl shadow-xl p-6 border border-gray-100 dark:border-gray-700">
+            <h2 id="delete-user-title" className="text-xl font-black mb-3 text-gray-900 dark:text-white">
+              {isUkr ? `Видалити ${deleteTarget.nickname}?` : `Delete ${deleteTarget.nickname}?`}
+            </h2>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-5">
+              {isUkr
+                ? `Акаунт ${deleteTarget.email} буде видалено назавжди разом з рецензіями, оцінками, коментарями та списками.`
+                : `The account ${deleteTarget.email} will be deleted permanently with its reviews, ratings, comments and lists.`}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setDeleteTarget(null)} className="px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:underline">
+                {isUkr ? 'Скасувати' : 'Cancel'}
+              </button>
+              <button type="button" disabled={deleting} onClick={deleteUser} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold">
+                {isUkr ? 'Видалити назавжди' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

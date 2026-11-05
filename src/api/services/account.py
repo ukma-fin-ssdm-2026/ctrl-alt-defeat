@@ -43,7 +43,29 @@ def delete_account(db: Session, user: models.User, password: str) -> None:
             detail={"code": "ADMIN_ACCOUNT", "message": "Administrator accounts cannot be deleted from the profile"},
         )
     _check_password(user, password)
+    remove_user_with_data(db, user)
 
+
+def admin_delete_user(db: Session, admin: models.User, user_id) -> None:
+    """An administrator removes a user (e.g. a spam account) without the user's password."""
+    target = db.query(models.User).filter(models.User.user_id == user_id).first()
+    if target is None:
+        raise HTTPException(status_code=404, detail={"code": "USER_NOT_FOUND", "message": "User not found"})
+    if target.user_id == admin.user_id:
+        raise HTTPException(
+            status_code=400, detail={"code": "CANNOT_DELETE_SELF", "message": "You cannot delete your own account here"}
+        )
+    if target.role == "admin":
+        raise HTTPException(
+            status_code=400, detail={"code": "CANNOT_DELETE_ADMIN", "message": "Administrators cannot be deleted"}
+        )
+    if is_seed_account(target.email):
+        raise HTTPException(status_code=400, detail=SEED_ACCOUNT)
+    remove_user_with_data(db, target)
+
+
+def remove_user_with_data(db: Session, user: models.User) -> None:
+    """Delete the user with reviews, ratings, comments (also replies under their reviews), lists and bans."""
     user_id = user.user_id
     review_ids = [row.review_id for row in db.query(models.Review.review_id).filter(models.Review.user_id == user_id)]
     # Explicit deletes: SQLite does not enforce ON DELETE CASCADE without a pragma

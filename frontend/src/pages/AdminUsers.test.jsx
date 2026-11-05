@@ -101,3 +101,43 @@ describe('AdminUsers (FR-009, US-006)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Адміністратора заблокувати не можна.');
   });
 });
+
+describe('AdminUsers deletion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    apiClient.get.mockResolvedValue(list([viewer, banned, admin]));
+  });
+
+  it('deletes a user after confirmation and reloads the list', async () => {
+    apiClient.delete.mockResolvedValue({ status: 204 });
+    render(<AdminUsers />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Видалити spammer' }));
+    expect(within(screen.getByRole('dialog')).getByText(/spam@example.com/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Видалити назавжди' }));
+
+    expect(apiClient.delete).toHaveBeenCalledWith('/admin/users', { params: { user_id: 'u-1' } });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(apiClient.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('does nothing when cancelled and offers no deletion for admins', async () => {
+    render(<AdminUsers />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Видалити spammer' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Скасувати' }));
+
+    expect(apiClient.delete).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Видалити moderator' })).not.toBeInTheDocument();
+  });
+
+  it('explains that the demo account cannot be deleted', async () => {
+    apiClient.delete.mockRejectedValue({ response: { data: { error: { code: 'SEED_ACCOUNT_LOCKED' } } } });
+    render(<AdminUsers />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Видалити spammer' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Видалити назавжди' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Демо-акаунт видалити не можна.');
+  });
+});

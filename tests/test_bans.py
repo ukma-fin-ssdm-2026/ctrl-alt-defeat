@@ -295,3 +295,53 @@ def test_admin_get_db_yields_a_session():
     generator = admin_router.get_db()
     assert next(generator) is not None
     generator.close()
+
+
+# --- Admin deletes a user (spam accounts) --------------------------------------------------------
+
+
+def test_admin_deletes_a_user_with_their_data(client, db_session, admin, viewer):
+    review(client, viewer)
+    ban(client, admin, viewer)
+
+    response = client.delete(USERS, params={"user_id": str(viewer.user_id)}, headers=auth(admin))
+
+    assert response.status_code == 204
+    assert db_session.query(User).filter(User.user_id == viewer.user_id).first() is None
+    for model in (Review, WatchedItem, Ban):
+        assert db_session.query(model).filter(model.user_id == viewer.user_id).count() == 0
+    assert client.get(USERS, headers=auth(admin)).json()["total"] == 1
+
+
+@pytest.mark.parametrize("who, code", [("self", "CANNOT_DELETE_SELF"), ("admin", "CANNOT_DELETE_ADMIN")])
+def test_admin_cannot_delete_self_or_another_admin(client, db_session, admin, who, code):
+    target = admin if who == "self" else make_user(db_session, "second_admin", role="admin")
+
+    response = client.delete(USERS, params={"user_id": str(target.user_id)}, headers=auth(admin))
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == code
+
+
+def test_admin_cannot_delete_the_public_demo_account(client, db_session, admin, monkeypatch):
+    monkeypatch.setenv("SEED_USER_PASSWORD", "demo-pass")
+    demo = make_user(db_session, "cinema_fan")
+    demo.email = "user@example.com"
+    db_session.commit()
+
+    response = client.delete(USERS, params={"user_id": str(demo.user_id)}, headers=auth(admin))
+
+    assert response.json()["error"]["code"] == "SEED_ACCOUNT_LOCKED"
+    assert db_session.query(User).filter(User.user_id == demo.user_id).count() == 1
+
+
+def test_delete_of_unknown_user_returns_404(client, admin):
+    response = client.delete(USERS, params={"user_id": str(uuid.uuid4())}, headers=auth(admin))
+
+    assert response.status_code == 404
+
+
+def test_only_admins_can_delete_users(client, viewer):
+    response = client.delete(USERS, params={"user_id": str(viewer.user_id)}, headers=auth(viewer))
+
+    assert response.status_code == 403
