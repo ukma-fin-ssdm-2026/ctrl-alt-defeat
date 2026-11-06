@@ -2171,6 +2171,141 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/admin/catalog/sync:
+    get:
+      tags:
+      - Administration
+      summary: State of the catalog update from TMDB (FR-012)
+      operationId: catalog_sync_status_api_v1_admin_catalog_sync_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogSyncStatus'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Administrator privileges required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - Administration
+      summary: Update the catalog from TMDB in the background (FR-012)
+      description: Imports popular movies, series and cartoons (100 of each) with
+        posters, descriptions, genres and runtime. Existing titles are matched by
+        TMDB id and updated; titles are never deleted. Poll GET /api/v1/admin/catalog/sync
+        for the result.
+      operationId: start_catalog_sync_api_v1_admin_catalog_sync_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogSyncStatus'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Administrator privileges required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: An update is already running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: TMDB_API_KEY is not configured on the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     AdminUser:
@@ -2292,6 +2427,66 @@ components:
       - temporary
       - permanent
       title: BanType
+    CatalogSyncStatus:
+      properties:
+        configured:
+          type: boolean
+          title: Configured
+          description: TMDB_API_KEY is set on the server
+        state:
+          type: string
+          enum:
+          - idle
+          - running
+          - done
+          - failed
+          title: State
+          description: State of the last update
+        started_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Started At
+          description: When the last update started
+        finished_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Finished At
+          description: When the last update finished
+        added:
+          type: integer
+          minimum: 0.0
+          title: Added
+          description: New titles
+          default: 0
+        updated:
+          type: integer
+          minimum: 0.0
+          title: Updated
+          description: Updated titles
+          default: 0
+        skipped:
+          type: integer
+          minimum: 0.0
+          title: Skipped
+          description: Titles skipped (TMDB id already used by another title)
+          default: 0
+        error:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error
+          description: Why the last update failed
+      type: object
+      required:
+      - configured
+      - state
+      title: CatalogSyncStatus
+      description: State of the catalog update from TMDB started by an administrator
+        (FR-012).
     ChangePasswordRequest:
       properties:
         current_password:
