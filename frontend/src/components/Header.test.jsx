@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import Header from './Header';
 
+// The genre menu asks the server for genres; offline the built-in list is used
+vi.mock('../api/client', () => ({ default: { get: vi.fn(() => Promise.reject(new Error('offline'))) } }));
+
 const baseProps = {
   toggleTheme: () => {},
   isDarkMode: false,

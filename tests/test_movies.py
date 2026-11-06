@@ -6,9 +6,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.api.db.database import Base
-from src.api.db.models import Content
+from src.api.db.models import Content, ContentGenre
 from src.api.main import app
 from src.api.routers.movies import get_db
+from src.api.services.genres import sync_genre_links
 
 # Isolated in-memory SQLite database with StaticPool for test suite
 engine_test = create_engine(
@@ -52,6 +53,7 @@ def client(db_session):
 
 @pytest.fixture(autouse=True)
 def seed_test_movies(db_session):
+    db_session.query(ContentGenre).delete()
     db_session.query(Content).delete()
     m1 = Content(
         id=1,
@@ -97,6 +99,8 @@ def seed_test_movies(db_session):
     )
     db_session.add_all([m1, m2, m3])
     db_session.commit()
+    # The application links genres on startup (issue #61); the test titles are added directly
+    sync_genre_links(db_session)
 
 
 def test_get_movies_list(client):

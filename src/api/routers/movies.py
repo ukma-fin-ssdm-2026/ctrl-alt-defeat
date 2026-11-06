@@ -2,10 +2,10 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import func, or_, select
 
 from src.api.db.database import SessionLocal
-from src.api.db.models import Content
+from src.api.db.models import Content, ContentGenre, Genre
 from src.api.schemas.movie import ContentResponse, ContentSortField, PaginatedContentResponse, SortOrder
 
 # Maps public sort keys to DB columns (FR-010). "release_date" uses the release year.
@@ -39,7 +39,11 @@ def get_db():
 def get_movies(
     search: Optional[str] = Query(None, description="Search term in title (Ukrainian or English)"),
     category: Optional[str] = Query(None, description="Category: 'Movie' or 'Series'"),
-    genre: Optional[str] = Query(None, description="Genre filter (e.g., 'Фантастика', 'Драма')"),
+    genre: Optional[str] = Query(
+        None,
+        description="Genre filter, Ukrainian or English name (e.g. 'Фантастика' or 'Sci-Fi'); "
+        "matches any genre of the title, not only the primary one",
+    ),
     year: Optional[int] = Query(None, description="Release year filter (e.g., 2024)"),
     sort_by: Optional[ContentSortField] = Query(
         None, description="Sort criterion: 'rating', 'release_date' (release year) or 'runtime'"
@@ -63,8 +67,22 @@ def get_movies(
     if category:
         query = query.filter(Content.category.ilike(category.strip()))
 
-    if genre:
-        query = query.filter(Content.genre.ilike(f"%{genre.strip()}%"))
+    if genre and genre.strip():
+        # Issue #61: titles linked to the genre through ContentGenre (any position)
+        # Exact name first: SQLite lower() changes only ASCII letters, PostgreSQL also handles Cyrillic
+        name = genre.strip()
+        titles_of_genre = (
+            select(ContentGenre.content_id)
+            .join(Genre, Genre.genre_id == ContentGenre.genre_id)
+            .where(
+                or_(
+                    Genre.name == name,
+                    func.lower(Genre.name) == name.lower(),
+                    func.lower(Genre.name_en) == name.lower(),
+                )
+            )
+        )
+        query = query.filter(Content.content_id.in_(titles_of_genre))
 
     if year is not None:
         query = query.filter(Content.year == year)

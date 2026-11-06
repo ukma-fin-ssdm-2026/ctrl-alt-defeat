@@ -48,3 +48,16 @@ class PaginatedContentResponse(BaseModel):
 # Aliases for backward compatibility
 MovieResponse = ContentResponse
 PaginatedMoviesResponse = PaginatedContentResponse
+
+
+class GenreResponse(BaseModel):
+    """A genre of the catalog with the number of titles (FR-012, issue #61)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"genre_id": 7, "name": "Драма", "name_en": "Drama", "titles_count": 18}}
+    )
+
+    genre_id: int = Field(..., description="Genre identifier")
+    name: str = Field(..., description="Ukrainian name, used in the catalog and in the genre filter")
+    name_en: Optional[str] = Field(None, description="English name")
+    titles_count: int = Field(..., ge=0, description="Number of movies and series with this genre")

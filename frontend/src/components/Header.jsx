@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { mockMovies } from '../data/mockData';
 import { getDisplayName } from '../utils/displayName';
 import { translateGenre } from '../utils/genres';
+import useCatalogGenres from '../hooks/useCatalogGenres';
 
 export default function Header({ 
   toggleTheme, 
@@ -39,11 +40,8 @@ export default function Header({
 
   const getGenreLabel = (genre) => translateGenre(genre, isUkr ? 'UKR' : 'EN');
 
-  const genres = [
-    'Бойовик', 'Комедія', 'Драма', 'Фантастика', 'Жахи', 
-    'Трилер', 'Детектив', 'Документальний', 'Біографія', 
-    'Історія', 'Мелодрама', 'Кримінал', 'Музика', 'Пригоди'
-  ];
+  // Genres that have titles in the catalog (GET /genres, US-012)
+  const genres = useCatalogGenres();
 
   const availableYears = [2026, 2024, 2023, 2021, 2020, 2019, 2017, 2016, 2014, 2011, 2010, 2008, 2001, 1994];
 
