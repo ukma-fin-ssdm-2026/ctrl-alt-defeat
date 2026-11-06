@@ -3,21 +3,28 @@ from typing import List, Dict, Any
 
 
 def generate_review_summary(reviews: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Generates a comprehensive summary from a list of reviews on a 1-10 scale."""
+    """Generates a comprehensive summary from a list of reviews on a 1-10 scale (REL-004)."""
     summary = {"total_reviews": 0, "average_rating": 0.0, "distribution": {i: 0 for i in range(1, 11)}}
 
     if not reviews:
         return summary
 
     total_score = 0
+    valid_ratings_count = 0
     for review in reviews:
-        rating = review.get("rating", 0)
-        total_score += rating
-        if 1 <= rating <= 10:
-            summary["distribution"][rating] += 1
+        if not isinstance(review, dict):
+            continue
+        rating = review.get("rating")
+        # Defensive check: rating must be non-None, numeric, and within 1-10 range
+        if isinstance(rating, (int, float)) and 1 <= rating <= 10:
+            total_score += rating
+            summary["distribution"][int(rating)] += 1
+            valid_ratings_count += 1
 
     summary["total_reviews"] = len(reviews)
-    summary["average_rating"] = round(total_score / summary["total_reviews"], 2)
+    summary["average_rating"] = (
+        round(total_score / valid_ratings_count, 2) if valid_ratings_count > 0 else 0.0
+    )
 
     return summary
 
