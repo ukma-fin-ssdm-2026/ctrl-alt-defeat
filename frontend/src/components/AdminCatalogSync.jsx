@@ -83,8 +83,8 @@ export default function AdminCatalogSync({ language = 'UKR' }) {
         {status?.state === 'done' && (
           <p className="text-green-700 dark:text-green-300">
             {isUkr
-              ? `Готово ${time(status.finished_at)}: додано ${status.added}, оновлено ${status.updated}${status.skipped ? `, пропущено ${status.skipped}` : ''}. Оновіть сторінку, щоб побачити нові фільми.`
-              : `Done ${time(status.finished_at)}: ${status.added} added, ${status.updated} updated${status.skipped ? `, ${status.skipped} skipped` : ''}. Reload the page to see new titles.`}
+              ? `Готово ${time(status.finished_at)}: додано ${status.added}, оновлено ${status.updated}${status.skipped ? `, пропущено ${status.skipped}` : ''}${status.placeholders_removed ? `, прибрано тестових фільмів ${status.placeholders_removed}` : ''}${status.placeholders_kept ? ` (${status.placeholders_kept} залишено: ними вже користувались)` : ''}. Оновіть сторінку, щоб побачити нові фільми.`
+              : `Done ${time(status.finished_at)}: ${status.added} added, ${status.updated} updated${status.skipped ? `, ${status.skipped} skipped` : ''}${status.placeholders_removed ? `, ${status.placeholders_removed} placeholder titles removed` : ''}${status.placeholders_kept ? ` (${status.placeholders_kept} kept: already used)` : ''}. Reload the page to see new titles.`}
           </p>
         )}
         {status?.state === 'failed' && (
