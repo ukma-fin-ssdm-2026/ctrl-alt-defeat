@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import apiClient from '../api/client';
+import { fetchWholeCatalog } from '../api/catalog';
 import MovieCard from '../components/MovieCard';
-import { mockMovies } from '../data/mockData';
-import { SORT_OPTIONS, getSortParams, sortMovies } from '../utils/sortMovies';
+import { SORT_OPTIONS, sortMovies } from '../utils/sortMovies';
 import { translateGenre } from '../utils/genres';
+import { buildCatalogParams } from '../utils/catalogParams';
 
 export default function Home({ selectedCategory, selectedGenre, selectedYear, onSelectMovie, language = 'UKR', watchlist = [], onToggleWatchlist }) {
   const [movies, setMovies] = useState([]);
+  // The catalog could not be loaded (server unavailable)
+  const [loadError, setLoadError] = useState(false);
 
   // Filters come straight from props (selected in Header via App)
   const filterGenre = selectedGenre || '';
@@ -23,44 +25,26 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
 
   const isUkr = language === 'UKR';
 
-
   const getGenreLabel = (genre) => translateGenre(genre, isUkr ? 'UKR' : 'EN');
 
+  // Every matching title at once (page by page from the API): the list keeps working after going back
   useEffect(() => {
-    const params = {};
-    if (selectedCategory) {
-      const catLower = selectedCategory.toLowerCase();
-      if (catLower === 'фільми' || catLower === 'movie' || catLower === 'movies') {
-        params.category = 'Movie';
-      } else if (catLower === 'серіали' || catLower === 'series' || catLower === 'tv shows') {
-        params.category = 'Series';
-      } else if (catLower === 'мультфільми' || catLower === 'cartoons') {
-        params.category = 'Cartoons';
-      } else {
-        params.category = selectedCategory;
-      }
-    }
-    if (filterGenre) params.genre = filterGenre;
-    if (filterYear) params.year = filterYear;
-    Object.assign(params, getSortParams(sortKey));
+    const params = buildCatalogParams({ selectedCategory, filterGenre, filterYear, sortKey });
 
     // Ignore responses of outdated requests (filters changed while loading)
     let ignore = false;
-    apiClient.get('/movies', { params })
-      .then(response => {
+    fetchWholeCatalog(params)
+      .then(items => {
         if (ignore) return;
-        const data = response.data.items || response.data;
-        if (data && data.length > 0) {
-          setMovies(data);
-        } else {
-          setMovies(mockMovies);
-        }
+        setMovies(items);
+        setLoadError(false);
         setLoadedKey(requestKey);
       })
       .catch(error => {
         if (ignore) return;
-        console.warn("Бекенд фільмів ще недоступний, використовуємо mockData.js:", error);
-        setMovies(mockMovies);
+        console.warn('Каталог недоступний:', error);
+        setMovies([]);
+        setLoadError(true);
         setLoadedKey(requestKey);
       });
     return () => {
@@ -136,6 +120,10 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
       
       {loading ? (
         <div className="py-12 text-center text-gray-500 text-sm">{isUkr ? 'Завантаження...' : 'Loading...'}</div>
+      ) : loadError ? (
+        <div role="alert" className="py-12 text-center text-sm text-red-600 dark:text-red-400">
+          {isUkr ? 'Каталог тимчасово недоступний: сервер не відповідає. Спробуйте оновити сторінку.' : 'The catalog is unavailable: the server is not responding. Please reload the page.'}
+        </div>
       ) : displayedMovies.length === 0 ? (
         <div className="py-12 text-center">
           <p className="text-gray-500 dark:text-gray-400 text-sm">
@@ -155,6 +143,12 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
             />
           ))}
         </div>
+      )}
+
+      {!loading && !loadError && displayedMovies.length > 0 && (
+        <p className="mt-8 text-center text-xs text-gray-500 dark:text-gray-400">
+          {isUkr ? `Усього: ${displayedMovies.length}` : `Total: ${displayedMovies.length}`}
+        </p>
       )}
     </section>
   );

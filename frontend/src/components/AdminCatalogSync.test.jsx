@@ -15,7 +15,7 @@ describe('AdminCatalogSync (FR-012)', () => {
   it('starts the update and shows the result after polling', async () => {
     apiClient.get
       .mockResolvedValueOnce({ data: idle })
-      .mockResolvedValueOnce({ data: { ...idle, state: 'done', added: 250, updated: 30, finished_at: '2026-11-06T10:00:00Z' } });
+      .mockResolvedValueOnce({ data: { ...idle, state: 'done', added: 250, updated: 30, placeholders_removed: 28, placeholders_kept: 2, finished_at: '2026-11-06T10:00:00Z' } });
     apiClient.post.mockResolvedValue({ data: { ...idle, state: 'running' } });
     render(<AdminCatalogSync />);
 
@@ -28,7 +28,7 @@ describe('AdminCatalogSync (FR-012)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Іде оновлення');
 
     await act(async () => { vi.advanceTimersByTime(POLL_MS); });
-    expect(await screen.findByText(/додано 250, оновлено 30/)).toBeInTheDocument();
+    expect(await screen.findByText(/додано 250, оновлено 30, прибрано тестових фільмів 28 \(2 залишено/)).toBeInTheDocument();
     expect(apiClient.get).toHaveBeenCalledTimes(2);
   });
 

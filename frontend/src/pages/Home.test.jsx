@@ -47,7 +47,7 @@ describe('Home catalog sorting (FR-010)', () => {
 
     await waitFor(() =>
       expect(apiClient.get).toHaveBeenLastCalledWith('/movies', {
-        params: { sort_by: 'release_date', order: 'desc' },
+        params: { sort_by: 'release_date', order: 'desc', skip: 0, limit: 100 },
       })
     );
   });
@@ -69,7 +69,7 @@ describe('Home catalog sorting (FR-010)', () => {
 
     await waitFor(() =>
       expect(apiClient.get).toHaveBeenLastCalledWith('/movies', {
-        params: { genre: 'Драма', sort_by: 'rating', order: 'desc' },
+        params: { genre: 'Драма', sort_by: 'rating', order: 'desc', skip: 0, limit: 100 },
       })
     );
     expect(screen.queryByText('New SciFi')).not.toBeInTheDocument();
@@ -87,5 +87,38 @@ describe('Home cartoons category', () => {
 
     expect(await screen.findByText('Шрек')).toBeInTheDocument();
     expect(apiClient.get).toHaveBeenCalledWith('/movies', expect.objectContaining({ params: expect.objectContaining({ category: 'Cartoons' }) }));
+  });
+});
+
+describe('Home shows the whole catalog', () => {
+  beforeEach(() => apiClient.get.mockReset());
+
+  const page = (from, count, total) => ({
+    data: {
+      items: Array.from({ length: count }, (_, i) => ({ id: from + i, title: `Фільм ${from + i}`, genre: 'Драма', category: 'Movie', year: 2020 })),
+      total,
+      has_more: from - 1 + count < total,
+    },
+  });
+
+  it('loads every page at once, without a "Show more" button', async () => {
+    apiClient.get.mockResolvedValueOnce(page(1, 100, 130)).mockResolvedValueOnce(page(101, 30, 130));
+    render(<Home selectedCategory="Фільми" onSelectMovie={() => {}} />);
+
+    expect(await screen.findByText('Фільм 130')).toBeInTheDocument();
+    expect(screen.getByText('Усього: 130')).toBeInTheDocument();
+    expect(apiClient.get).toHaveBeenLastCalledWith('/movies', { params: { category: 'Movie', skip: 100, limit: 100 } });
+    expect(screen.queryByRole('button', { name: 'Показати ще' })).not.toBeInTheDocument();
+  });
+
+  it('never shows placeholder titles: an empty result and an unavailable server say so', async () => {
+    apiClient.get.mockResolvedValueOnce({ data: { items: [], total: 0, has_more: false } });
+    const { unmount } = render(<Home selectedGenre="Вестерн" onSelectMovie={() => {}} />);
+    expect(await screen.findByText('Не знайдено жодного фільму за такими критеріями.')).toBeInTheDocument();
+    unmount();
+
+    apiClient.get.mockRejectedValueOnce(new Error('offline'));
+    render(<Home onSelectMovie={() => {}} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Каталог тимчасово недоступний');
   });
 });

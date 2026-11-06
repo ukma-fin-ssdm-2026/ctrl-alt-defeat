@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { mockMovies } from '../data/mockData';
 import { GENRE_TRANSLATIONS, translateGenre } from './genres';
 
 describe('translateGenre', () => {
@@ -19,8 +18,13 @@ describe('translateGenre', () => {
   });
 
   it('has a translation for every genre used in the catalog', () => {
-    const catalogGenres = new Set(mockMovies.flatMap(movie => [movie.genre, ...(movie.genres || [])]).filter(Boolean));
-    const missing = [...catalogGenres].filter(genre => !GENRE_TRANSLATIONS[genre]);
+    // Every genre the backend creates (src/api/services/genres.py: TMDB movie and TV genres, extra genres)
+    const catalogGenres = [
+      'Бойовик', 'Пригоди', 'Мультфільм', 'Комедія', 'Кримінал', 'Документальний', 'Драма', 'Сімейний',
+      'Фентезі', 'Історія', 'Жахи', 'Музика', 'Детектив', 'Мелодрама', 'Фантастика', 'Телефільм', 'Трилер',
+      'Воєнний', 'Вестерн', 'Біографія', 'Дитячий', 'Новини', 'Реаліті', 'Мильна опера', 'Ток-шоу',
+    ];
+    const missing = catalogGenres.filter(genre => !GENRE_TRANSLATIONS[genre]);
     expect(missing).toEqual([]);
   });
 });
