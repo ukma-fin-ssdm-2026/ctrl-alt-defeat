@@ -140,9 +140,9 @@ def test_sort_is_applied_before_pagination(client):
     assert second == [5, 3]
 
 
-def test_default_order_without_sort_is_by_id(client):
+def test_default_order_without_sort_is_recently_added_first(client):
     # Trace: T-026
-    assert ids(client.get("/api/v1/movies")) == [1, 2, 3, 4, 5]
+    assert ids(client.get("/api/v1/movies")) == [5, 4, 3, 2, 1]
 
 
 @pytest.mark.parametrize("query", ["sort_by=popularity", "sort_by=rating&order=up"])
