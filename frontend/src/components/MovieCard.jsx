@@ -30,6 +30,9 @@ export default function MovieCard({ movie, onSelect, language = 'UKR', isWatchli
           <img
             src={movie.img}
             alt={primaryTitle}
+            // Hundreds of posters on one page: load only those near the screen
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
 
