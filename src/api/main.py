@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 import yaml
@@ -27,20 +28,27 @@ from src.api.db.database import SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 
 
+logger = logging.getLogger(__name__)
+
+
 # 1. OpenAPI auto-generation logic
 def save_openapi_spec(app: FastAPI):
-    """Save auto-generated OpenAPI spec to file"""
-    openapi_schema = app.openapi()
+    """Save auto-generated OpenAPI spec to file with fallback if filesystem is read-only (REL-003)."""
+    try:
+        openapi_schema = app.openapi()
 
-    os.makedirs("docs/api", exist_ok=True)
+        docs_api_dir = Path(__file__).resolve().parents[2] / "docs" / "api"
+        docs_api_dir.mkdir(parents=True, exist_ok=True)
 
-    openapi_path = Path(__file__).resolve().parents[2] / "docs" / "api" / "openapi-generated.yaml"
+        openapi_path = docs_api_dir / "openapi-generated.yaml"
 
-    with open(openapi_path, "w", encoding="utf-8") as f:
-        yaml.dump(openapi_schema, f, sort_keys=False, allow_unicode=True)
+        with open(openapi_path, "w", encoding="utf-8") as f:
+            yaml.dump(openapi_schema, f, sort_keys=False, allow_unicode=True)
 
-    print("✅ OpenAPI spec auto-generated (Unified errors enforced natively)!")
-    print(f"📁 Saved to: {openapi_path}")
+        logger.info("OpenAPI spec auto-generated: %s", openapi_path)
+    except OSError as error:
+        # Reliability pattern: Graceful degradation / fallback for read-only filesystem environments
+        logger.warning("Could not save auto-generated OpenAPI spec to file (%s). Continuing startup.", error)
 
 
 @asynccontextmanager
