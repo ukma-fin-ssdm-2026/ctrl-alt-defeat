@@ -34,6 +34,8 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
         params.category = 'Movie';
       } else if (catLower === 'серіали' || catLower === 'series' || catLower === 'tv shows') {
         params.category = 'Series';
+      } else if (catLower === 'мультфільми' || catLower === 'cartoons') {
+        params.category = 'Cartoons';
       } else {
         params.category = selectedCategory;
       }
@@ -74,7 +76,8 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
                       (cat === 'фільми' || cat === 'movie' || cat === 'movies');
       const isSeries = (sel === 'серіали' || sel === 'series' || sel === 'tv shows') && 
                        (cat === 'серіали' || cat === 'series' || cat === 'tv shows');
-      if (!isMovie && !isSeries && cat !== sel) {
+      const isCartoons = (sel === 'мультфільми' || sel === 'cartoons') && cat === 'cartoons';
+      if (!isMovie && !isSeries && !isCartoons && cat !== sel) {
         return false;
       }
     }

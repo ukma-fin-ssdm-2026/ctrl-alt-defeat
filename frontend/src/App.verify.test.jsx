@@ -51,3 +51,17 @@ describe('App email confirmation link (FR-001)', () => {
     expect(apiClient.get).not.toHaveBeenCalledWith('/auth/verify', expect.anything());
   });
 });
+
+describe('App TMDB attribution', () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it('credits TMDB with its logo and the required notice', async () => {
+    mockApi(() => Promise.resolve({ data: {} }));
+    render(<App />);
+
+    const logo = await screen.findByAltText('The Movie Database (TMDB)');
+    expect(logo).toHaveAttribute('src', '/tmdb-logo.svg');
+    expect(logo.closest('a')).toHaveAttribute('href', 'https://www.themoviedb.org');
+    expect(screen.getByText(/This product uses the TMDB API but is not endorsed or certified by TMDB\./)).toBeInTheDocument();
+  });
+});

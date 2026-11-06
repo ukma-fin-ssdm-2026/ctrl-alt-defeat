@@ -39,19 +39,29 @@ def test_fetch_tmdb_movies_graceful_degradation_on_error():
 
 def test_fetch_tmdb_movies_success():
     # Trace: T-033, FR-012
-    fake_response = MagicMock()
-    fake_response.status = 200
-    fake_response.read.return_value = (
-        b'{"results": [{"id": 101, "title": "Test Movie", "original_title": "Test Orig", '
-        b'"vote_average": 7.5, "release_date": "2024-05-01"}]}'
-    )
-    fake_response.__enter__.return_value = fake_response
+    def fake_tmdb(path, params, api_key):
+        if path == "/discover/movie" and params.get("without_genres") == "16" and params["page"] == 1:
+            return {
+                "results": [
+                    {
+                        "id": 101,
+                        "title": "Test Movie",
+                        "original_title": "Test Orig",
+                        "vote_average": 7.5,
+                        "release_date": "2024-05-01",
+                        "poster_path": "/t.jpg",
+                        "genre_ids": [18],
+                    }
+                ]
+            }
+        return {"results": []} if path.startswith("/discover/") else {}
 
-    with patch("urllib.request.urlopen", return_value=fake_response):
+    with patch("src.api.services.tmdb._tmdb_get", side_effect=fake_tmdb):
         movies = fetch_tmdb_movies(api_key="valid-key")
-        assert len(movies) == 1
-        assert movies[0]["title"] == "Test Movie"
-        assert movies[0]["rating"] == 7.5
+    assert len(movies) == 1
+    assert movies[0]["title"] == "Test Movie"
+    assert movies[0]["rating"] == 7.5
+    assert movies[0]["tmdb_id"] == 101
 
 
 def test_seed_movies_to_database():

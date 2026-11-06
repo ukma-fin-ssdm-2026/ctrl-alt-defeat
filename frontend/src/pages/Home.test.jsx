@@ -76,3 +76,16 @@ describe('Home catalog sorting (FR-010)', () => {
     expect(renderedTitles()).toEqual(['Old Drama', 'New Drama']);
   });
 });
+
+describe('Home cartoons category', () => {
+  beforeEach(() => apiClient.get.mockReset());
+
+  it('asks the API for cartoons and shows them', async () => {
+    const cartoon = { id: 9, title: 'Шрек', genre: 'Мультфільм', category: 'Cartoons', rating: 7.9, year: 2001 };
+    apiClient.get.mockResolvedValue({ data: { items: [cartoon] } });
+    render(<Home selectedCategory="Мультфільми" onSelectMovie={() => {}} />);
+
+    expect(await screen.findByText('Шрек')).toBeInTheDocument();
+    expect(apiClient.get).toHaveBeenCalledWith('/movies', expect.objectContaining({ params: expect.objectContaining({ category: 'Cartoons' }) }));
+  });
+});
