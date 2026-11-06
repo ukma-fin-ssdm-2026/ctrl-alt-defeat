@@ -49,8 +49,8 @@
 | `title`          | string    | Українська назва контенту                              |
 | `title_en`       | string    | Англійська або оригінальна назва                       |
 | `category`       | string    | Категорія контенту (`Movie` або `Series`)              |
-| `genre`          | string    | Основний жанр                                          |
-| `genres`         | array     | Список додаткових жанрових тегів                       |
+| `genre`          | string    | Основний жанр (перший у списку `genres`)               |
+| `genres`         | array     | Усі жанри фільму в порядку важливості                  |
 | `year`           | integer   | Рік випуску                                            |
 | `rating`         | float     | Середній рейтинг аудиторії (0.0 – 10.0)                |
 | `rotten_rating`  | string    | Рейтинг критиків у відсотках (наприклад, "94%")        |
@@ -58,6 +58,15 @@
 | `description`    | string    | Синопсис українською мовою                             |
 | `description_en` | string    | Синопсис англійською мовою                             |
 | `tmdb_id`        | integer   | Зовнішній ідентифікатор у базі TMDB                    |
+
+### Genre / ContentGenre (Жанри, FR-012, US-012)
+
+`Genre` — довідник жанрів (`genre_id`, українська `name`, англійська `name_en`, `tmdb_id` для
+відповідності `genre_ids` із TMDB). `ContentGenre` — зв'язок many-to-many між `Content` і `Genre`
+(`content_id`, `genre_id`, `position`: 0 — основний жанр). Зв'язки — джерело істини для фільтра
+за жанром і довідника `GET /api/v1/genres`; поля `genre` і `genres` у `Content` — денормалізована
+копія для відповідей API, обидва оновлюються разом (`set_content_genres`). Під час старту
+застосунку фільми без зв'язків (додані до появи таблиць) автоматично зв'язуються з жанрами.
 
 Використовуються схеми `ReviewCreate`, `ReviewUpdate`, `ReviewResponse`,
 `PaginatedReviewsResponse`, а також `ContentResponse` та `PaginatedContentResponse`.
@@ -145,13 +154,14 @@
 |-------|-----------------------------|-------------------------------------------|-------------------|
 | `GET` | `/api/v1/movies`            | Отримати список фільмів/серіалів каталогу | `200 OK`          |
 | `GET` | `/api/v1/movies/{movie_id}` | Отримати деталі фільму/серіалу за ID      | `200 OK`          |
+| `GET` | `/api/v1/genres`            | Жанри з кількістю фільмів (`titles_count`), за назвою; `include_empty=true` — також жанри без фільмів | `200 OK` |
 
 Для `GET /api/v1/movies` підтримуються query-параметри:
 - `search` (рядок): пошук за назвою українською або англійською мовою;
 - `category` (рядок): фільтр категорії (`Movie` або `Series`);
-- `genre` (рядок): фільтр жанру (наприклад, `Фантастика`, `Драма`);
+- `genre` (рядок): точна назва жанру українською або англійською (`Фантастика` або `Sci-Fi`); повертаються фільми, у яких цей жанр є серед будь-яких їхніх жанрів, а не лише основний;
 - `year` (ціле число): фільтр за роком релізу;
-- `sort_by` (рядок): критерій сортування (`rating_desc`, `rating_asc`, `year_desc`, `year_asc`, `runtime_desc`, `runtime_asc`);
+- `sort_by` (рядок): критерій сортування (`rating`, `release_date`, `runtime`) і `order` (`desc` за замовчуванням або `asc`);
 - `skip` та `limit`: offset-пагінація.
 
 #### Рекомендації (Recommendations)

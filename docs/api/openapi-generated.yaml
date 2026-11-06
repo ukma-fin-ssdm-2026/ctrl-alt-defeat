@@ -509,9 +509,11 @@ paths:
           anyOf:
           - type: string
           - type: 'null'
-          description: Genre filter (e.g., 'Фантастика', 'Драма')
+          description: Genre filter, Ukrainian or English name (e.g. 'Фантастика'
+            or 'Sci-Fi'); matches any genre of the title, not only the primary one
           title: Genre
-        description: Genre filter (e.g., 'Фантастика', 'Драма')
+        description: Genre filter, Ukrainian or English name (e.g. 'Фантастика' or
+          'Sci-Fi'); matches any genre of the title, not only the primary one
       - name: year
         in: query
         required: false
@@ -597,6 +599,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContentResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/genres:
+    get:
+      tags:
+      - Movies & Series Catalog
+      summary: Genres of the catalog with the number of titles (FR-012)
+      description: Genres sorted by name. By default only genres that have at least
+        one title are returned.
+      operationId: list_genres_api_v1_genres_get
+      parameters:
+      - name: include_empty
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Also return genres without titles
+          default: false
+          title: Include Empty
+        description: Also return genres without titles
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GenreResponse'
+                title: Response List Genres Api V1 Genres Get
         '422':
           description: Validation Error (Unprocessable Entity)
           content:
@@ -2591,6 +2627,40 @@ components:
       required:
       - error
       title: ErrorResponse
+    GenreResponse:
+      properties:
+        genre_id:
+          type: integer
+          title: Genre Id
+          description: Genre identifier
+        name:
+          type: string
+          title: Name
+          description: Ukrainian name, used in the catalog and in the genre filter
+        name_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name En
+          description: English name
+        titles_count:
+          type: integer
+          minimum: 0.0
+          title: Titles Count
+          description: Number of movies and series with this genre
+      type: object
+      required:
+      - genre_id
+      - name
+      - titles_count
+      title: GenreResponse
+      description: 'A genre of the catalog with the number of titles (FR-012, issue
+        #61).'
+      example:
+        genre_id: 7
+        name: Драма
+        name_en: Drama
+        titles_count: 18
     HealthResponse:
       properties:
         status:
