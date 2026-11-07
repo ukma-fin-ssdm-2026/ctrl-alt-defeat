@@ -479,7 +479,8 @@ paths:
       description: Retrieve list of movies and series with search by title, filters
         by category, genre, year, sorting (rating, release date, runtime) and offset
         pagination. Sorting is applied to the filtered result set; items with unknown
-        values are always placed last.
+        values are always placed last. Without sort_by the most recently added titles
+        come first.
       operationId: get_movies_api_v1_movies_get
       parameters:
       - name: search
@@ -2473,6 +2474,18 @@ components:
           minimum: 0.0
           title: Skipped
           description: Titles skipped (TMDB id already used by another title)
+          default: 0
+        placeholders_removed:
+          type: integer
+          minimum: 0.0
+          title: Placeholders Removed
+          description: Built-in titles merged into real ones or removed
+          default: 0
+        placeholders_kept:
+          type: integer
+          minimum: 0.0
+          title: Placeholders Kept
+          description: Built-in titles kept because users reviewed or saved them
           default: 0
         error:
           anyOf:
