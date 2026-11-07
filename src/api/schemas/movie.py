@@ -74,4 +74,6 @@ class CatalogSyncStatus(BaseModel):
     added: int = Field(0, ge=0, description="New titles")
     updated: int = Field(0, ge=0, description="Updated titles")
     skipped: int = Field(0, ge=0, description="Titles skipped (TMDB id already used by another title)")
+    placeholders_removed: int = Field(0, ge=0, description="Built-in titles merged into real ones or removed")
+    placeholders_kept: int = Field(0, ge=0, description="Built-in titles kept because users reviewed or saved them")
     error: Optional[str] = Field(None, description="Why the last update failed")

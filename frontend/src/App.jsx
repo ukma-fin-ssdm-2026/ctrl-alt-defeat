@@ -8,8 +8,8 @@ import UserProfile from './pages/UserProfile';
 import AdminUsers from './pages/AdminUsers';
 import AdminCatalogSync from './components/AdminCatalogSync';
 import AchievementToast from './components/AchievementToast';
-import { mockMovies } from './data/mockData';
 import apiClient, { SESSION_EXPIRED_EVENT } from './api/client';
+import { fetchWholeCatalog } from './api/catalog';
 import { getStoredUser, setStoredAuth, clearStoredAuth } from './auth/currentUser';
 import useWatchlist from './hooks/useWatchlist';
 import useWatchedList from './hooks/useWatchedList';
@@ -25,7 +25,7 @@ export default function App() {
 
   const [language, setLanguage] = useState('UKR'); 
   const isUkr = language === 'UKR';
-  const [catalogMovies, setCatalogMovies] = useState(mockMovies);
+  const [catalogMovies, setCatalogMovies] = useState([]);
 
   // Message shown in the login window when a guest uses a members-only feature
   const [authNotice, setAuthNotice] = useState('');
@@ -110,15 +110,13 @@ export default function App() {
         setUser(null);
       });
 
-    apiClient.get('/movies', { params: { limit: 100 } })
-      .then(response => {
-        const items = response.data.items || response.data;
-        if (items && items.length > 0) {
-          setCatalogMovies(items);
-        }
+    // The whole catalog (several pages of 100): header search and the user lists need every title
+    fetchWholeCatalog()
+      .then(items => {
+        setCatalogMovies(items);
       })
       .catch(err => {
-        console.warn("Бекенд каталогу недоступний у App.jsx, залишаємо mockData:", err);
+        console.warn("Каталог недоступний:", err);
       });
   }, []);
 

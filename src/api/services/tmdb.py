@@ -18,7 +18,9 @@ from src.api.services.genres import DEFAULT_GENRE, genres_from_tmdb, set_content
 
 logger = logging.getLogger(__name__)
 
-# Fallback catalog metadata (FR-012 Graceful Degradation)
+# Fallback catalog metadata (FR-012 Graceful Degradation): used only while TMDB is not available.
+# The titles have no TMDB ids; the first TMDB update adopts them by title and year or removes them
+# (services/catalog_cleanup.py).
 FALLBACK_MOVIES = [
     {
         "id": 1,
@@ -40,7 +42,6 @@ FALLBACK_MOVIES = [
             "Paul Atreides unites with Chani and the Fremen while seeking revenge against the"
             "conspirators who destroyed his family."
         ),
-        "tmdb_id": 100001,
     },
     {
         "id": 2,
@@ -61,7 +62,6 @@ FALLBACK_MOVIES = [
             "The story of American physicist J. Robert Oppenheimer and his role in the development of"
             "the atomic bomb."
         ),
-        "tmdb_id": 100002,
     },
     {
         "id": 3,
@@ -81,7 +81,6 @@ FALLBACK_MOVIES = [
         "description_en": (
             "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's" "survival."
         ),
-        "tmdb_id": 100003,
     },
     {
         "id": 4,
@@ -102,7 +101,6 @@ FALLBACK_MOVIES = [
             "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman"
             "must accept one of the greatest psychological and physical tests."
         ),
-        "tmdb_id": 100004,
     },
     {
         "id": 5,
@@ -124,7 +122,6 @@ FALLBACK_MOVIES = [
             "A thief who steals corporate secrets through the use of dream-sharing technology is given"
             "the inverse task of planting an idea."
         ),
-        "tmdb_id": 100005,
     },
     {
         "id": 6,
@@ -145,7 +142,6 @@ FALLBACK_MOVIES = [
             "Over the course of several years, two convicts form a friendship, seeking consolation and,"
             "eventually, redemption."
         ),
-        "tmdb_id": 100006,
     },
     {
         "id": 7,
@@ -167,7 +163,6 @@ FALLBACK_MOVIES = [
             "The presidencies of Kennedy and Johnson, the Vietnam War, and other historical events"
             "unfold from the perspective of an Alabama man."
         ),
-        "tmdb_id": 100007,
     },
     {
         "id": 8,
@@ -188,7 +183,6 @@ FALLBACK_MOVIES = [
             "Young Blade Runner K's discovery of a long-buried secret leads him to track down former"
             "Blade Runner Rick Deckard."
         ),
-        "tmdb_id": 100008,
     },
     {
         "id": 9,
@@ -210,7 +204,6 @@ FALLBACK_MOVIES = [
             "Greed and class discrimination threaten the newly formed symbiotic relationship between"
             "the wealthy Park family and the destitute Kim clan."
         ),
-        "tmdb_id": 100009,
     },
     {
         "id": 10,
@@ -226,7 +219,6 @@ FALLBACK_MOVIES = [
         "img": "https://picsum.photos/300/450?random=1",
         "description": "Драматична історія про виживання та моральний вибір у критичних умовах майбутнього.",
         "description_en": "A dramatic story about survival and moral choice in critical conditions of the future.",
-        "tmdb_id": 100010,
     },
     {
         "id": 11,
@@ -247,7 +239,6 @@ FALLBACK_MOVIES = [
             "When a young boy vanishes, a small town uncovers a mystery involving secret experiments,"
             "terrifying supernatural forces."
         ),
-        "tmdb_id": 100011,
     },
     {
         "id": 12,
@@ -268,7 +259,6 @@ FALLBACK_MOVIES = [
             "In 1986, a Soviet nuclear plant, suffers a massive explosion which releases radioactive"
             "material across Europe."
         ),
-        "tmdb_id": 100012,
     },
     {
         "id": 13,
@@ -290,7 +280,6 @@ FALLBACK_MOVIES = [
             "Nine noble families fight for control over the lands of Westeros, while an ancient enemy"
             "returns after being dormant."
         ),
-        "tmdb_id": 100013,
     },
     {
         "id": 14,
@@ -311,7 +300,6 @@ FALLBACK_MOVIES = [
             "A chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing and"
             "selling methamphetamine with a former student."
         ),
-        "tmdb_id": 100014,
     },
     {
         "id": 15,
@@ -332,7 +320,6 @@ FALLBACK_MOVIES = [
             "Seasonal anthology series in which police investigations unearth the personal and"
             "professional secrets of those involved."
         ),
-        "tmdb_id": 100015,
     },
     {
         "id": 16,
@@ -353,7 +340,6 @@ FALLBACK_MOVIES = [
         "description_en": (
             "A group of vigilantes set out to take down corrupt superheroes who abuse their" "superpowers."
         ),
-        "tmdb_id": 100016,
     },
     {
         "id": 17,
@@ -372,7 +358,6 @@ FALLBACK_MOVIES = [
             "After a global pandemic destroys civilization, a hardened survivor takes charge of a"
             "14-year-old girl who may be humanity's last hope."
         ),
-        "tmdb_id": 100017,
     },
     {
         "id": 18,
@@ -388,7 +373,6 @@ FALLBACK_MOVIES = [
         "img": "https://picsum.photos/300/450?random=3",
         "description": "Антологія моторошних міських легенд з темного минулого.",
         "description_en": "An anthology of creepy urban legends from the dark past.",
-        "tmdb_id": 100018,
     },
     {
         "id": 19,
@@ -407,7 +391,6 @@ FALLBACK_MOVIES = [
             "Follows the political rivalries and romance of Queen Elizabeth II's reign and the events"
             "that shaped the second half of the twentieth century."
         ),
-        "tmdb_id": 100019,
     },
     {
         "id": 20,
@@ -426,7 +409,6 @@ FALLBACK_MOVIES = [
             "Various chronological stories involving disparate characters all connected in some way"
             "around snowy Midwestern towns."
         ),
-        "tmdb_id": 100020,
     },
     {
         "id": 21,
@@ -442,7 +424,6 @@ FALLBACK_MOVIES = [
         "img": "https://picsum.photos/300/450?random=6",
         "description": "Огр на ім'я Шрек вирушає рятувати принцесу, щоб повернути своє болото.",
         "description_en": "A grumpy ogre goes on a quest to rescue a princess and get his swamp back.",
-        "tmdb_id": 100021,
     },
     {
         "id": 22,
@@ -461,7 +442,6 @@ FALLBACK_MOVIES = [
             "Miles Morales catapults across the Multiverse, where he encounters a team of Spider-People"
             "charged with protecting its very existence."
         ),
-        "tmdb_id": 100022,
     },
     {
         "id": 23,
@@ -483,7 +463,6 @@ FALLBACK_MOVIES = [
             "During her family's move to the suburbs, a sullen 10-year-old girl wanders into a world"
             "ruled by gods, witches, and spirits."
         ),
-        "tmdb_id": 100023,
     },
     {
         "id": 24,
@@ -503,7 +482,6 @@ FALLBACK_MOVIES = [
             "emotions - Joy, Fear, Anger, Disgust and Sadness - conflict on how best to navigate a new"
             "city, house, and school."
         ),
-        "tmdb_id": 100024,
     },
     {
         "id": 25,
@@ -524,7 +502,6 @@ FALLBACK_MOVIES = [
             "In the distant future, a small waste-collecting robot inadvertently embarks on a space"
             "journey that will ultimately decide the fate of mankind."
         ),
-        "tmdb_id": 100025,
     },
     {
         "id": 26,
@@ -543,7 +520,6 @@ FALLBACK_MOVIES = [
             "Aspiring musician Miguel, confronted with his family's ancestral ban on music, enters the"
             "Land of the Dead to find his great-great-grandfather."
         ),
-        "tmdb_id": 100026,
     },
     {
         "id": 27,
@@ -565,7 +541,6 @@ FALLBACK_MOVIES = [
             "Lion prince Simba and his father are targeted by his bitter uncle, who wants to ascend the"
             "throne himself."
         ),
-        "tmdb_id": 100027,
     },
     {
         "id": 28,
@@ -584,7 +559,6 @@ FALLBACK_MOVIES = [
             "A hapless young Viking who aspires to hunt dragons becomes the unlikely friend of a young"
             "dragon of a certain species."
         ),
-        "tmdb_id": 100028,
     },
     {
         "id": 29,
@@ -603,7 +577,6 @@ FALLBACK_MOVIES = [
             "After a pianist lands a gig at a jazz club, he is suddenly separated from his soul and"
             "must find his way back with the help of an infant soul."
         ),
-        "tmdb_id": 100029,
     },
     {
         "id": 30,
@@ -619,7 +592,6 @@ FALLBACK_MOVIES = [
         "img": "https://picsum.photos/300/450?random=4",
         "description": "Глибоке документальне анімаційне розслідування юридичних баталій у галузі технологій.",
         "description_en": "An animated documentary investigation of legal battles in technology.",
-        "tmdb_id": 100030,
     },
 ]
 
@@ -816,7 +788,7 @@ def _find_existing(db: Session, item: Dict[str, Any]) -> Tuple[Optional[Content]
     The catalog row of an item and whether it may be updated.
     Titles are matched by TMDB id of the same media type, never by the internal numeric id
     (the internal id of an imported title has nothing to do with the existing rows).
-    A row without tmdb_id (old data) is adopted by an exact title match.
+    A row without tmdb_id (old data, built-in titles) is adopted by an exact title and release year.
     """
     tmdb_id = item.get("tmdb_id")
     if tmdb_id is not None:
@@ -825,6 +797,9 @@ def _find_existing(db: Session, item: Dict[str, Any]) -> Tuple[Optional[Content]
             # Same number, different media type (a movie and a series): a different title
             return existing, tmdb_kind(existing.category) == tmdb_kind(item.get("category"))
     legacy = db.query(Content).filter(Content.title == item["title"])
+    if item.get("year") is not None:
+        # Same name, different film (e.g. a remake): the release year must match too
+        legacy = legacy.filter(Content.year.between(item["year"] - 1, item["year"] + 1))
     if tmdb_id is not None:
         legacy = legacy.filter(Content.tmdb_id.is_(None))
     found = legacy.first()

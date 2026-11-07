@@ -33,7 +33,8 @@ def get_db():
     description=(
         "Retrieve list of movies and series with search by title, "
         "filters by category, genre, year, sorting (rating, release date, runtime) and offset pagination. "
-        "Sorting is applied to the filtered result set; items with unknown values are always placed last."
+        "Sorting is applied to the filtered result set; items with unknown values are always placed last. "
+        "Without sort_by the most recently added titles come first."
     ),
 )
 def get_movies(
@@ -94,7 +95,8 @@ def get_movies(
         # NULLs last in both directions (portable across SQLite and PostgreSQL), id as a stable tie-breaker
         query = query.order_by(column.is_(None), direction, Content.id.asc())
     else:
-        query = query.order_by(Content.id.asc())
+        # Recently added first: new titles from TMDB get the next numbers
+        query = query.order_by(Content.id.desc())
 
     items = query.offset(skip).limit(limit).all()
     has_more = (skip + limit) < total
