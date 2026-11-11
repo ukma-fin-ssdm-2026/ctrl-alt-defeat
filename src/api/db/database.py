@@ -1,5 +1,6 @@
 import os
-from sqlalchemy import create_engine
+
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
@@ -15,25 +16,36 @@ def normalize_database_url(url: str) -> str:
 # An empty value (e.g. `DATABASE_URL=` in .env) also means the local SQLite file
 DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL") or "sqlite:///./app.db")
 
-if DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args=connect_args,
-        pool_pre_ping=True,
-    )
-else:
-    connect_args = {
-        "connect_timeout": 5,
-        "options": "-c statement_timeout=10000",
-    }
+# Reliability (finding 10): time limits for PostgreSQL (Neon)
+CONNECT_TIMEOUT_SECONDS = 5  # opening a connection
+POOL_TIMEOUT_SECONDS = 10  # waiting for a free connection of the pool
+STATEMENT_TIMEOUT_MS = 10000  # one SQL statement
 
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args=connect_args,
+
+def set_statement_timeout(connection) -> None:
+    """
+    Limit every SQL statement of the transaction. `SET LOCAL` instead of the startup parameter
+    `options=-c statement_timeout=...`: the pooled Neon connection string (PgBouncer) rejects such startup
+    options with "unsupported startup parameter", while `SET LOCAL` works with and without the pooler.
+    """
+    connection.exec_driver_sql(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
+
+
+def build_engine(url: str):
+    """SQLite for local runs and tests; PostgreSQL with connect, pool and statement time limits."""
+    if url.startswith("sqlite"):
+        return create_engine(url, connect_args={"check_same_thread": False}, pool_pre_ping=True)
+    postgres = create_engine(
+        url,
+        connect_args={"connect_timeout": CONNECT_TIMEOUT_SECONDS},
         pool_pre_ping=True,
-        pool_timeout=10,
+        pool_timeout=POOL_TIMEOUT_SECONDS,
     )
+    event.listen(postgres, "begin", set_statement_timeout)
+    return postgres
+
+
+engine = build_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(
     autocommit=False,
