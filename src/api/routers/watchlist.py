@@ -78,7 +78,7 @@ def add_to_watchlist(
     try:
         db.commit()
     except IntegrityError:
-        # Race condition defense (REL-002): two simultaneous requests passed the check above,
+        # Race condition (scavenger hunt, finding 2): two simultaneous requests passed the check above,
         # the UNIQUE (user_id, content_id) constraint in the DB catches the second one.
         db.rollback()
         raise HTTPException(

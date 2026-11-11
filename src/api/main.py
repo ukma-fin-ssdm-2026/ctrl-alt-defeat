@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 # 1. OpenAPI auto-generation logic
 def save_openapi_spec(app: FastAPI):
-    """Save auto-generated OpenAPI spec to file with fallback if filesystem is read-only (REL-003)."""
+    """Save the generated OpenAPI spec; a read-only file system must not stop the API (scavenger hunt, finding 4)."""
     try:
         openapi_schema = app.openapi()
 
