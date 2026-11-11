@@ -31,8 +31,9 @@ describe('API client timeout (reliability, finding 14)', () => {
   it('aborts a request to a hanging server instead of waiting forever', async () => {
     const started = Date.now();
 
-    // A short limit for the test; the mechanism is the same as with the default 30 s
-    const error = await apiClient.get(`${baseUrl}/api/v1/movies`, { timeout: 200 }).catch(err => err);
+    // A short limit and pause for the test; the mechanism is the same as with the default 30 s and 1 s.
+    // A GET is repeated once (apiRetry.test.js), so the error comes after the second timeout.
+    const error = await apiClient.get(`${baseUrl}/api/v1/movies`, { timeout: 200, retryDelayMs: 10 }).catch(err => err);
 
     expect(error.code).toBe('ECONNABORTED');
     expect(Date.now() - started).toBeLessThan(2000);
