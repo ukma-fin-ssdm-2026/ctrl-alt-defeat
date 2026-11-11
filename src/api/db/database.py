@@ -15,11 +15,25 @@ def normalize_database_url(url: str) -> str:
 # An empty value (e.g. `DATABASE_URL=` in .env) also means the local SQLite file
 DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL") or "sqlite:///./app.db")
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args=connect_args,
+        pool_pre_ping=True,
+    )
+else:
+    connect_args = {
+        "connect_timeout": 5,
+        "options": "-c statement_timeout=10000",
+    }
 
-# pool_pre_ping: a pooled connection is checked before use and transparently replaced
-# if the database was restarted (REL-001)
-engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args=connect_args,
+        pool_pre_ping=True,
+        pool_timeout=10,
+    )
 
 SessionLocal = sessionmaker(
     autocommit=False,

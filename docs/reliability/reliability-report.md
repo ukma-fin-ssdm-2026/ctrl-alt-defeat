@@ -19,11 +19,11 @@
 | 5 | C | Пошук без `max_length`, рік без меж (`500` на завеликому році) | Середня | Учасник 1 | Відкрито |
 | 6 | D, C | Зведення відгуків падає на оцінці `None` | Низька | Іван Ліфєнцєв | Виправлено (PR #205) |
 | 7 | D, A | Перевірка пароля: широкий `except` без логування; пошкоджений хеш давав `500` | Низька → **Середня** (див. 2.4) | Михайло Крилов | **Виправлено** |
-| 8 | E | N+1 запитів у списку «Переглянуте» | Середня | Учасник 2 | Відкрито |
+| 8 | E | N+1 запитів у списку «Переглянуте» | Середня | Юлія Галка | **Виправлено**  |
 | 9 | C | Числовий `id` фільму без меж: `500` замість `404` | Середня | Учасник 1 | Відкрито |
-| 10 | B | БД без тайм-аутів з'єднання й запиту | Висока | Учасник 2 | Відкрито |
-| 11 | B | Старт не переживає недоступну БД | Висока | Учасник 2 | Відкрито |
-| 12 | A | Гонитва при реєстрації та в «Переглянутому» | Середня | Учасник 2 | Відкрито |
+| 10 | B | БД без тайм-аутів з'єднання й запиту | Висока | Юлія Галка | **Виправлено**  |
+| 11 | B | Старт не переживає недоступну БД | Висока | Юлія Галка | **Виправлено**  |
+| 12 | A | Гонитва при реєстрації та в «Переглянутому» | Середня | Юлія Галка | **Виправлено**  |
 | 13 | E | Повний імпорт TMDB синхронно під час старту | Середня | Михайло Крилов | **Виправлено** |
 | 14 | B | HTTP-клієнт фронтенду без тайм-ауту | Середня | Михайло Крилов | **Виправлено** |
 | 15 | C | `int(os.getenv(...))` під час імпорту модулів | Низька | Михайло Крилов | **Виправлено** |
@@ -42,9 +42,248 @@ _Заповнює Іван Ліфєнцєв: до/після, патерн, шв
 
 _Заповнює учасник 1._
 
-### 2.3. Учасник 2 — знахідки 8, 10, 11, 12
+### 2.3. Юлія Галка — знахідки 8, 10, 11, 12
 
-_Заповнює учасник 2._
+#### Знахідка 10. Відсутність тайм-аутів бази даних (B, висока)
+
+**До:** у `src/api/db/database.py` підключення до PostgreSQL не мало явно заданих тайм-аутів. Якщо база даних не відповідала, операції могли тривалий час очікувати завершення.
+
+```python
+engine = create_engine(
+    DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=True,
+)
+```
+
+**Після:** додано обмеження часу підключення, виконання SQL-запитів та очікування з'єднання з пулу.
+
+```python
+connect_args = {
+    "connect_timeout": 5,
+    "options": "-c statement_timeout=10000",
+}
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=True,
+    pool_timeout=10,
+)
+```
+
+Також у `src/api/main.py` додано глобальний обробник `OperationalError`, який повертає HTTP 503 замість внутрішньої помилки сервера.
+
+```python
+@app.exception_handler(OperationalError)
+async def database_error_handler(request: Request, exc: OperationalError):
+    logger.error("Database operation failed: %s", exc)
+
+    error_content = ErrorResponse(
+        error=ErrorPayload(
+            code="DATABASE_UNAVAILABLE",
+            message="Database is temporarily unavailable",
+            request_id=str(uuid.uuid4()),
+            documentation="https://api.our-movie-platform.com/docs/errors#database-unavailable",
+        )
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content=error_content.model_dump(),
+    )
+```
+
+- **Патерни:** Fail Fast, тайм-аути, централізована обробка помилок.
+- **Режим відмови:** швидка відмова.
+- **Що бачить користувач:** HTTP 503 із кодом `DATABASE_UNAVAILABLE`.
+- **Відновлення:** після відновлення доступності БД наступні запити можуть виконуватися нормально.
+- **Тест:** `tests/reliability/test_database_failures.py` — ін'єкція `OperationalError` та перевірка HTTP 503.
+
+#### Знахідка 11. Недоступність БД під час запуску (B, висока)
+
+**До:** у `src/api/main.py` застосунок одразу виконував ініціалізацію таблиць.
+
+```python
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+```
+
+Якщо PostgreSQL була недоступна, виникала помилка, яка переривала запуск застосунку.
+
+**Після:** реалізовано функцію `initialize_database_with_retry()`, яка виконує до п'яти спроб підключення з експоненційним відступом і повним джитером.
+
+```python
+def initialize_database_with_retry(
+    max_attempts: int = 5,
+    base_delay: float = 0.5,
+    max_delay: float = 5.0,
+) -> bool:
+    for attempt in range(max_attempts):
+        try:
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database initialized successfully")
+            return True
+
+        except OperationalError as exc:
+            logger.warning(
+                "Database initialization failed (attempt %d/%d): %s",
+                attempt + 1,
+                max_attempts,
+                exc,
+            )
+
+            if attempt == max_attempts - 1:
+                logger.error("Database unavailable after %d attempts", max_attempts)
+                return False
+
+            delay = random.uniform(
+                0,
+                min(max_delay, base_delay * (2 ** attempt)),
+            )
+            time.sleep(delay)
+
+    return False
+```
+
+Якщо всі спроби завершуються невдало, застосунок запускається в деградованому режимі.
+
+```python
+database_available = initialize_database_with_retry()
+app.state.database_available = database_available
+
+if database_available:
+    # Початкова ініціалізація БД
+    ...
+else:
+    logger.warning(
+        "Starting application in degraded mode: database unavailable"
+    )
+```
+
+- **Патерни:** Retry, Exponential Backoff, Full Jitter, Graceful Degradation.
+- **Режим відмови:** безпечна відмова.
+- **Що бачить користувач:** `/health/live` повертає 200, а `/health` — 503.
+- **Відновлення:** після відновлення БД повторний запуск застосунку дозволяє завершити ініціалізацію.
+- **Тести:** `tests/reliability/test_startup_retries.py` — перевірка кількості спроб, затримок і деградованого режиму.
+
+#### Знахідка 12. Конкурентні записи (A, середня)
+
+**До:** у `src/api/routers/auth.py` та `src/api/routers/watched.py` перед створенням запису перевірялася його наявність.
+
+Однак два одночасні запити могли пройти перевірку та спробувати створити однаковий запис. Це призводило до `IntegrityError`.
+
+**Після:** додано обробку `IntegrityError` із викликом `rollback()`.
+
+У `auth.py` конфлікт реєстрації повертає HTTP 409.
+
+```python
+db.add(user)
+
+try:
+    db.commit()
+except IntegrityError:
+    db.rollback()
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": "USER_ALREADY_EXISTS",
+            "message": "An account with this email or nickname already exists",
+        },
+    )
+
+db.refresh(user)
+```
+
+У `watched.py` після конфлікту повторно перевіряється наявність запису.
+
+```python
+db.add(new_item)
+
+try:
+    db.commit()
+except IntegrityError:
+    db.rollback()
+
+    existing = (
+        db.query(models.WatchedItem)
+        .filter(
+            models.WatchedItem.user_id == current_user.user_id,
+            models.WatchedItem.content_id == payload.content_id,
+        )
+        .first()
+    )
+
+    if existing:
+        response.status_code = status.HTTP_200_OK
+        return _build_watched_response(existing, db)
+
+    raise
+
+db.refresh(new_item)
+```
+
+Якщо інший запит уже додав фільм до переглянутого, повертається наявний запис зі статусом HTTP 200.
+
+- **Патерни:** Race Condition Handling, Rollback, ідемпотентна поведінка.
+- **Режим відмови:** контрольована обробка конфлікту.
+- **Що бачить користувач:** HTTP 409 при конфлікті реєстрації або HTTP 200 при повторному додаванні переглянутого.
+- **Відновлення:** після `rollback()` сесія повертається до коректного стану.
+- **Тести:** `tests/reliability/test_concurrent_writes.py` — перевірка `IntegrityError`, HTTP 409, HTTP 200 та `rollback()`.
+
+#### Знахідка 8. N+1 SQL-запитів у списку «Переглянуте» (E, середня)
+
+**До:** у `src/api/routers/watched.py` спочатку отримувався список переглянутих фільмів, після чого для кожного фільму виконувався окремий SQL-запит.
+
+```python
+watched_items = (
+    db.query(models.WatchedItem)
+    .filter(models.WatchedItem.user_id == current_user.user_id)
+    .order_by(models.WatchedItem.created_at.desc())
+    .all()
+)
+
+items = [_build_watched_response(item, db) for item in watched_items]
+```
+
+У `_build_watched_response()` виконувався додатковий запит:
+
+```python
+content = (
+    db.query(models.Content)
+    .filter(models.Content.content_id == watched.content_id)
+    .first()
+)
+```
+
+Для 50 переглянутих фільмів це означало приблизно 51 SQL-запит.
+
+**Після:** реалізовано отримання даних одним запитом через `OUTER JOIN`.
+
+```python
+results = (
+    db.query(models.WatchedItem, models.Content)
+    .outerjoin(
+        models.Content,
+        models.WatchedItem.content_id == models.Content.content_id,
+    )
+    .filter(models.WatchedItem.user_id == current_user.user_id)
+    .order_by(models.WatchedItem.created_at.desc())
+    .all()
+)
+```
+
+Тепер інформація про всі переглянуті фільми отримується одним SQL-запитом.
+
+`OUTER JOIN` дозволяє зберегти записи переглянутого, навіть якщо відповідний фільм відсутній у таблиці `Content`.
+
+- **Патерни:** усунення N+1, оптимізація SQL-запитів, JOIN.
+- **Режим відмови:** запобігання деградації продуктивності.
+- **Що бачить користувач:** той самий список фільмів із меншою кількістю звернень до БД.
+- **Відновлення:** окремий механізм не потрібен, оскільки усунуто причину надмірних запитів.
+- **Тест:** `tests/reliability/test_watched_query_performance.py` — 50 фільмів, підрахунок SQL-запитів через `event.listen()`, перевірка обмеження не більше 2 запитів.
 
 ### 2.4. Михайло Крилов — знахідки 7, 13, 14, 15, 16
 
@@ -246,6 +485,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 | [`tests/reliability/test_password_check.py`](../../tests/reliability/test_password_check.py) | Обробка помилки | 7 | Логін із пошкодженим і обрізаним хешем → `401`, хеш і пароль не потрапляють ні у відповідь, ні в лог; `None`, порожні, обрізані й неправильного типу хеші не кидають винятків |
 | [`frontend/src/reliability/apiTimeout.test.js`](../../frontend/src/reliability/apiTimeout.test.js) | Зовнішня відмова (ін'єкція збою) | 14 | Сервер, який приймає з'єднання й ніколи не відповідає → запит обривається з `ECONNABORTED` менш ніж за 2 с; клієнт має тайм-аут 30 с |
 | [`frontend/src/reliability/apiRetry.test.js`](../../frontend/src/reliability/apiRetry.test.js) | Зовнішня відмова (ін'єкція збою) | 14 | Перший `GET` «висне» або отримує `503`, другий успішний → сторінка отримує дані; сервер падає завжди → рівно 2 спроби, далі помилка; `POST` не повторюється ніколи; які збої повторюються, а які ні (`404`, `500`, `DELETE`, уже повторений запит) |
+| [`tests/reliability/test_database_failures.py`](../../tests/reliability/test_database_failures.py) | Ін'єкція збою | 10 | Недоступність БД (`OperationalError`) → HTTP 503 `DATABASE_UNAVAILABLE` замість 500 |
+| [`tests/reliability/test_startup_retries.py`](../../tests/reliability/test_startup_retries.py) | Ін'єкція збою | 11 | Дві невдалі спроби та успіх на третій; 5 невдалих спроб; експоненційні затримки з джитером; деградований режим |
+| [`tests/reliability/test_concurrent_writes.py`](../../tests/reliability/test_concurrent_writes.py) | Обробка помилки | 12 | `IntegrityError` під час реєстрації → 409; під час додавання переглянутого → 200; перевірка `rollback()` |
+| [`tests/reliability/test_watched_query_performance.py`](../../tests/reliability/test_watched_query_performance.py) | Граничний | 8 | Список із 50 фільмів → не більше 2 SQL-запитів, підрахунок через `event.listen()` |
 
 Запуск локально: `pytest tests/reliability -v` і `cd frontend && npm run test:reliability`.
 
@@ -270,3 +513,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 - **Захист від випадкового видалення:** тест `tests/test_workflows_security.py::test_reliability_tests_run_as_a_separate_ci_job` падає, якщо job або його кроки зникнуть з `ci.yml`.
 - **Прогін, де крок пройшов:** [CI Test → job `reliability`, PR #206](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43012171808/job/130494249315) — обидва кроки («Reliability tests (tests/reliability)» і «Reliability tests (frontend/src/reliability)») зелені.
 - **Доказ обов'язковості:** у правилі захисту гілки `main` (Settings → Branches → *Require status checks to pass before merging*) обов'язкові перевірки `build` і `reliability`; у PR біля `reliability` показано позначку **Required**, без неї PR не можна змерджити. Показано у відео.
+
+#### Exponential Backoff + Full Jitter (Юлія Галка)
+
+У `src/api/main.py` реалізовано повторні спроби ініціалізації БД із експоненційним збільшенням затримки та випадковим джитером.
+
+- Максимум 5 спроб підключення.
+- Затримка обчислюється через `random.uniform(0, min(max_delay, base_delay * 2 ** attempt))`.
+- Після вичерпання спроб застосунок переходить у деградований режим.
+- Тести: `tests/reliability/test_startup_retries.py` — перевірка кількості спроб і меж затримок.
+
+#### Health Checks (Liveness / Readiness) (Юлія Галка)
+
+У `src/api/routers/health.py` реалізовано розділення перевірок працездатності та готовності застосунку.
+
+- `/health/live` — повертає HTTP 200, якщо процес працює, незалежно від стану БД.
+- `/health` — перевіряє доступність БД через `SELECT 1` і повертає HTTP 503 у разі збою.
+- Якщо ініціалізація БД не вдалася, застосунок продовжує працювати в деградованому режимі.
+- Тести: `tests/reliability/test_startup_retries.py` — перевірка статусів 200 і 503.

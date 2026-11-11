@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from pydantic import UUID4
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from src.api.db import models
 from src.api.db.database import SessionLocal
@@ -54,20 +55,40 @@ def _build_watched_response(watched: models.WatchedItem, db: Session) -> Watched
         401: {"model": ErrorResponse, "description": "Authentication required"},
     },
 )
+
 def get_watched_list(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    watched_items = (
-        db.query(models.WatchedItem)
+    results = (
+        db.query(models.WatchedItem, models.Content)
+        .outerjoin(
+            models.Content,
+            models.WatchedItem.content_id == models.Content.content_id,
+        )
         .filter(models.WatchedItem.user_id == current_user.user_id)
         .order_by(models.WatchedItem.created_at.desc())
         .all()
     )
 
-    items = [_build_watched_response(item, db) for item in watched_items]
-    return WatchedListResponse(items=items, total=len(items))
+    items = [
+        WatchedItemResponse(
+            id=watched.id,
+            user_id=watched.user_id,
+            content_id=watched.content_id,
+            created_at=watched.created_at,
+            title=content.title if content else None,
+            title_en=content.title_en if content else None,
+            category=content.category if content else None,
+            genre=content.genre if content else None,
+            year=content.year if content else None,
+            rating=content.rating if content else None,
+            img=content.img if content else None,
+        )
+        for watched, content in results
+    ]
 
+    return WatchedListResponse(items=items, total=len(items))
 
 @router.post(
     "",
@@ -104,11 +125,30 @@ def mark_as_watched(
         content_id=payload.content_id,
     )
     db.add(new_item)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+
+        existing = (
+            db.query(models.WatchedItem)
+            .filter(
+                models.WatchedItem.user_id == current_user.user_id,
+                models.WatchedItem.content_id == payload.content_id,
+            )
+            .first()
+        )
+
+        if existing:
+            response.status_code = status.HTTP_200_OK
+            return _build_watched_response(existing, db)
+
+        raise
+
     db.refresh(new_item)
 
     return _build_watched_response(new_item, db)
-
 
 @router.get(
     "/{content_id}",

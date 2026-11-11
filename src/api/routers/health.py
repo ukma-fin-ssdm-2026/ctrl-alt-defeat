@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -52,7 +52,13 @@ def liveness():
     summary="Health check for monitoring and container orchestration (REL-001)",
     responses={503: {"model": HealthResponse, "description": "The database is unavailable"}},
 )
-def health(db: Session = Depends(get_db)):
+def health(request: Request, db: Session = Depends(get_db)):
+    if getattr(request.app.state, "database_available", True) is False:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "degraded", "database": "unavailable"},
+        )
+
     try:
         db.execute(text("SELECT 1"))
     except SQLAlchemyError:
@@ -60,4 +66,5 @@ def health(db: Session = Depends(get_db)):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "degraded", "database": "unavailable"},
         )
+
     return HealthResponse(status="ok", database="ok")
