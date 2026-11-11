@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { mockMovies } from '../data/mockData';
 import { getDisplayName } from '../utils/displayName';
 import { translateGenre } from '../utils/genres';
 import useCatalogGenres from '../hooks/useCatalogGenres';
@@ -45,7 +44,7 @@ export default function Header({
 
   const availableYears = [2026, 2024, 2023, 2021, 2020, 2019, 2017, 2016, 2014, 2011, 2010, 2008, 2001, 1994];
 
-  const movieSource = (movies && movies.length > 0) ? movies : mockMovies;
+  const movieSource = movies || [];
   const suggestions = searchQuery.trim() === '' ? [] : movieSource.filter(movie => {
     const title = movie.title || '';
     const titleEn = movie.title_en || movie.titleEn || '';
