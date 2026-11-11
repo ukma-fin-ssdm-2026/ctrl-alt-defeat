@@ -28,7 +28,6 @@ from src.api.services.tmdb import seed_catalog_if_empty
 from src.api.db.database import SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 
-
 logger = logging.getLogger(__name__)
 
 

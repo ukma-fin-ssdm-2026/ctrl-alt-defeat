@@ -14,6 +14,7 @@ Exit codes:
     0 — all traceability checks passed
     1 — gaps or orphan references found
 """
+
 import re
 import sys
 from pathlib import Path
