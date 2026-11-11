@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import UUID4
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.api.db.models import Content, User, WatchlistItem
@@ -74,7 +75,16 @@ def add_to_watchlist(
         )
 
     db.add(WatchlistItem(user_id=user.user_id, content_id=payload.content_id, added_at=datetime.now(UTC)))
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Race condition (scavenger hunt, finding 2): two simultaneous requests passed the check above,
+        # the UNIQUE (user_id, content_id) constraint in the DB catches the second one.
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "ALREADY_IN_WATCHLIST", "message": "This title is already in your watchlist"},
+        )
     return content
 
 
