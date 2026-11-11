@@ -4,6 +4,7 @@ from typing import Optional
 import jwt
 from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from src.api.db.database import SessionLocal
 from src.api.db.models import User
@@ -177,7 +178,19 @@ def register_user(
         verification_token=verification_token,
     )
     db.add(user)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "USER_ALREADY_EXISTS",
+                "message": "An account with this email or nickname already exists",
+            },
+        )
+
     db.refresh(user)
 
     # Sent after the response, so a slow mail provider does not delay registration
