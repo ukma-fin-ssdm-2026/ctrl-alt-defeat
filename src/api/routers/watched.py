@@ -28,8 +28,8 @@ def get_db():
         db.close()
 
 
-def _build_watched_response(watched: models.WatchedItem, db: Session) -> WatchedItemResponse:
-    content = db.query(models.Content).filter(models.Content.content_id == watched.content_id).first()
+def _watched_response(watched: models.WatchedItem, content) -> WatchedItemResponse:
+    """Response item from a watched record and its title (None if the title is gone from the catalog)."""
     return WatchedItemResponse(
         id=watched.id,
         user_id=watched.user_id,
@@ -45,6 +45,11 @@ def _build_watched_response(watched: models.WatchedItem, db: Session) -> Watched
     )
 
 
+def _build_watched_response(watched: models.WatchedItem, db: Session) -> WatchedItemResponse:
+    content = db.query(models.Content).filter(models.Content.content_id == watched.content_id).first()
+    return _watched_response(watched, content)
+
+
 @router.get(
     "",
     response_model=WatchedListResponse,
@@ -55,7 +60,6 @@ def _build_watched_response(watched: models.WatchedItem, db: Session) -> Watched
         401: {"model": ErrorResponse, "description": "Authentication required"},
     },
 )
-
 def get_watched_list(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -71,24 +75,11 @@ def get_watched_list(
         .all()
     )
 
-    items = [
-        WatchedItemResponse(
-            id=watched.id,
-            user_id=watched.user_id,
-            content_id=watched.content_id,
-            created_at=watched.created_at,
-            title=content.title if content else None,
-            title_en=content.title_en if content else None,
-            category=content.category if content else None,
-            genre=content.genre if content else None,
-            year=content.year if content else None,
-            rating=content.rating if content else None,
-            img=content.img if content else None,
-        )
-        for watched, content in results
-    ]
+    # Reliability (finding 8): one query with a JOIN instead of one query per title (N+1)
+    items = [_watched_response(watched, content) for watched, content in results]
 
     return WatchedListResponse(items=items, total=len(items))
+
 
 @router.post(
     "",
@@ -149,6 +140,7 @@ def mark_as_watched(
     db.refresh(new_item)
 
     return _build_watched_response(new_item, db)
+
 
 @router.get(
     "/{content_id}",

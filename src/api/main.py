@@ -53,6 +53,7 @@ def save_openapi_spec(app: FastAPI):
         # Reliability pattern: Graceful degradation / fallback for read-only filesystem environments
         logger.warning("Could not save auto-generated OpenAPI spec to file (%s). Continuing startup.", error)
 
+
 def initialize_database_with_retry(
     max_attempts: int = 5,
     base_delay: float = 0.5,
@@ -85,15 +86,17 @@ def initialize_database_with_retry(
 
             delay = random.uniform(
                 0,
-                min(max_delay, base_delay * (2 ** attempt)),
+                min(max_delay, base_delay * (2**attempt)),
             )
 
             time.sleep(delay)
 
     return False
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Reliability (finding 11): retries with backoff and jitter, then a degraded start instead of a crash
     database_available = initialize_database_with_retry()
     app.state.database_available = database_available
 
@@ -102,13 +105,14 @@ async def lifespan(app: FastAPI):
 
         try:
             seed_default_users(db)
+            # A fresh database gets the movie catalog automatically (no manual seed step, no network)
             seeded = seed_catalog_if_empty(db)
+            # Genre dictionary + links for titles added before the genre tables existed (issue #61)
             link_catalog_genres(db)
-
+            # Reliability (findings 13, 16): an update cut off by a restart is reported as failed, and the real
+            # catalog of a fresh database is imported from TMDB in the background, not while the service starts
             catalog_sync.mark_interrupted_runs(db)
-
             api_key = catalog_sync.tmdb_api_key()
-
             if seeded and api_key:
                 catalog_sync.start_in_background(db, api_key)
 
@@ -120,9 +124,7 @@ async def lifespan(app: FastAPI):
             db.close()
 
     else:
-        logger.warning(
-            "Starting application in degraded mode: database unavailable"
-        )
+        logger.warning("Starting application in degraded mode: database unavailable")
 
     save_openapi_spec(app)
 
@@ -140,9 +142,14 @@ app = FastAPI(
     responses={422: STANDARD_ERRORS[422]},
 )
 
+
 @app.exception_handler(OperationalError)
 async def database_error_handler(request: Request, exc: OperationalError):
-    logger.error("Database operation failed: %s", exc)
+    # Reliability (finding 10): fast failure with 503 instead of a 500 or a hanging request.
+    # Only the driver message is logged: str(exc) also contains the SQL statement and its parameters.
+    logger.error(
+        "Database operation failed on %s: %s", request.url.path, getattr(exc, "orig", None) or type(exc).__name__
+    )
 
     error_content = ErrorResponse(
         error=ErrorPayload(
@@ -157,6 +164,7 @@ async def database_error_handler(request: Request, exc: OperationalError):
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         content=error_content.model_dump(),
     )
+
 
 app.include_router(health_router)
 app.include_router(auth_router)

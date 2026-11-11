@@ -89,10 +89,6 @@ def test_watched_list_50_movies_uses_at_most_two_queries():
             assert titles == {f"Movie {i}" for i in range(50)}
 
             # Головна перевірка продуктивності.
-            assert len(queries) <= 2, (
-                f"Expected at most 2 SQL queries, "
-                f"but executed {len(queries)}"
-            )
+            assert len(queries) <= 2, f"Expected at most 2 SQL queries, " f"but executed {len(queries)}"
     finally:
         engine.dispose()
-        
