@@ -21,7 +21,7 @@
 - Владислав Виговський 
 - Максим Годік
 
-## Артефакти та документація (Лабораторні роботи 1–8)
+## Артефакти та документація (Лабораторні роботи 1–9)
 
 Повний індекс документації доступний у [docs/README.md](./docs/README.md).
 
@@ -82,6 +82,12 @@
 - [Звіт SonarQube Cloud: метрики до/після, рефакторинги, використання ШІ, регресія](./docs/refactoring/sonarcloud-report.md)
 - [Журнал змін (CHANGELOG.md)](./CHANGELOG.md), реліз `v0.1.1`
 - [Відеопрезентація Лаб 8](./Labs/Lab08/)
+
+### Лабораторна робота 9: Надійність та «Resilience Scavenger Hunt»
+- [Пошук ризиків надійності: несправність → помилка → відмова, виправлення (Scavenger Hunt)](./docs/reliability/scavenger-hunt.md)
+- [Звіт про надійність: до/після, патерни, режими відмов і відновлення, бонуси](./docs/reliability/reliability-report.md)
+- [Тести надійності: бекенд](./tests/reliability/) і [фронтенд](./frontend/src/reliability/) (обов'язкова перевірка `reliability` у CI)
+- [Відеопрезентація Лаб 9](./Labs/Lab09/)
 
 ### Додаткові звіти
 - [Демонстрація проміжного етапу (Midterm Presentation)](./Labs/midterm-presentation.txt)
