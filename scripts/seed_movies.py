@@ -2,6 +2,7 @@
 """
 Seed script to populate initial movie and series catalog into database (FR-002, FR-012).
 """
+
 import sys
 from pathlib import Path
 
