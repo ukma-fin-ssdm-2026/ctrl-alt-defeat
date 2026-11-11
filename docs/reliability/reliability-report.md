@@ -224,7 +224,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 | [`tests/reliability/test_password_check.py`](../../tests/reliability/test_password_check.py) | Обробка помилки | 7 | Логін із пошкодженим і обрізаним хешем → `401`, хеш і пароль не потрапляють ні у відповідь, ні в лог; `None`, порожні, обрізані й неправильного типу хеші не кидають винятків |
 | [`frontend/src/reliability/apiTimeout.test.js`](../../frontend/src/reliability/apiTimeout.test.js) | Зовнішня відмова (ін'єкція збою) | 14 | Сервер, який приймає з'єднання й ніколи не відповідає → запит обривається з `ECONNABORTED` менш ніж за 2 с; клієнт має тайм-аут 30 с |
 
-Запуск локально: `pytest tests/reliability -v` і `cd frontend && npx vitest run src/reliability`.
+Запуск локально: `pytest tests/reliability -v` і `cd frontend && npm run test:reliability`.
 
 ---
 
@@ -243,7 +243,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 - **Окремий крок у CI.** У [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) додано job `reliability`, що на кожен PR і push у `main` запускає:
   - `pytest tests/reliability -v` — крок «Reliability tests (tests/reliability)»;
-  - `npx vitest run src/reliability` — крок «Reliability tests (frontend/src/reliability)».
+  - `npm run test:reliability` (`vitest run src/reliability`) — крок «Reliability tests (frontend/src/reliability)». Саме через `npm run`, а не `npx`: `npx` може сам завантажити й запустити пакет, на що вказав SonarCloud.
 - **Обов'язкова перевірка гілки `main`.** Перевірку `reliability` додано до Settings → Branches → `main` → *Require status checks to pass before merging* (поруч із `build`).
 - **Захист від випадкового видалення:** тест `tests/test_workflows_security.py::test_reliability_tests_run_as_a_separate_ci_job` падає, якщо job або його кроки зникнуть з `ci.yml`.
 - **Прогін, де крок пройшов:** _посилання на прогін job `reliability` додати після першого запуску в PR_.
