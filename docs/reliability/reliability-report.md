@@ -246,5 +246,5 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
   - `npm run test:reliability` (`vitest run src/reliability`) — крок «Reliability tests (frontend/src/reliability)». Саме через `npm run`, а не `npx`: `npx` може сам завантажити й запустити пакет, на що вказав SonarCloud.
 - **Обов'язкова перевірка гілки `main`.** Перевірку `reliability` додано до Settings → Branches → `main` → *Require status checks to pass before merging* (поруч із `build`).
 - **Захист від випадкового видалення:** тест `tests/test_workflows_security.py::test_reliability_tests_run_as_a_separate_ci_job` падає, якщо job або його кроки зникнуть з `ci.yml`.
-- **Прогін, де крок пройшов:** _посилання на прогін job `reliability` додати після першого запуску в PR_.
-- **Доказ обов'язковості:** _скріншот налаштувань захисту гілки `main` з перевіркою `reliability`_.
+- **Прогін, де крок пройшов:** [CI Test → job `reliability`, PR #206](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43012171808/job/130494249315) — обидва кроки («Reliability tests (tests/reliability)» і «Reliability tests (frontend/src/reliability)») зелені.
+- **Доказ обов'язковості:** у правилі захисту гілки `main` (Settings → Branches → *Require status checks to pass before merging*) обов'язкові перевірки `build` і `reliability`; у PR біля `reliability` показано позначку **Required**, без неї PR не можна змерджити. Показано у відео.
