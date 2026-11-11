@@ -16,8 +16,8 @@ packaging==26.3
 pluggy==1.7.0
 psycopg2-binary==2.9.13
 pyjwt==2.15.1
-pydantic==2.14.2
-pydantic_core==2.50.2
+pydantic==2.14.3
+pydantic_core==2.50.4
 Pygments==2.21.0
 pytest==9.2.0
 pytest-cov==7.1.0
