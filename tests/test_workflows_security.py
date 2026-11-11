@@ -1,5 +1,6 @@
 """GitHub Actions guard rails for a public repository."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -54,3 +55,18 @@ def test_render_does_not_wait_for_the_deployment_check():
     assert recorder.exists()
     for service in services:
         assert service.get("autoDeployTrigger") != "checksPass", service["name"]
+
+
+def test_reliability_tests_run_as_a_separate_ci_job():
+    """Lab 9 bonus: the job "reliability" runs tests/reliability on every PR, so it can be a required check."""
+    ci = yaml.safe_load((Path(__file__).resolve().parents[1] / ".github" / "workflows" / "ci.yml").read_text("utf-8"))
+    triggers = ci.get("on", ci.get(True))
+    steps = ci["jobs"]["reliability"]["steps"]
+
+    assert "pull_request" in triggers
+    assert any("pytest tests/reliability" in step.get("run", "") for step in steps)
+    assert any("npm run test:reliability" in step.get("run", "") for step in steps)
+    # The locally installed vitest is used: npx could download and run a package (SonarCloud security rule)
+    assert not any("npx " in step.get("run", "") for step in steps)
+    package = json.loads((Path(__file__).resolve().parents[1] / "frontend" / "package.json").read_text("utf-8"))
+    assert package["scripts"]["test:reliability"] == "vitest run src/reliability"

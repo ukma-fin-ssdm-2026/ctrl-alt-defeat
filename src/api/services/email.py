@@ -24,6 +24,8 @@ from email.message import EmailMessage
 from typing import Optional
 from urllib.parse import urlencode, urlparse
 
+from src.api.settings import env_int
+
 logger = logging.getLogger(__name__)
 
 BREVO_URL = "https://api.brevo.com/v3/smtp/email"
@@ -135,7 +137,7 @@ def _send_smtp(to: str, subject: str, text: str, html: str) -> None:
 
     host = os.environ["SMTP_HOST"]
     security = os.getenv("SMTP_SECURITY", "starttls").lower()
-    port = int(os.getenv("SMTP_PORT") or (465 if security == "ssl" else 587))
+    port = env_int("SMTP_PORT", 465 if security == "ssl" else 587, minimum=1, maximum=65535)
     user, password = os.getenv("SMTP_USER"), os.getenv("SMTP_PASSWORD")
     context = ssl.create_default_context()
     try:

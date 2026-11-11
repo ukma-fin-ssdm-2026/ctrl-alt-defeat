@@ -22,6 +22,7 @@ from src.api.routers.admin import router as admin_router
 from src.api.routers.health import router as health_router
 from src.api.frontend import mount_frontend
 from src.api.services.demo_accounts import seed_default_users
+from src.api.services import catalog_sync
 from src.api.services.genres import link_catalog_genres
 from src.api.services.tmdb import seed_catalog_if_empty
 from src.api.db.database import SessionLocal
@@ -57,10 +58,16 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_default_users(db)
-        # A fresh database gets the movie catalog automatically (no manual seed step)
-        seed_catalog_if_empty(db)
+        # A fresh database gets the movie catalog automatically (no manual seed step, no network)
+        seeded = seed_catalog_if_empty(db)
         # Genre dictionary + links for titles added before the genre tables existed (issue #61)
         link_catalog_genres(db)
+        # Reliability (findings 13, 16): an update cut off by a restart is reported as failed, and the real
+        # catalog of a fresh database is imported from TMDB in the background, not while the service starts
+        catalog_sync.mark_interrupted_runs(db)
+        api_key = catalog_sync.tmdb_api_key()
+        if seeded and api_key:
+            catalog_sync.start_in_background(db, api_key)
     finally:
         db.close()
     save_openapi_spec(app)

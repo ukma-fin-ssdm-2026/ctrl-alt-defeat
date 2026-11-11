@@ -261,3 +261,28 @@ class Ban(Base):
     starts_at = Column(DateTime(timezone=True), nullable=False)
     ends_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
+
+
+class CatalogSyncRun(Base):
+    """
+    One catalog update from TMDB (FR-012; reliability report, finding 16).
+    Stored in the database so that a restart of the service in the middle of an import is not lost:
+    on startup a run that is still "running" is marked as interrupted.
+    """
+
+    __tablename__ = "catalog_sync_runs"
+    __table_args__ = (
+        CheckConstraint("state IN ('running', 'done', 'failed')", name="ck_catalog_sync_runs_state"),
+        {"extend_existing": True},
+    )
+
+    run_id = Column(Integer, primary_key=True, autoincrement=True)
+    state = Column(String(20), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    added = Column(Integer, nullable=False, default=0)
+    updated = Column(Integer, nullable=False, default=0)
+    skipped = Column(Integer, nullable=False, default=0)
+    placeholders_removed = Column(Integer, nullable=False, default=0)
+    placeholders_kept = Column(Integer, nullable=False, default=0)
+    error = Column(Text, nullable=True)

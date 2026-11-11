@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.api.db.database import Base
-from src.api.db.models import Content, ContentGenre, Genre, User
+from src.api.db.models import CatalogSyncRun, Content, ContentGenre, Genre, User
 from src.api.main import app
 from src.api.routers import admin as admin_router
 from src.api.routers import auth as auth_router
@@ -326,10 +326,10 @@ def client(db_session):
 
 
 @pytest.fixture(autouse=True)
-def reset_sync_status():
-    catalog_sync._status.update(
-        state="idle", started_at=None, finished_at=None, added=0, updated=0, skipped=0, error=None
-    )
+def reset_sync_status(db_session):
+    # The state of updates is stored in the database (reliability report, finding 16)
+    db_session.query(CatalogSyncRun).delete()
+    db_session.commit()
     yield
 
 
@@ -382,7 +382,7 @@ def test_sync_needs_a_key_an_admin_and_one_run_at_a_time(client, db_session, mon
 
     monkeypatch.setenv("TMDB_API_KEY", "key")
     assert client.post(SYNC, headers=auth(viewer)).status_code == 403
-    catalog_sync.try_start()
+    catalog_sync.try_start(db_session)
     busy = client.post(SYNC, headers=auth(admin))
     assert busy.status_code == 409
     assert busy.json()["error"]["code"] == "SYNC_IN_PROGRESS"

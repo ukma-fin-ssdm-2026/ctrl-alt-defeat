@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from src.api.db.database import Base
 from src.api.db.models import (
+    CatalogSyncRun,
     Comment,
     Content,
     ContentGenre,
@@ -150,11 +151,14 @@ def test_admin_update_reports_removed_placeholders(db, monkeypatch):
     seed_movies_to_database(db, FALLBACK_MOVIES)
     monkeypatch.setattr(catalog_sync, "SessionLocal", TestingSessionLocal)
     monkeypatch.setattr(catalog_sync, "fetch_tmdb_catalog", lambda key: [real(DUNE, 693134)])
-    catalog_sync.try_start()
+    db.query(CatalogSyncRun).delete()
+    db.commit()
+    run_id = catalog_sync.try_start(db)
 
-    catalog_sync.run_sync("key")
+    catalog_sync.run_sync("key", run_id)
 
-    status = catalog_sync.get_status()
+    db.expire_all()
+    status = catalog_sync.get_status(db)
     assert (status["state"], status["updated"], status["placeholders_removed"]) == ("done", 1, len(FALLBACK_MOVIES) - 1)
     db.expire_all()
     assert db.query(Content).count() == 1
