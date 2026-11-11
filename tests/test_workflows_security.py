@@ -1,5 +1,6 @@
 """GitHub Actions guard rails for a public repository."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -64,4 +65,8 @@ def test_reliability_tests_run_as_a_separate_ci_job():
 
     assert "pull_request" in triggers
     assert any("pytest tests/reliability" in step.get("run", "") for step in steps)
-    assert any("vitest run src/reliability" in step.get("run", "") for step in steps)
+    assert any("npm run test:reliability" in step.get("run", "") for step in steps)
+    # The locally installed vitest is used: npx could download and run a package (SonarCloud security rule)
+    assert not any("npx " in step.get("run", "") for step in steps)
+    package = json.loads((Path(__file__).resolve().parents[1] / "frontend" / "package.json").read_text("utf-8"))
+    assert package["scripts"]["test:reliability"] == "vitest run src/reliability"

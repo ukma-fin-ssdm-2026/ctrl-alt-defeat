@@ -91,7 +91,7 @@ jobs:
 
       - name: Reliability tests (frontend/src/reliability)
         working-directory: frontend
-        run: npx vitest run src/reliability
+        run: npm run test:reliability
 
   frontend:
     runs-on: ubuntu-latest
