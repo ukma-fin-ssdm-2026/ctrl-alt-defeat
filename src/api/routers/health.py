@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Optional
 
@@ -9,6 +10,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.api.db.database import SessionLocal
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["health"])
 
@@ -53,12 +56,7 @@ def liveness():
     responses={503: {"model": HealthResponse, "description": "The database is unavailable"}},
 )
 def health(request: Request, db: Session = Depends(get_db)):
-    if getattr(request.app.state, "database_available", True) is False:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "degraded", "database": "unavailable"},
-        )
-
+    # The database is checked on every call: the answer reflects its state now, not at startup
     try:
         db.execute(text("SELECT 1"))
     except SQLAlchemyError:
@@ -66,5 +64,11 @@ def health(request: Request, db: Session = Depends(get_db)):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "degraded", "database": "unavailable"},
         )
+
+    # Reliability (finding 11): the database came back after a degraded start; without this the service
+    # would stay "degraded" until a restart even though requests work again
+    if getattr(request.app.state, "database_available", True) is False:
+        request.app.state.database_available = True
+        logger.warning("Database is available again after a degraded start.")
 
     return HealthResponse(status="ok", database="ok")
