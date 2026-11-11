@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from src.api.db.models import Content
 from src.api.services.genres import DEFAULT_GENRE, genres_from_tmdb, set_content_genres
+from src.api.settings import env_int
 
 logger = logging.getLogger(__name__)
 
@@ -600,7 +601,7 @@ TMDB_API = "https://api.themoviedb.org/3"
 TMDB_IMAGES = "https://image.tmdb.org/t/p/w500"
 TMDB_PAGE_SIZE = 20
 # How many titles of each section the catalog keeps (movies, series, cartoons)
-TITLES_PER_SECTION = int(os.getenv("TMDB_TITLES_PER_SECTION", "100"))
+TITLES_PER_SECTION = env_int("TMDB_TITLES_PER_SECTION", 100, minimum=1, maximum=500)
 NO_DESCRIPTION = "Опис оновлюється."
 
 # Catalog sections: category in the catalog, TMDB media type and discover filters.
@@ -884,13 +885,18 @@ def seed_catalog_if_empty(db: Session) -> int:
     Fill an empty catalog on application startup (FR-012), so a fresh database is usable
     without running scripts/seed_movies.py manually. Returns the number of titles added.
     Disabled with AUTO_SEED_CATALOG=false.
+
+    Reliability (finding 13): only the built-in titles, without any network call. The startup used to
+    import the whole TMDB catalog here (about 300 requests); while it ran, the service answered nothing
+    and the hosting health check could fail the deploy. The TMDB import now runs in the background
+    (services/catalog_sync.start_in_background) and replaces the built-in titles when it finishes.
     """
     if os.getenv("AUTO_SEED_CATALOG", "true").lower() in ("false", "0", "no"):
         return 0
     try:
         if db.query(Content.id).first() is not None:
             return 0
-        added = seed_movies_to_database(db, fetch_tmdb_movies())
+        added = seed_movies_to_database(db, FALLBACK_MOVIES)
     except SQLAlchemyError as error:
         # Never block the API startup: e.g. an old local database without newer columns
         db.rollback()

@@ -127,8 +127,8 @@ def delete_user(
     summary="State of the catalog update from TMDB (FR-012)",
     responses={**STANDARD_ERRORS, **ADMIN_ERRORS},
 )
-def catalog_sync_status(admin: User = Depends(get_current_admin)):
-    return catalog_sync.get_status()
+def catalog_sync_status(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    return catalog_sync.get_status(db)
 
 
 @router.post(
@@ -148,17 +148,22 @@ def catalog_sync_status(admin: User = Depends(get_current_admin)):
         503: {"model": ErrorResponse, "description": "TMDB_API_KEY is not configured on the server"},
     },
 )
-def start_catalog_sync(background_tasks: BackgroundTasks, admin: User = Depends(get_current_admin)):
+def start_catalog_sync(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
     api_key = catalog_sync.tmdb_api_key()
     if api_key is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={"code": "TMDB_NOT_CONFIGURED", "message": "TMDB_API_KEY is not set on the server"},
         )
-    if not catalog_sync.try_start():
+    run_id = catalog_sync.try_start(db)
+    if run_id is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": "SYNC_IN_PROGRESS", "message": "The catalog update is already running"},
         )
-    background_tasks.add_task(catalog_sync.run_sync, api_key)
-    return catalog_sync.get_status()
+    background_tasks.add_task(catalog_sync.run_sync, api_key, run_id)
+    return catalog_sync.get_status(db)
