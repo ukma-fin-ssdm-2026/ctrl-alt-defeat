@@ -10,9 +10,13 @@ EMPTY_COMMENT_MESSAGE = "Comment text cannot be empty"
 
 class CommentCreate(BaseModel):
     review_id: UUID4 = Field(..., description="Review to comment on")
-    user_id: Optional[UUID4] = Field(None, description="Author ID (defaults to authenticated user from JWT)")
+    user_id: Optional[UUID4] = Field(
+        None, description="Author ID (deprecated/ignored by server; author resolved from verified JWT token)"
+    )
     author_name: Optional[str] = Field(
-        None, max_length=MAX_AUTHOR_NAME_LENGTH, description="Author nickname (defaults to authenticated user)"
+        None,
+        max_length=MAX_AUTHOR_NAME_LENGTH,
+        description="Author nickname (deprecated/ignored by server; author resolved from verified JWT token)",
     )
     text: str = Field(..., max_length=MAX_COMMENT_LENGTH, description="Comment text (1-2000 chars)")
     parent_id: Optional[UUID4] = Field(None, description="Comment to reply to; omit for a top-level comment")

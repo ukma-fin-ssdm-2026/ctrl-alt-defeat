@@ -237,6 +237,26 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
     return JSONResponse(status_code=exc.status_code, content=error_content.model_dump())
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    # Reliability (finding 3): uniform ErrorResponse contract and logging for unexpected failures
+    req_id = str(uuid.uuid4())
+    logger.exception("Unhandled error processing %s (request_id=%s): %s", request.url.path, req_id, exc)
+
+    error_content = ErrorResponse(
+        error=ErrorPayload(
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred. Please try again later.",
+            request_id=req_id,
+            documentation="https://api.our-movie-platform.com/docs/errors#internal-server-error",
+        )
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=error_content.model_dump(),
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
 

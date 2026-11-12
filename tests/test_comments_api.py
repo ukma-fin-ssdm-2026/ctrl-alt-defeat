@@ -9,11 +9,12 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.api.db.database import Base
-from src.api.db.models import Comment, Review
+from src.api.db.models import Comment, Review, User
 from src.api.main import app
 from src.api.routers import auth as auth_router
 from src.api.routers import comments as comments_router
 from src.api.routers import reviews as reviews_router
+from src.api.services.auth import create_access_token
 
 engine_test = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
@@ -43,6 +44,18 @@ def db_session():
     db = TestingSessionLocal()
     db.query(Comment).delete()
     db.query(Review).delete()
+    db.query(User).filter(User.user_id.in_([uuid.UUID(USER), uuid.UUID(OTHER_USER)])).delete()
+    db.add(
+        User(
+            user_id=uuid.UUID(USER),
+            email="admin_author@example.com",
+            nickname="admin",
+            password_hash="fakehash",
+            role="admin",
+            email_verified=True,
+            status="active",
+        )
+    )
     for review_id in (REVIEW_ID, OTHER_REVIEW_ID):
         db.add(
             Review(
@@ -74,11 +87,15 @@ def client(db_session):
     app.dependency_overrides.clear()
 
 
-def post(client, text="I totally agree with you", parent_id=None, review_id=REVIEW_ID, **extra):
+def post(client, text="I totally agree with you", parent_id=None, review_id=REVIEW_ID, headers=None, **extra):
     payload = {"review_id": str(review_id), "user_id": USER, "author_name": "admin", "text": text, **extra}
     if parent_id:
         payload["parent_id"] = parent_id
-    return client.post(URL, json=payload)
+    token = create_access_token(data={"sub": USER, "role": "admin"})
+    auth_headers = {"Authorization": f"Bearer {token}"}
+    if headers:
+        auth_headers.update(headers)
+    return client.post(URL, json=payload, headers=auth_headers)
 
 
 def test_create_comment_shows_author_and_time(client):

@@ -12,15 +12,15 @@
 
 | № | Кат. | Проблема | Критичність | Хто відповідає | Статус |
 |---|---|---|---|---|---|
-| 1 | A, D | Автор коментаря з тіла запиту: гість без токена коментує від імені іншого користувача | Висока | Учасник 1 | Відкрито |
+| 1 | A, D | Автор коментаря з тіла запиту: гість без токена коментує від імені іншого користувача | Висока | Іван Ліфєнцєв | **Виправлено** (новий PR) |
 | 2 | A | Гонитва при додаванні до «До перегляду»: `500` замість `409` | Середня | Іван Ліфєнцєв | **Виправлено** (PR #205) |
-| 3 | A | Немає глобального обробника непередбачених винятків | Середня | Учасник 1 | Відкрито |
+| 3 | A | Немає глобального обробника непередбачених винятків | Середня | Іван Ліфєнцєв | **Виправлено** (новий PR) |
 | 4 | B | Запис OpenAPI під час старту без обробки `OSError` | Середня | Іван Ліфєнцєв | **Виправлено** (PR #205) |
-| 5 | C | Пошук без `max_length`, рік без меж (`500` на завеликому році) | Середня | Учасник 1 | Відкрито |
+| 5 | C | Пошук без `max_length`, рік без меж (`500` на завеликому році) | Середня | Іван Ліфєнцєв | **Виправлено** (новий PR) |
 | 6 | D, C | Зведення відгуків падає на оцінці `None` | Низька | Іван Ліфєнцєв | **Виправлено** (PR #205) |
 | 7 | D, A | Перевірка пароля: широкий `except` без логування; пошкоджений хеш давав `500` | Низька → **Середня** (див. 2.4) | Михайло Крилов | **Виправлено** (PR #206) |
 | 8 | E | N+1 запитів у списку «Переглянуте» | Середня | Юлія Галка | **Виправлено** (PR #218) |
-| 9 | C | Числовий `id` фільму без меж: `500` замість `404` | Середня | Учасник 1 | Відкрито |
+| 9 | C | Числовий `id` фільму без меж: `500` замість `404` | Середня | Іван Ліфєнцєв | **Виправлено** (новий PR) |
 | 10 | B | БД без тайм-аутів з'єднання й запиту | Висока | Юлія Галка | **Виправлено** (PR #218) |
 | 11 | B | Старт не переживає недоступну БД | Висока | Юлія Галка | **Виправлено** (PR #218) |
 | 12 | A | Гонитва при реєстрації та в «Переглянутому» | Середня | Юлія Галка | **Виправлено** (PR #218) |
@@ -28,19 +28,266 @@
 | 14 | B | HTTP-клієнт фронтенду без тайм-ауту | Середня | Михайло Крилов | **Виправлено** (PR #206) |
 | 15 | C | `int(os.getenv(...))` під час імпорту модулів | Низька | Михайло Крилов | **Виправлено** (PR #206) |
 | 16 | D | Стан оновлення каталогу лише в пам'яті процесу | Низька | Михайло Крилов | **Виправлено** (PR #206) |
-| 17 | A | `user_id` / `author_name` коментаря з тіла запиту | Середня | Учасник 1 (разом із 1) | Відкрито |
+| 17 | A | `user_id` / `author_name` коментаря з тіла запиту | Середня | Іван Ліфєнцєв (разом із 1) | **Виправлено** (новий PR) |
 
 ---
 
 ## 2. Виправлення, патерни, режими відмов і відновлення
 
-### 2.1. Іван Ліфєнцєв — знахідки 2, 4, 6 (PR #205)
+### 2.1. Іван Ліфєнцєв — знахідки 2, 4, 6 (PR #205) та знахідки 1, 17, 3, 5, 9 (новий PR)
 
-_Заповнює Іван Ліфєнцєв: до/після, патерн, швидка чи безпечна відмова, що бачить користувач, як система відновлюється, тести._
+#### 2.1.1. Знахідки з PR #205 (знахідки 2, 4, 6)
 
-### 2.2. Учасник 1 — знахідки 1, 3, 5, 9, 17
+#### Знахідка 2. Гонитва при додаванні до списку «До перегляду» (Watchlist) (A, середня)
 
-_Заповнює учасник 1._
+**До:** у `src/api/routers/watchlist.py` при збереженні нового `WatchlistItem` виконувався `db.commit()` без блоку `try...except IntegrityError`. Якщо два одночасні запити від одного користувача одночасно проходили попередню перевірку `if exists is not None:`, другий `db.commit()` падав із винятком унікальності бази даних `IntegrityError`, що повертало HTTP 500 замість штатної 409.
+
+```python
+db.add(WatchlistItem(user_id=user.user_id, content_id=payload.content_id, added_at=datetime.now(UTC)))
+db.commit()
+return content
+```
+
+**Після:** додано обробку винятку `IntegrityError` з відкатом сесії та поверненням стандартної помилки 409:
+
+```python
+db.add(WatchlistItem(user_id=user.user_id, content_id=payload.content_id, added_at=datetime.now(UTC)))
+try:
+    db.commit()
+except IntegrityError:
+    db.rollback()
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={"code": "ALREADY_IN_WATCHLIST", "message": "This title is already in your watchlist"},
+    )
+return content
+```
+
+- **Патерни:** Race condition handling, Transaction Rollback, Explicit Error Mapping.
+- **Режим відмови:** Швидка відмова (Fast failure) з HTTP 409.
+- **Що бачить користувач:** Зрозуміле повідомлення `This title is already in your watchlist` зі статусом 409 замість Internal Server Error 500.
+- **Відновлення:** Виклик `db.rollback()` повертає сесію бази даних у валідний стан без переривання подальших операцій.
+- **Тести:** `tests/test_watchlist.py::test_adding_duplicate_is_rejected` та `tests/reliability/test_concurrent_writes.py`.
+
+#### Знахідка 4. Запис OpenAPI під час старту без обробки `OSError` (B, середня)
+
+**До:** функція `save_openapi_spec` у `src/api/main.py` викликалася напряму в `lifespan` під час ініціалізації сервісу. Запис файлу `open(openapi_path, "w")` не мав перехоплення системних помилок вводу-виводу. У середовищах із read-only файловою системою (наприклад, безпечні контейнери Docker/Kubernetes) виникав виняток `PermissionError`/`OSError`, через що бекенд не міг запуститися і падав у `CrashLoopBackOff`.
+
+```python
+def save_openapi_spec(app: FastAPI):
+    ...
+    with open(openapi_path, "w", encoding="utf-8") as f:
+        yaml.dump(openapi_schema, f, sort_keys=False, allow_unicode=True)
+```
+
+**Після:** виклик загорнуто в `try...except OSError` із логуванням попередження та продовженням штатного старту:
+
+```python
+def save_openapi_spec(app: FastAPI):
+    """Save auto-generated OpenAPI spec to file with fallback if filesystem is read-only (REL-003)."""
+    try:
+        openapi_schema = app.openapi()
+        docs_api_dir = Path(__file__).resolve().parents[2] / "docs" / "api"
+        docs_api_dir.mkdir(parents=True, exist_ok=True)
+        openapi_path = docs_api_dir / "openapi-generated.yaml"
+
+        with open(openapi_path, "w", encoding="utf-8") as f:
+            yaml.dump(openapi_schema, f, sort_keys=False, allow_unicode=True)
+        logger.info("OpenAPI spec auto-generated: %s", openapi_path)
+    except OSError as error:
+        logger.warning("Could not save auto-generated OpenAPI spec to file (%s). Continuing startup.", error)
+```
+
+- **Патерни:** Graceful Degradation / Fallback, Logging.
+- **Режим відмови:** Безпечна відмова (Safe failure): неможливість оновити статичний артефакт документації на диску не блокує запуск сервісу та обслуговування користувачів.
+- **Що бачить користувач:** Сервіс успішно стартує і доступний для запитів; вбудована динамічна документація `/api-docs` функціонує в пам'яті.
+- **Відновлення:** Сервіс продовжує нормальну роботу без зупинки процесу.
+- **Тести:** `tests/test_main.py::test_save_openapi_spec` та `tests/reliability/test_startup_retries.py`.
+
+#### Знахідка 6. Зведення відгуків падає на оцінці `None` (D, C, низька)
+
+**До:** у `src/api/utils.py` функція `generate_review_summary` виконувала `rating = review.get("rating", 0); total_score += rating`. Якщо словник містив `{"rating": None}`, `.get("rating", 0)` повертав `None`, що викликало фатальний `TypeError: unsupported operand type(s) for +=: 'int' and 'NoneType'`. Також був відсутній захист від ділення на нуль, якщо всі відгуки не мали валідних оцінок.
+
+```python
+total_score = 0
+for review in reviews:
+    rating = review.get("rating", 0)
+    total_score += rating
+    if 1 <= rating <= 10:
+        summary["distribution"][rating] += 1
+summary["average_rating"] = round(total_score / summary["total_reviews"], 2)
+```
+
+**Після:** додано захисні перевірки (guard clauses) типу словника, наявності числової оцінки в діапазоні 1–10, а також безпечне ділення:
+
+```python
+total_score = 0
+valid_ratings_count = 0
+for review in reviews:
+    if not isinstance(review, dict):
+        continue
+    rating = review.get("rating")
+    if isinstance(rating, (int, float)) and 1 <= rating <= 10:
+        total_score += rating
+        summary["distribution"][int(rating)] += 1
+        valid_ratings_count += 1
+
+summary["total_reviews"] = len(reviews)
+summary["average_rating"] = (
+    round(total_score / valid_ratings_count, 2) if valid_ratings_count > 0 else 0.0
+)
+```
+
+- **Патерни:** Guard clauses, Defensive programming, Safe fallback value (`0.0`).
+- **Режим відмови:** Безпечна відмова (Safe failure): відсутні або некоректні оцінки безпечно ігноруються в підрахунку середнього.
+- **Що бачить користувач:** Сторінка зведення фільму `/api/v1/reviews/summary` відображає коректну статистику та розподіл замість 500 помилки.
+- **Відновлення:** Не потребує відновлення; обчислення залишається повністю детермінованим.
+- **Тести:** `tests/test_utils.py` (регресійні тести зведення оцінок).
+
+---
+
+#### 2.1.2. Знахідки нового PR (знахідки 1, 17, 3, 5, 9)
+
+#### Знахідки 1 та 17. Автентифікація автора коментаря та захист від підміни особи (A, D, висока)
+
+**До:** у `src/api/routers/comments.py` заголовок `Authorization` розбирався всередині `except Exception: pass`, що приховувало будь-які винятки валідації токена без жодного запису в лог. Якщо токен не надано або він пошкоджений, обробник продовжував роботу з `user_id` та `author_name`, надісланими клієнтом у тілі `CommentCreate`. Це дозволяло гостю коментувати від імені будь-якого користувача (account impersonation) або обходити бан. Навіть за валідного токена, якщо акаунт з `sub` видалено з БД, автор залишався значенням з неперевіреного тіла клієнта.
+
+```python
+if token:
+    try:
+        payload = decode_access_token(token)
+        sub = payload.get("sub")
+        if sub:
+            user_id = uuid.UUID(sub)
+            auth_user = db.query(models.User).filter(models.User.user_id == user_id).first()
+            if auth_user:
+                author_name = auth_user.nickname
+    except Exception:
+        pass
+
+if user_id is None:
+    raise HTTPException(status_code=401, detail={"code": "AUTH_REQUIRED", "message": "Please log in to leave a comment"})
+```
+
+**Після:** усунуто небезпечний fallback на тіло запиту. Токен є обов'язковим (HTTP 401 `AUTH_REQUIRED`); помилки токена перехоплюються через `jwt.PyJWTError`, логуються на рівні `WARNING` і повертають HTTP 401 `INVALID_TOKEN`. Якщо користувача за `sub` немає в базі — повертається HTTP 401 `USER_NOT_FOUND`. Автор коментаря (`user_id` та `author_name`) встановлюється виключно із знайденого в базі `auth_user`, а значення з тіла запиту ігноруються.
+
+```python
+if not token:
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"code": "AUTH_REQUIRED", "message": "Please log in to leave a comment"},
+    )
+
+try:
+    payload = decode_access_token(token)
+except jwt.PyJWTError as error:
+    logger.warning("Invalid access token provided for comment: %s", error)
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"code": "INVALID_TOKEN", "message": "Invalid or expired access token"},
+    )
+
+sub = payload.get("sub")
+if not sub:
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"code": "INVALID_TOKEN", "message": "Token missing subject identifier"},
+    )
+
+try:
+    user_uuid = uuid.UUID(sub)
+except (ValueError, AttributeError):
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"code": "INVALID_TOKEN", "message": "Token subject is not a valid UUID"},
+    )
+
+auth_user = db.query(models.User).filter(models.User.user_id == user_uuid).first()
+if not auth_user:
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"code": "USER_NOT_FOUND", "message": "User associated with token not found"},
+    )
+
+user_id = auth_user.user_id
+author_name = auth_user.nickname or "Viewer"
+ensure_can_contribute(db, auth_user)
+```
+
+- **Патерни:** Strict Token Authentication, Identity Isolation, Explicit Logging, Guard Clauses.
+- **Режим відмови:** Швидка відмова (Fast failure) з HTTP 401.
+- **Що бачить користувач:** Клієнт отримує точний статус 401 (`AUTH_REQUIRED`, `INVALID_TOKEN` або `USER_NOT_FOUND`). Неможливо надіслати коментар без автентифікації або від чужого імені.
+- **Відновлення:** Користувач здійснює вхід і надсилає запит із дійсним токеном.
+- **Тести:** `tests/reliability/test_comments_author.py` (4 тести) та `tests/test_comments_api.py`.
+
+#### Знахідка 3. Глобальний обробник непередбачених винятків у FastAPI (A, середня)
+
+**До:** у `src/api/main.py` не було зареєстровано обробника вищого рівня `@app.exception_handler(Exception)`. Будь-який непередбачений виняток (наприклад, `ZeroDivisionError`, `KeyError`, внутрішній збій стороннього модуля) оброблявся дефолтним обробником Starlette, повертаючи сирий `Internal Server Error` без єдиної схеми `ErrorResponse`, без `request_id` та з ризиком витоку внутрішніх деталей у режимі розробки.
+
+**Після:** додано централізований обробник `@app.exception_handler(Exception)`, який реєструє унікальний `request_id` через `uuid.uuid4()`, логує повний стек-трейс у `logger.exception(...)` та повертає уніфікований JSON 500 за схемою `ErrorResponse`:
+
+```python
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    req_id = str(uuid.uuid4())
+    logger.exception("Unhandled error processing %s (request_id=%s): %s", request.url.path, req_id, exc)
+
+    error_content = ErrorResponse(
+        error=ErrorPayload(
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred. Please try again later.",
+            request_id=req_id,
+            documentation="https://api.our-movie-platform.com/docs/errors#internal-server-error",
+        )
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=error_content.model_dump(),
+    )
+```
+
+- **Патерни:** Uniform Error Contract, Safe Failure (Exception Masking), Request Correlation ID, Centralized Logging.
+- **Режим відмови:** Безпечна відмова (Safe failure): деталі збою маскуються від клієнта за стандартним інтерфейсом помилки, а системний трейс зберігається в серверному журналі.
+- **Що бачить користувач:** Стандартизований JSON 500 із полем `request_id`, який можна передати до служби підтримки.
+- **Відновлення:** Запит ізольований, система автоматично готова обслуговувати наступні запити.
+- **Тести:** `tests/reliability/test_unexpected_errors.py` (2 тести).
+
+#### Знахідка 5. Обмеження довжини пошукового рядка та меж року в каталозі (C, середня)
+
+**До:** у `get_movies` (`src/api/routers/movies.py`) параметри `search` та `year` не мали валідації довжини й числових меж. Пошуковий запит із рядком у сотні кілобайт навантажував CPU бази даних скануванням `ILIKE %...%`, а `year=99999999999999999999` викликав переповнення цілого числа у СУБД та 500 помилку замість помилки валідації входу.
+
+**Після:** додано явні обмеження FastAPI `Query`:
+
+```python
+search: Optional[str] = Query(None, max_length=100, description="Search term in title (Ukrainian or English)"),
+year: Optional[int] = Query(None, ge=1888, le=2100, description="Release year filter (e.g., 2024)"),
+```
+
+- **Патерни:** Input Validation, Boundary Checks, Fast Failure.
+- **Режим відмови:** Швидка відмова (Fast failure): некоректний вхід миттєво відхиляється на рівні ASGI з кодом HTTP 422 `VALIDATION_ERROR` без виконання SQL-запитів.
+- **Що бачить користувач:** Зрозумілу валідаційну відповідь 422 із зазначенням порушеного поля та правила замість 500 чи таймауту.
+- **Відновлення:** Клієнт передає коректні параметри в допустимому діапазоні.
+- **Тести:** `tests/reliability/test_catalog_input_bounds.py` (тести довжини пошуку та меж року).
+
+#### Знахідка 9. Числовий ідентифікатор фільму без меж: 500 замість 404 (C, середня)
+
+**До:** у `get_movie_by_id` виклик `int(movie_id)` за умови `movie_id.isdigit()` не перевіряв розмір числа. Передача `movie_id=99999999999999999999999` або чисел, більших за 32-бітний integer СУБД, призводила до `OverflowError` (SQLite) чи `DataError` (PostgreSQL) у драйвері бази даних і падіння ендпоінту з 500 помилкою.
+
+**Після:** додано захисну перевірку діапазону перед зверненням до бази:
+
+```python
+# If not UUID or not found by UUID, try integer ID within valid 32-bit range (finding 9)
+if not content and movie_id.isdigit() and len(movie_id) <= 10:
+    numeric_id = int(movie_id)
+    if numeric_id <= 2_147_483_647:
+        content = db.query(Content).filter(Content.id == numeric_id).first()
+```
+
+- **Патерни:** Guard Clauses, Defensive Range Check, Fast Failure.
+- **Режим відмови:** Швидка відмова (Fast failure) з HTTP 404.
+- **Що бачить користувач:** Стандартне повідомлення `Content with ID '...' was not found in catalog` зі статусом 404 замість аварійного 500.
+- **Відновлення:** Клієнт передає валідний ID існуючого фільму.
+- **Тести:** `tests/reliability/test_catalog_input_bounds.py::test_numeric_movie_id_exceeding_32bit_integer_returns_404_not_500`.
 
 ### 2.3. Юлія Галка — знахідки 8, 10, 11, 12
 

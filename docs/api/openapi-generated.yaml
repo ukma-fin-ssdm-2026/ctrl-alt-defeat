@@ -489,6 +489,7 @@ paths:
         schema:
           anyOf:
           - type: string
+            maxLength: 100
           - type: 'null'
           description: Search term in title (Ukrainian or English)
           title: Search
@@ -521,6 +522,8 @@ paths:
         schema:
           anyOf:
           - type: integer
+            maximum: 2100
+            minimum: 1888
           - type: 'null'
           description: Release year filter (e.g., 2024)
           title: Year
@@ -2531,14 +2534,16 @@ components:
             format: uuid4
           - type: 'null'
           title: User Id
-          description: Author ID (defaults to authenticated user from JWT)
+          description: Author ID (deprecated/ignored by server; author resolved from
+            verified JWT token)
         author_name:
           anyOf:
           - type: string
             maxLength: 50
           - type: 'null'
           title: Author Name
-          description: Author nickname (defaults to authenticated user)
+          description: Author nickname (deprecated/ignored by server; author resolved
+            from verified JWT token)
         text:
           type: string
           maxLength: 2000
