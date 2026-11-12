@@ -5,6 +5,15 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Після титрів — Рецензії та рекомендації фільмів</title>
+    <script>
+      // Dark theme before the app loads, so a reload does not flash the light theme (see src/utils/preferences.js)
+      try {
+        var theme = localStorage.getItem('pislya-tytriv:theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
