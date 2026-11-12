@@ -24,6 +24,7 @@ from src.api.schemas.auth import (
 )
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
 from src.api.services.auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
     decode_access_token,
     generate_verification_token,
@@ -311,7 +312,8 @@ def login(
         httponly=True,
         samesite="lax",
         secure=True,
-        max_age=86400,
+        # The cookie lives exactly as long as the token inside it
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
     return TokenResponse(
