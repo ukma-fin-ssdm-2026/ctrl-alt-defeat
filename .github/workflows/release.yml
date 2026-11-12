@@ -36,7 +36,9 @@ jobs:
 
       - name: Check the version and take the release notes from CHANGELOG.md
         id: notes
-        run: python scripts/release_notes.py --notes-file release-notes.md --github-output "$GITHUB_OUTPUT"
+        run: |
+          VERSION=$(python scripts/release_notes.py)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create the tag and the GitHub Release
         env:

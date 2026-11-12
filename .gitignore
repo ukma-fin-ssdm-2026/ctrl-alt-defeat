@@ -32,3 +32,6 @@ env/
 .idea/
 
 .antigravityignore
+
+# Written by scripts/release_notes.py in the release workflow
+release-notes.md

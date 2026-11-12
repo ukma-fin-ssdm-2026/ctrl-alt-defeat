@@ -2,12 +2,15 @@
 Release notes for the automated release (.github/workflows/release.yml, Lab 8 bonus).
 
 Reads the project version from pyproject.toml, checks that frontend/package.json, package-lock.json and the
-latest CHANGELOG.md release have the same number, and writes that release's CHANGELOG section as the notes.
+latest CHANGELOG.md release have the same number, writes that release's CHANGELOG section to
+release-notes.md in the repository root and prints the version (the workflow reads it from stdout).
 
-    python scripts/release_notes.py --notes-file release-notes.md [--github-output "$GITHUB_OUTPUT"]
+    python scripts/release_notes.py
+
+The script takes no arguments: every path it reads or writes is fixed inside the repository, so nothing
+from the command line or the environment can point it at another file.
 """
 
-import argparse
 import json
 import re
 import sys
@@ -15,6 +18,7 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+NOTES_FILE = "release-notes.md"
 RELEASE_HEADING = re.compile(r"^## \[(\d+\.\d+\.\d+)\] - (\d{4}-\d{2}-\d{2})$", re.MULTILINE)
 
 
@@ -57,23 +61,16 @@ def check_versions(root: Path = ROOT) -> str:
     return version
 
 
-def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    parser.add_argument("--notes-file", required=True, type=Path)
-    parser.add_argument("--github-output", type=Path)
-    parser.add_argument("--root", type=Path, default=ROOT)
-    args = parser.parse_args(argv)
+def main(root: Path = ROOT) -> int:
+    """Writes `root/release-notes.md` and prints the version; 1 with the reason on stderr on a mismatch."""
     try:
-        version = check_versions(args.root)
-        notes = changelog_section((args.root / "CHANGELOG.md").read_text(encoding="utf-8"), version)
+        version = check_versions(root)
+        notes = changelog_section((root / "CHANGELOG.md").read_text(encoding="utf-8"), version)
     except ReleaseError as error:
         print(f"Release check FAILED: {error}", file=sys.stderr)
         return 1
-    args.notes_file.write_text(notes + "\n", encoding="utf-8")
-    if args.github_output:
-        with args.github_output.open("a", encoding="utf-8") as output:
-            output.write(f"version={version}\n")
-    print(f"Release v{version}: notes written to {args.notes_file}")
+    (root / NOTES_FILE).write_text(notes + "\n", encoding="utf-8")
+    print(version)
     return 0
 
 

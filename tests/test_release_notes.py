@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from scripts.release_notes import ReleaseError, changelog_section, check_versions, main
+from scripts.release_notes import NOTES_FILE, ReleaseError, changelog_section, check_versions, main
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -53,26 +53,29 @@ def test_release_stops_when_the_numbers_differ(tmp_path, capsys):
     root = project(tmp_path, package_version="0.1.1")
     with pytest.raises(ReleaseError, match="frontend/package.json: 0.1.1"):
         check_versions(root)
-    assert main(["--root", str(root), "--notes-file", str(tmp_path / "notes.md")]) == 1
+    assert main(root) == 1
     assert "Release check FAILED" in capsys.readouterr().err
-    assert not (tmp_path / "notes.md").exists()
+    assert not (tmp_path / NOTES_FILE).exists()
 
 
-def test_release_writes_the_notes_and_the_version_output(tmp_path):
+def test_release_writes_the_notes_and_prints_the_version(tmp_path, capsys):
     root = project(tmp_path)
-    output = tmp_path / "github-output"
-    notes = tmp_path / "notes.md"
 
-    assert main(["--root", str(root), "--notes-file", str(notes), "--github-output", str(output)]) == 0
-    assert notes.read_text(encoding="utf-8") == "### Added\n\n- Каталог по 500 тайтлів.\n"
-    assert output.read_text(encoding="utf-8") == "version=0.2.0\n"
+    assert main(root) == 0
+    assert (tmp_path / NOTES_FILE).read_text(encoding="utf-8") == "### Added\n\n- Каталог по 500 тайтлів.\n"
+    # Only the version goes to stdout: the workflow puts it into $GITHUB_OUTPUT
+    assert capsys.readouterr().out == "0.2.0\n"
 
 
-def test_the_repository_itself_is_ready_for_release(tmp_path):
+def test_the_repository_itself_is_ready_for_release():
     version = check_versions(ROOT)
-    assert main(["--notes-file", str(tmp_path / "notes.md")]) == 0
-    assert (tmp_path / "notes.md").read_text(encoding="utf-8").strip()
-    assert version
+    assert changelog_section((ROOT / "CHANGELOG.md").read_text(encoding="utf-8"), version)
+
+
+def test_the_script_takes_no_paths_from_the_command_line():
+    # Path injection (SonarQube): nothing outside the repository can be chosen as the file to write
+    source = (ROOT / "scripts" / "release_notes.py").read_text(encoding="utf-8")
+    assert "import argparse" not in source and "sys.argv" not in source and "os.environ" not in source
 
 
 def test_release_workflow_runs_after_a_version_change_on_main():
@@ -83,7 +86,8 @@ def test_release_workflow_runs_after_a_version_change_on_main():
     assert workflow["permissions"] == {"contents": "write"}
     steps = workflow["jobs"]["release"]["steps"]
     runs = "\n".join(step.get("run", "") for step in steps)
-    assert "scripts/release_notes.py" in runs
+    assert "VERSION=$(python scripts/release_notes.py)" in runs
+    assert 'echo "version=$VERSION" >> "$GITHUB_OUTPUT"' in runs
     assert "gh release create" in runs and '--target "$GITHUB_SHA"' in runs
     # An existing tag is never moved
     assert "refs/tags/v$VERSION" in runs
