@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
+import { forgetStoredToken } from '../auth/currentUser';
 import { getDisplayName } from '../utils/displayName';
 import { computeAchievements } from '../utils/achievements';
 import { RANKS, XP_RULES, activityXp, rankForXp } from '../utils/ranks';
@@ -83,6 +84,8 @@ export default function UserProfile({
     setSavingPassword(true);
     try {
       await apiClient.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword });
+      // Other sessions end; this one continues with the new cookie set by the server
+      forgetStoredToken();
       setPasswordMessage({ ok: true, text: isUkr ? 'Пароль успішно змінено!' : 'Password successfully changed!' });
       setCurrentPassword('');
       setNewPassword('');

@@ -59,6 +59,10 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
             ? 'Будь ласка, підтвердіть вашу пошту перед входом. Скористайтеся посиланням активації.' 
             : 'Please verify your email before logging in. Use your activation link.');
           setUnverifiedEmail(email.trim().toLowerCase());
+        } else if (result.code === 'TOO_MANY_ATTEMPTS') {
+          setError(isUkr
+            ? 'Забагато невдалих спроб входу. Зачекайте хвилину і спробуйте ще раз.'
+            : 'Too many failed login attempts. Wait a minute and try again.');
         } else if (result.code === 'ACCOUNT_BANNED') {
           setError(isUkr 
             ? 'Ваш обліковий запис заблоковано адміністратором.' 

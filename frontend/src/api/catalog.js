@@ -10,8 +10,11 @@ const PARALLEL_PAGES = 4;
 // Identical requests made at the same time (home page and header search on start) share one load
 const inFlight = new Map();
 
+// Compact list (no synopses): several times smaller; the page of a title loads its full details itself
 const getPage = (params, skip) =>
-  apiClient.get('/movies', { params: { ...params, skip, limit: CATALOG_PAGE_SIZE } }).then(response => response.data);
+  apiClient
+    .get('/movies', { params: { ...params, skip, limit: CATALOG_PAGE_SIZE, compact: true } })
+    .then(response => response.data);
 
 async function loadWholeCatalog(params) {
   const first = await getPage(params, 0);

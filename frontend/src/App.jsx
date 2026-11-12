@@ -91,7 +91,9 @@ export default function App() {
     if (window.location.pathname !== '/verify-email' || !token) return;
     apiClient.get('/auth/verify', { params: { token } })
       .then(() => setAuthNotice('Пошту підтверджено! Тепер ви можете увійти.'))
-      .catch(() => setAuthNotice('Посилання недійсне або вже використане. Увійдіть або надішліть лист ще раз.'))
+      .catch(error => setAuthNotice(error.response?.data?.error?.code === 'VERIFICATION_TOKEN_EXPIRED'
+        ? 'Посилання застаріло (діє 24 години). Увійдіть з вашою поштою, щоб надіслати новий лист.'
+        : 'Посилання недійсне або вже використане. Увійдіть або надішліть лист ще раз.'))
       .finally(() => {
         setIsAuthOpen(true);
         window.history.replaceState(null, '', '/');

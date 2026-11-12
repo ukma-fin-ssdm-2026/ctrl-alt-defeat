@@ -23,6 +23,11 @@ export function setStoredAuth(token, user) {
   }
 }
 
+// After a password change the server issues a new session cookie; the old token in memory is no longer valid
+export function forgetStoredToken() {
+  inMemoryToken = null;
+}
+
 export function clearStoredAuth() {
   inMemoryToken = null;
   inMemoryUser = null;
