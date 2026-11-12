@@ -54,3 +54,24 @@ SessionLocal = sessionmaker(
 )
 
 Base = declarative_base()
+
+
+# Old databases were created with UNIQUE(tmdb_id) on the content table (PostgreSQL names it content_tmdb_id_key).
+# TMDB numbers movies and TV series separately, so a series could not be saved when a movie had its number.
+OLD_TMDB_CONSTRAINT = "content_tmdb_id_key"
+
+
+def upgrade_content_tmdb_uniqueness(bind) -> bool:
+    """
+    One-time upgrade of an existing PostgreSQL database: UNIQUE(tmdb_id) -> UNIQUE(category, tmdb_id).
+    Idempotent (IF EXISTS / IF NOT EXISTS). SQLite (local development, tests) is left as created:
+    there the import skips a title whose number is taken instead of failing. Returns True if it ran.
+    """
+    if bind.dialect.name != "postgresql":
+        return False
+    with bind.begin() as connection:
+        connection.exec_driver_sql(f"ALTER TABLE content DROP CONSTRAINT IF EXISTS {OLD_TMDB_CONSTRAINT}")
+        connection.exec_driver_sql(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_content_category_tmdb ON content (category, tmdb_id)"
+        )
+    return True

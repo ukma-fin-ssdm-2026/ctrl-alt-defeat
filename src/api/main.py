@@ -11,7 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, status
 from pathlib import Path
-from src.api.db.database import Base, engine
+from src.api.db.database import Base, engine, upgrade_content_tmdb_uniqueness
 from src.api.schemas.errors import ErrorDetail, ErrorPayload, ErrorResponse, STANDARD_ERRORS
 from src.api.routers.reviews import router as reviews_router
 from src.api.routers.movies import router as movies_router
@@ -101,6 +101,12 @@ async def lifespan(app: FastAPI):
     app.state.database_available = database_available
 
     if database_available:
+        try:
+            # A movie and a series may share a TMDB number (old databases had UNIQUE(tmdb_id))
+            upgrade_content_tmdb_uniqueness(engine)
+        except Exception as exc:  # never block the startup: the import then skips such titles
+            logger.error("Schema upgrade of content.tmdb_id failed: %s", exc)
+
         db = SessionLocal()
 
         try:

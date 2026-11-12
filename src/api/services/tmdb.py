@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import func
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.api.db.models import Content
@@ -844,27 +844,28 @@ class SyncResult:
     skipped: int = 0
 
 
-def _find_existing(db: Session, item: Dict[str, Any]) -> Tuple[Optional[Content], bool]:
+def _find_existing(db: Session, item: Dict[str, Any]) -> Optional[Content]:
     """
-    The catalog row of an item and whether it may be updated.
+    The catalog row of an item, if the catalog already has it.
     Titles are matched by TMDB id of the same media type, never by the internal numeric id
     (the internal id of an imported title has nothing to do with the existing rows).
     A row without tmdb_id (old data, built-in titles) is adopted by an exact title and release year.
     """
     tmdb_id = item.get("tmdb_id")
     if tmdb_id is not None:
-        existing = db.query(Content).filter(Content.tmdb_id == tmdb_id).first()
-        if existing is not None:
-            # Same number, different media type (a movie and a series): a different title
-            return existing, tmdb_kind(existing.category) == tmdb_kind(item.get("category"))
+        # Movies and series are numbered separately by TMDB: the same number of the other media type
+        # is a different title, so only rows of the same type match
+        kind = tmdb_kind(item.get("category"))
+        for existing in db.query(Content).filter(Content.tmdb_id == tmdb_id).order_by(Content.id):
+            if tmdb_kind(existing.category) == kind:
+                return existing
     legacy = db.query(Content).filter(Content.title == item["title"])
     if item.get("year") is not None:
         # Same name, different film (e.g. a remake): the release year must match too
         legacy = legacy.filter(Content.year.between(item["year"] - 1, item["year"] + 1))
     if tmdb_id is not None:
         legacy = legacy.filter(Content.tmdb_id.is_(None))
-    found = legacy.first()
-    return found, found is not None
+    return legacy.first()
 
 
 UPDATED_FIELDS = ("title", "title_en", "category", "year", "runtime", "rating", "rotten_rating", "img")
@@ -894,11 +895,7 @@ def sync_catalog(db: Session, items: List[Dict[str, Any]]) -> SyncResult:
     result = SyncResult()
     next_id = (db.query(func.max(Content.id)).scalar() or 0) + 1
     for item in items:
-        existing, same_title = _find_existing(db, item)
-        if existing is not None and not same_title:
-            logger.info("Skipped TMDB %s: the id belongs to another title (%s).", item.get("tmdb_id"), existing.title)
-            result.skipped += 1
-            continue
+        existing = _find_existing(db, item)
         if existing is not None:
             _update(db, existing, item)
             result.updated += 1
@@ -926,8 +923,18 @@ def sync_catalog(db: Session, items: List[Dict[str, Any]]) -> SyncResult:
             description_en=item.get("description_en"),
             tmdb_id=item.get("tmdb_id"),
         )
-        db.add(content)
-        db.flush()
+        try:
+            # Savepoint: an old local SQLite database still has UNIQUE(tmdb_id) (see upgrade_content_tmdb_uniqueness);
+            # there a series with the number of a movie is skipped instead of failing the whole import
+            with db.begin_nested():
+                db.add(content)
+                db.flush()
+        except IntegrityError:
+            logger.info(
+                "Skipped TMDB %s (%s): the number is taken in this database.", item.get("tmdb_id"), item["title"]
+            )
+            result.skipped += 1
+            continue
         set_content_genres(db, content, [item.get("genre"), *item.get("genres", [])])
         result.added += 1
 

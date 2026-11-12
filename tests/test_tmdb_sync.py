@@ -348,8 +348,63 @@ def test_movie_and_series_with_the_same_tmdb_number_are_different_titles(db_sess
 
     result = sync_catalog(db_session, [show])
 
-    assert (result.added, result.updated, result.skipped) == (0, 0, 1)
+    # TMDB numbers movies and series separately: the series is a new title next to the movie
+    assert (result.added, result.updated, result.skipped) == (1, 0, 0)
     assert db_session.get(Content, 1).title == "Фільм"
+    saved = db_session.query(Content).filter(Content.tmdb_id == 500).order_by(Content.id).all()
+    assert [(row.title, row.category) for row in saved] == [("Фільм", "Movie"), ("Серіал", "Series")]
+
+    # The next import updates each of them by number and media type, without new rows
+    again = sync_catalog(db_session, [{**show, "title": "Серіал (оновлено)"}])
+    assert (again.added, again.updated, again.skipped) == (0, 1, 0)
+    assert db_session.get(Content, 1).title == "Фільм"
+
+
+def test_old_database_with_unique_tmdb_id_skips_instead_of_failing():
+    # Trace: T-042
+    # A local SQLite database created before the fix keeps UNIQUE(tmdb_id): the import must not fail
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        connection.exec_driver_sql("CREATE UNIQUE INDEX old_content_tmdb_id ON content (tmdb_id)")
+    db = sessionmaker(bind=engine)()
+    try:
+        db.add(
+            Content(id=1, content_id=uuid.uuid4(), title="Фільм", category="Movie", genre="Драма", year=2020, tmdb_id=7)
+        )
+        db.commit()
+        items = [
+            {"tmdb_id": 7, "category": "Series", "title": "Серіал", "genre": "Драма", "genres": [], "year": 2021},
+            {"tmdb_id": 8, "category": "Movie", "title": "Новий", "genre": "Драма", "genres": [], "year": 2022},
+        ]
+
+        result = sync_catalog(db, items)
+
+        assert (result.added, result.skipped) == (1, 1)
+        assert sorted(row.title for row in db.query(Content)) == ["Новий", "Фільм"]
+    finally:
+        db.close()
+        engine.dispose()
+
+
+def test_postgres_schema_upgrade_allows_a_movie_and_a_series_with_one_number():
+    # Trace: T-042
+    from src.api.db.database import upgrade_content_tmdb_uniqueness
+
+    statements = []
+    connection = MagicMock()
+    connection.exec_driver_sql.side_effect = statements.append
+    postgres = MagicMock()
+    postgres.dialect.name = "postgresql"
+    postgres.begin.return_value.__enter__.return_value = connection
+
+    assert upgrade_content_tmdb_uniqueness(postgres) is True
+    assert statements == [
+        "ALTER TABLE content DROP CONSTRAINT IF EXISTS content_tmdb_id_key",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_content_category_tmdb ON content (category, tmdb_id)",
+    ]
+    # SQLite (local development, tests) is left as created
+    assert upgrade_content_tmdb_uniqueness(engine_test) is False
 
 
 def test_old_title_without_tmdb_id_is_adopted_by_its_name(db_session):
