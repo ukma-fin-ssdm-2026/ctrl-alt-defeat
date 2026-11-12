@@ -30,6 +30,7 @@ def test_unhandled_exception_returns_unified_500_json_with_request_id(client, ca
     """
     Finding 3: An unhandled exception returns standardized ErrorResponse (JSON), not raw HTML/text.
     """
+
     def broken_db():
         raise ZeroDivisionError("unexpected math glitch")
 
@@ -57,6 +58,7 @@ def test_unhandled_runtime_error_in_catalog_returns_structured_error(client, cap
     """
     Finding 3: A runtime error in business logic is intercepted cleanly by the global handler.
     """
+
     def broken_query():
         raise RuntimeError("corrupted memory state")
 
