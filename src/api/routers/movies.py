@@ -56,12 +56,14 @@ def get_movies(
 ):
     query = db.query(Content)
 
-    if search:
-        search_filter = f"%{search.strip()}%"
+    if search and search.strip():
+        # `%` and `_` typed by the user are plain characters, not LIKE wildcards
+        escaped = search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search_filter = f"%{escaped}%"
         query = query.filter(
             or_(
-                Content.title.ilike(search_filter),
-                Content.title_en.ilike(search_filter),
+                Content.title.ilike(search_filter, escape="\\"),
+                Content.title_en.ilike(search_filter, escape="\\"),
             )
         )
 
