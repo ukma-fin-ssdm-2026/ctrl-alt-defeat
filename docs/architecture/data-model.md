@@ -50,7 +50,7 @@
 | Атрибут | Тип | Опис |
 |---|---|---|
 | content_id | UUID, PK | Унікальний ідентифікатор |
-| tmdb_id | integer | Ідентифікатор контенту у зовнішньому API |
+| tmdb_id | integer | Ідентифікатор контенту у зовнішньому API; унікальний разом із `category` (TMDB нумерує фільми й серіали окремо) |
 | title | varchar | Назва |
 | content_type | enum | movie / series |
 | release_year | integer | Рік випуску |
