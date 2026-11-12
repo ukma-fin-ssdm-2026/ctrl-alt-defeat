@@ -169,7 +169,7 @@ def test_get_reviews_pagination(client, mock_db_session, mock_review):
     # Trace: T-038
     mock_query = mock_db_session.query.return_value
     mock_query.count.return_value = 1
-    mock_query.offset.return_value.limit.return_value.all.return_value = [mock_review]
+    mock_query.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [mock_review]
 
     response = client.get("/api/v1/reviews?skip=0&limit=5")
 
@@ -183,7 +183,7 @@ def test_get_reviews_with_content_filter(client, mock_db_session, mock_review):
     mock_query = mock_db_session.query.return_value
     mock_filter = mock_query.filter.return_value
     mock_filter.count.return_value = 1
-    mock_filter.offset.return_value.limit.return_value.all.return_value = [mock_review]
+    mock_filter.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [mock_review]
     content_id = str(mock_review.content_id)
 
     response = client.get(f"/api/v1/reviews?content_id={content_id}")
@@ -331,7 +331,7 @@ def test_get_reviews_min_rating_filter(client, mock_db_session, mock_review, min
     mock_filter = mock_query.filter.return_value
     mock_filter.count.return_value = 1
     mock_review.rating = 10
-    mock_filter.offset.return_value.limit.return_value.all.return_value = [mock_review]
+    mock_filter.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [mock_review]
 
     response = client.get(f"/api/v1/reviews?min_rating={min_val}")
 
@@ -395,7 +395,7 @@ def test_get_reviews_with_user_filter(client, mock_db_session, mock_review):
     mock_query = mock_db_session.query.return_value
     mock_filter = mock_query.filter.return_value
     mock_filter.count.return_value = 1
-    mock_filter.offset.return_value.limit.return_value.all.return_value = [mock_review]
+    mock_filter.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [mock_review]
     user_id = str(mock_review.user_id)
 
     response = client.get(f"/api/v1/reviews?user_id={user_id}")

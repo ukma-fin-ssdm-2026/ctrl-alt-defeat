@@ -9,6 +9,8 @@ import { isUuid } from '../utils/uuid';
 import { formatAudienceRating } from '../utils/audienceRating';
 import { translateGenre } from '../utils/genres';
 const MIN_TEXT = 10;
+// Reviews of one title shown on its page (the API answers at most 100 per request, newest first)
+const REVIEWS_LIMIT = 100;
 const MAX_TEXT = 5000;
 
 function ReviewContent({ text, isSpoiler, language = 'UKR' }) {
@@ -99,7 +101,7 @@ export default function MovieDetails({
 
     // Without a catalog id there is nothing to filter by: never load the reviews of all movies
     const request = isUuid(contentUuid)
-      ? apiClient.get('/reviews', { params: { content_id: contentUuid } })
+      ? apiClient.get('/reviews', { params: { content_id: contentUuid, limit: REVIEWS_LIMIT } })
       : Promise.resolve({ data: { items: [] } });
 
     request
