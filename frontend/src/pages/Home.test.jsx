@@ -1,8 +1,8 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import apiClient from '../api/client';
-import Home from './Home';
+import Home, { RENDER_STEP } from './Home';
 
 vi.mock('../api/client', () => ({
   default: { get: vi.fn() },
@@ -101,14 +101,53 @@ describe('Home shows the whole catalog', () => {
     },
   });
 
-  it('loads every page at once, without a "Show more" button', async () => {
+  // A stand-in for the browser API: `scrollToEnd()` reports the end of the list as visible
+  const observers = [];
+  class FakeIntersectionObserver {
+    constructor(callback) {
+      this.callback = callback;
+      observers.push(this);
+    }
+    observe() {}
+    disconnect() {
+      observers.splice(observers.indexOf(this), 1);
+    }
+  }
+  const scrollToEnd = () => act(() => observers.forEach(o => o.callback([{ isIntersecting: true }])));
+
+  it('loads every page and draws the cards in portions while scrolling, without a button', async () => {
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
     apiClient.get.mockResolvedValueOnce(page(1, 100, 130)).mockResolvedValueOnce(page(101, 30, 130));
     render(<Home selectedCategory="Фільми" onSelectMovie={() => {}} />);
 
-    expect(await screen.findByText('Фільм 130')).toBeInTheDocument();
+    expect(await screen.findByText(`Фільм ${RENDER_STEP}`)).toBeInTheDocument();
     expect(screen.getByText('Усього: 130')).toBeInTheDocument();
     expect(apiClient.get).toHaveBeenLastCalledWith('/movies', { params: { category: 'Movie', skip: 100, limit: 100 } });
-    expect(screen.queryByRole('button', { name: 'Показати ще' })).not.toBeInTheDocument();
+    expect(screen.queryByText(`Фільм ${RENDER_STEP + 1}`)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Показати ще/ })).not.toBeInTheDocument();
+
+    scrollToEnd();
+    expect(screen.getByText(`Фільм ${RENDER_STEP * 2}`)).toBeInTheDocument();
+    scrollToEnd();
+    expect(screen.getByText('Фільм 130')).toBeInTheDocument();
+    // Everything is drawn: nothing is observed any more
+    expect(observers).toHaveLength(0);
+    vi.unstubAllGlobals();
+  });
+
+  it('starts from the first portion again when the sorting changes and has a button without IntersectionObserver', async () => {
+    vi.stubGlobal('IntersectionObserver', undefined);
+    apiClient.get.mockResolvedValue(page(1, 100, 100));
+    render(<Home onSelectMovie={() => {}} />);
+
+    const more = await screen.findByRole('button', { name: `Показати ще (${RENDER_STEP} з 100)` });
+    await userEvent.click(more);
+    expect(screen.getByText('Фільм 100')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Показати ще/ })).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Сортування' }), 'rating_desc');
+    expect(await screen.findByRole('button', { name: `Показати ще (${RENDER_STEP} з 100)` })).toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 
   it('never shows placeholder titles: an empty result and an unavailable server say so', async () => {
