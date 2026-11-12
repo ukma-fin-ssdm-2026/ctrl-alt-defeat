@@ -2531,14 +2531,16 @@ components:
             format: uuid4
           - type: 'null'
           title: User Id
-          description: Author ID (defaults to authenticated user from JWT)
+          description: Author ID (deprecated/ignored by server; author resolved from
+            verified JWT token)
         author_name:
           anyOf:
           - type: string
             maxLength: 50
           - type: 'null'
           title: Author Name
-          description: Author nickname (defaults to authenticated user)
+          description: Author nickname (deprecated/ignored by server; author resolved
+            from verified JWT token)
         text:
           type: string
           maxLength: 2000
