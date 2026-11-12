@@ -1,0 +1,50 @@
+name: Release
+
+# Automated release (Lab 8 bonus). A release is prepared in a PR: a new version in pyproject.toml,
+# frontend/package.json (with package-lock.json) and a `## [X.Y.Z] - date` section in CHANGELOG.md.
+# After the merge this workflow checks that the numbers agree, creates the tag vX.Y.Z on the merged
+# commit and a GitHub Release whose notes are that CHANGELOG section. An existing tag is never moved.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - pyproject.toml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # GitHub-hosted runner: the repository is public, and self-hosted runners must not run public repository code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - name: Check the version and take the release notes from CHANGELOG.md
+        id: notes
+        run: python scripts/release_notes.py --notes-file release-notes.md --github-output "$GITHUB_OUTPUT"
+
+      - name: Create the tag and the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.notes.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "Tag v$VERSION already exists: nothing to release."
+            exit 0
+          fi
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file release-notes.md
