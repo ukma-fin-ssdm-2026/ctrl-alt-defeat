@@ -30,6 +30,8 @@ def change_password(db: Session, user: models.User, current_password: str, new_p
             detail={"code": "SAME_PASSWORD", "message": "The new password must differ from the current one"},
         )
     user.password_hash = hash_password(new_password)
+    # Every access token issued before this moment stops working (other devices are logged out)
+    user.token_version = (user.token_version or 0) + 1
     db.commit()
 
 

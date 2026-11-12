@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
@@ -75,3 +75,32 @@ def upgrade_content_tmdb_uniqueness(bind) -> bool:
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_content_category_tmdb ON content (category, tmdb_id)"
         )
     return True
+
+
+# Columns added to the users table after the first release: create_all() does not add columns to an existing
+# table, so they are added on startup. Types per database: (PostgreSQL, SQLite).
+USER_COLUMNS = {
+    "verification_sent_at": ("TIMESTAMP WITH TIME ZONE", "DATETIME"),
+    "token_version": ("INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"),
+}
+
+
+def upgrade_user_columns(bind) -> list:
+    """Add the missing USER_COLUMNS to an existing users table. Returns the names of the added columns."""
+    existing = {column["name"] for column in inspect(bind).get_columns("users")}
+    missing = [name for name in USER_COLUMNS if name not in existing]
+    if not missing:
+        return []
+    postgres = bind.dialect.name == "postgresql"
+    with bind.begin() as connection:
+        for name in missing:
+            column_type = USER_COLUMNS[name][0 if postgres else 1]
+            # Names and types come from USER_COLUMNS above, never from input
+            connection.exec_driver_sql(f"ALTER TABLE users ADD COLUMN {name} {column_type}")
+    return missing
+
+
+def upgrade_schema(bind) -> None:
+    """One-time upgrades of an existing database, run on every startup (each step is idempotent)."""
+    upgrade_content_tmdb_uniqueness(bind)
+    upgrade_user_columns(bind)

@@ -230,6 +230,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many failed attempts from this address; see Retry-After
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/auth/demo-accounts:
     get:
       tags:
@@ -390,7 +396,8 @@ paths:
       - Authentication & User Management
       summary: Change my password
       description: Requires the current password. Demo (seed) accounts are managed
-        by the server settings.
+        by the server settings. All other sessions of the account end; this one continues
+        with a new session cookie.
       operationId: change_my_password_api_v1_auth_change_password_post
       parameters:
       - name: authorization
@@ -569,6 +576,19 @@ paths:
           default: 20
           title: Limit
         description: Maximum items per page
+      - name: compact
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: 'Leave out the synopses (`description`, `description_en` are
+            null): a list for cards and search is several times smaller; the details
+            of one title come from GET /movies/{movie_id}'
+          default: false
+          title: Compact
+        description: 'Leave out the synopses (`description`, `description_en` are
+          null): a list for cards and search is several times smaller; the details
+          of one title come from GET /movies/{movie_id}'
       responses:
         '200':
           description: Successful Response

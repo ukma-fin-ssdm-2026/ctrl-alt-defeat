@@ -82,6 +82,21 @@ def decode_access_token(token: str) -> Dict[str, Any]:
     return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
 
 
+# An activation link from the email works for this many hours (FR-001)
+VERIFICATION_TOKEN_HOURS = 24
+
+
+def verification_expired(sent_at: Optional[datetime], now: Optional[datetime] = None) -> bool:
+    """True if the activation link sent at `sent_at` is too old. Links sent before this check existed
+    (no time stored) stay valid."""
+    if sent_at is None:
+        return False
+    if sent_at.tzinfo is None:  # SQLite returns naive datetimes; they are stored in UTC
+        sent_at = sent_at.replace(tzinfo=timezone.utc)
+    now = now or datetime.now(timezone.utc)
+    return now - sent_at > timedelta(hours=VERIFICATION_TOKEN_HOURS)
+
+
 def generate_verification_token() -> str:
     """
     Generate a cryptographically secure random token for email verification (FR-001).
