@@ -80,7 +80,7 @@
 
 ### Лабораторна робота 8: Рефакторинг та управління релізами
 - [Звіт SonarQube Cloud: метрики до/після, рефакторинги, використання ШІ, регресія](./docs/refactoring/sonarcloud-report.md)
-- [Журнал змін (CHANGELOG.md)](./CHANGELOG.md), реліз `v0.1.1`
+- [Журнал змін (CHANGELOG.md)](./CHANGELOG.md), останній реліз `v1.0.0`; релізи створює автоматично workflow [`release.yml`](./.github/workflows/release.yml) після злиття PR зі зміною версії
 - [Відеопрезентація Лаб 8](./Labs/Lab08/)
 
 ### Лабораторна робота 9: Надійність та «Resilience Scavenger Hunt»
