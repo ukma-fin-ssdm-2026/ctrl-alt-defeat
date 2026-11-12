@@ -38,14 +38,14 @@ def get_db():
     ),
 )
 def get_movies(
-    search: Optional[str] = Query(None, description="Search term in title (Ukrainian or English)"),
+    search: Optional[str] = Query(None, max_length=100, description="Search term in title (Ukrainian or English)"),
     category: Optional[str] = Query(None, description="Category: 'Movie' or 'Series'"),
     genre: Optional[str] = Query(
         None,
         description="Genre filter, Ukrainian or English name (e.g. 'Фантастика' or 'Sci-Fi'); "
         "matches any genre of the title, not only the primary one",
     ),
-    year: Optional[int] = Query(None, description="Release year filter (e.g., 2024)"),
+    year: Optional[int] = Query(None, ge=1888, le=2100, description="Release year filter (e.g., 2024)"),
     sort_by: Optional[ContentSortField] = Query(
         None, description="Sort criterion: 'rating', 'release_date' (release year) or 'runtime'"
     ),
@@ -128,9 +128,11 @@ def get_movie_by_id(
     except (ValueError, AttributeError):
         pass
 
-    # If not UUID or not found by UUID, try integer ID
-    if not content and movie_id.isdigit():
-        content = db.query(Content).filter(Content.id == int(movie_id)).first()
+    # If not UUID or not found by UUID, try integer ID within valid 32-bit range (finding 9)
+    if not content and movie_id.isdigit() and len(movie_id) <= 10:
+        numeric_id = int(movie_id)
+        if numeric_id <= 2_147_483_647:
+            content = db.query(Content).filter(Content.id == numeric_id).first()
 
     if not content:
         raise HTTPException(
