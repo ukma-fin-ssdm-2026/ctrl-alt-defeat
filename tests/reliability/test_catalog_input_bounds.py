@@ -102,7 +102,8 @@ def test_year_below_min_bound_returns_422(client):
 
 def test_numeric_movie_id_exceeding_32bit_integer_returns_404_not_500(client):
     """
-    Finding 9: huge numeric ID (e.g. 99999999999999999999999) returns 404 instead of causing driver overflow error (500).
+    Finding 9: huge numeric ID (e.g. 99999999999999999999999) returns 404
+    instead of causing driver overflow error (500).
     """
     huge_id = "99999999999999999999999"
     response = client.get(f"{URL}/{huge_id}")

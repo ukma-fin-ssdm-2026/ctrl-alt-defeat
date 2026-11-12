@@ -489,6 +489,7 @@ paths:
         schema:
           anyOf:
           - type: string
+            maxLength: 100
           - type: 'null'
           description: Search term in title (Ukrainian or English)
           title: Search
@@ -521,6 +522,8 @@ paths:
         schema:
           anyOf:
           - type: integer
+            maximum: 2100
+            minimum: 1888
           - type: 'null'
           description: Release year filter (e.g., 2024)
           title: Year
