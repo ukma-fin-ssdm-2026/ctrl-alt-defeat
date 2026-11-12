@@ -47,7 +47,7 @@ describe('Home catalog sorting (FR-010)', () => {
 
     await waitFor(() =>
       expect(apiClient.get).toHaveBeenLastCalledWith('/movies', {
-        params: { sort_by: 'release_date', order: 'desc', skip: 0, limit: 100 },
+        params: { sort_by: 'release_date', order: 'desc', skip: 0, limit: 100, compact: true },
       })
     );
   });
@@ -69,7 +69,7 @@ describe('Home catalog sorting (FR-010)', () => {
 
     await waitFor(() =>
       expect(apiClient.get).toHaveBeenLastCalledWith('/movies', {
-        params: { genre: 'Драма', sort_by: 'rating', order: 'desc', skip: 0, limit: 100 },
+        params: { genre: 'Драма', sort_by: 'rating', order: 'desc', skip: 0, limit: 100, compact: true },
       })
     );
     expect(screen.queryByText('New SciFi')).not.toBeInTheDocument();
@@ -122,7 +122,7 @@ describe('Home shows the whole catalog', () => {
 
     expect(await screen.findByText(`Фільм ${RENDER_STEP}`)).toBeInTheDocument();
     expect(screen.getByText('Усього: 130')).toBeInTheDocument();
-    expect(apiClient.get).toHaveBeenLastCalledWith('/movies', { params: { category: 'Movie', skip: 100, limit: 100 } });
+    expect(apiClient.get).toHaveBeenLastCalledWith('/movies', { params: { category: 'Movie', skip: 100, limit: 100, compact: true } });
     expect(screen.queryByText(`Фільм ${RENDER_STEP + 1}`)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Показати ще/ })).not.toBeInTheDocument();
 

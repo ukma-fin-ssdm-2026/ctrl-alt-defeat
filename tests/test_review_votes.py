@@ -206,3 +206,21 @@ def test_deleting_the_author_removes_votes_under_their_reviews(client, db_sessio
     remove_user_with_data(db_session, author)
 
     assert db_session.query(ReviewVote).count() == 0
+
+
+def test_reviews_of_a_title_come_newest_first(client, db_session, author, fan):
+    # Trace: T-038
+    from datetime import datetime, timedelta, timezone
+
+    start = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    for day, (user, text) in enumerate([(author, "Перша рецензія, давня"), (fan, "Друга рецензія, свіжіша")]):
+        created_at = start + timedelta(days=day)
+        db_session.add(
+            Review(user_id=user.user_id, content_id=MOVIE, rating=7, review_text=text, created_at=created_at)
+        )
+    db_session.commit()
+
+    items = client.get(REVIEWS, params={"content_id": str(MOVIE)}).json()["items"]
+
+    # Without an explicit order the database could return them in any order, and pages could overlap
+    assert [item["review_text"] for item in items] == ["Друга рецензія, свіжіша", "Перша рецензія, давня"]

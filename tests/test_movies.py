@@ -149,6 +149,17 @@ def test_get_movies_search_not_found(client):
     assert len(data["items"]) == 0
 
 
+def test_search_treats_percent_and_underscore_as_plain_characters(client):
+    # Trace: T-009, FR-002
+    # Without escaping, `%` and `_` were LIKE wildcards and matched every title
+    for term in ("%", "_", "100%", "a_b"):
+        response = client.get("/api/v1/movies", params={"search": term})
+        assert response.status_code == 200
+        assert response.json()["total"] == 0, term
+    # Ordinary search still works, case-insensitively for Latin letters
+    assert client.get("/api/v1/movies", params={"search": "dune"}).json()["total"] == 1
+
+
 def test_get_movies_filter_category(client):
     # Trace: T-014, FR-002
     response = client.get("/api/v1/movies?category=Series")

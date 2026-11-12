@@ -9,6 +9,8 @@ import { isUuid } from '../utils/uuid';
 import { formatAudienceRating } from '../utils/audienceRating';
 import { translateGenre } from '../utils/genres';
 const MIN_TEXT = 10;
+// Reviews of one title shown on its page (the API answers at most 100 per request, newest first)
+const REVIEWS_LIMIT = 100;
 const MAX_TEXT = 5000;
 
 function ReviewContent({ text, isSpoiler, language = 'UKR' }) {
@@ -79,6 +81,28 @@ export default function MovieDetails({
   const [formError, setFormError] = useState('');
   const isUkr = language === 'UKR';
 
+  // The catalog list is compact (no synopses): the full details of this title come from GET /movies/{id}
+  const [details, setDetails] = useState({ key: null, data: null });
+  useEffect(() => {
+    const contentUuid = movie.content_id;
+    if (!isUuid(contentUuid)) return undefined;
+    let ignore = false;
+    Promise.resolve(apiClient.get(`/movies/${contentUuid}`))
+      .then(response => {
+        if (!ignore && response?.data) setDetails({ key: contentUuid, data: response.data });
+      })
+      .catch(() => {
+        // The card data stays on the page; only the synopsis is missing
+        if (!ignore) setDetails({ key: contentUuid, data: null });
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [movie.content_id]);
+  const detailsLoaded = details.key === movie.content_id;
+  const fullMovie = detailsLoaded && details.data ? { ...movie, ...details.data } : movie;
+  const descriptionLoading = isUuid(movie.content_id) && !detailsLoaded && !movie.description;
+
   const myReview = reviews.find(
     r => user?.user_id && r.user_id === user.user_id && movie.content_id && r.content_id === movie.content_id
   );
@@ -99,7 +123,7 @@ export default function MovieDetails({
 
     // Without a catalog id there is nothing to filter by: never load the reviews of all movies
     const request = isUuid(contentUuid)
-      ? apiClient.get('/reviews', { params: { content_id: contentUuid } })
+      ? apiClient.get('/reviews', { params: { content_id: contentUuid, limit: REVIEWS_LIMIT } })
       : Promise.resolve({ data: { items: [] } });
 
     request
@@ -314,8 +338,8 @@ export default function MovieDetails({
             {/* Опис з підтримкою мови */}
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
               {isUkr 
-                ? (movie.description || 'Опис цього фільму поки що відсутній.') 
-                : (movie.description_en || movie.descriptionEn || movie.description || 'No description available.')}
+                ? (fullMovie.description || (descriptionLoading ? 'Завантаження опису…' : 'Опис цього фільму поки що відсутній.'))
+                : (fullMovie.description_en || fullMovie.descriptionEn || fullMovie.description || (descriptionLoading ? 'Loading the synopsis…' : 'No description available.'))}
             </p>
 
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm mb-6">
@@ -467,7 +491,10 @@ export default function MovieDetails({
             return (
               <div key={reviewId} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
                 <div className="flex items-start gap-3">
-                  <img src={rev.avatar || 'https://picsum.photos/50?random=99'} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
+                  {/* Initial of the author, like in the header (no external avatar service) */}
+                  <span aria-hidden="true" className="w-10 h-10 shrink-0 rounded-full bg-yellow-500 text-gray-900 font-black flex items-center justify-center">
+                    {(rev.author_nickname || rev.author || '?')[0].toUpperCase()}
+                  </span>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">

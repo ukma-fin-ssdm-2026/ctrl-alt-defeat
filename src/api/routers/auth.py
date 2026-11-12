@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 import jwt
@@ -24,12 +25,15 @@ from src.api.schemas.auth import (
 )
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
 from src.api.services.auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
     decode_access_token,
     generate_verification_token,
     hash_password,
+    verification_expired,
     verify_password,
 )
+from src.api.services.rate_limit import login_limiter
 from src.api.services.account import change_password, delete_account
 from src.api.services.bans import active_ban
 from src.api.services.demo_accounts import get_public_demo_accounts
@@ -51,6 +55,40 @@ def user_response(db: Session, user: User) -> UserResponse:
     return UserResponse.model_validate(user).model_copy(update={"ban": active_ban(db, user)})
 
 
+def token_from_request(authorization: Optional[str], access_token_cookie: Optional[str]) -> Optional[str]:
+    """The access token from the `Authorization: Bearer` header, otherwise from the HttpOnly cookie."""
+    if authorization:
+        parts = authorization.split(" ")
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            return parts[1]
+    return access_token_cookie or None
+
+
+def access_token_for(user: User) -> str:
+    """A signed access token of the user; `ver` ties it to the current password (see token_version)."""
+    return create_access_token(
+        {
+            "sub": str(user.user_id),
+            "email": user.email,
+            "nickname": user.nickname,
+            "role": user.role,
+            "ver": user.token_version or 0,
+        }
+    )
+
+
+def set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=True,
+        # The cookie lives exactly as long as the token inside it
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+
+
 def get_current_user(
     request: Request,
     authorization: Optional[str] = Header(None),
@@ -60,20 +98,20 @@ def get_current_user(
     """
     Extract and validate JWT access token from Authorization header or HttpOnly cookie (US-011).
     """
-    token = None
-    if authorization:
-        parts = authorization.split(" ")
-        if len(parts) == 2 and parts[0].lower() == "bearer":
-            token = parts[1]
-    if not token and access_token_cookie:
-        token = access_token_cookie
-
+    token = token_from_request(authorization, access_token_cookie)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "UNAUTHORIZED", "message": "Authentication required. Please log in."},
         )
+    return user_from_token(db, token)
 
+
+def user_from_token(db: Session, token: str) -> User:
+    """
+    The user of a valid access token; 401 for a bad, expired or outdated token (shared by every endpoint
+    that needs a signed-in user, comments included).
+    """
     try:
         payload = decode_access_token(token)
     except jwt.PyJWTError:
@@ -102,6 +140,13 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "USER_NOT_FOUND", "message": "User associated with token not found"},
+        )
+
+    # Tokens issued before the last password change are no longer accepted (old tokens have no `ver`: 0)
+    if payload.get("ver", 0) != (user.token_version or 0):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "TOKEN_REVOKED", "message": "The session ended after a password change. Please log in."},
         )
 
     return user
@@ -176,6 +221,7 @@ def register_user(
         email_verified=False,
         status="pending",
         verification_token=verification_token,
+        verification_sent_at=datetime.now(timezone.utc),
     )
     db.add(user)
 
@@ -221,6 +267,7 @@ def resend_verification(
     user = db.query(User).filter(User.email == req.email.strip().lower()).first()
     if user is not None and not user.email_verified:
         user.verification_token = generate_verification_token()
+        user.verification_sent_at = datetime.now(timezone.utc)
         db.commit()
         background_tasks.add_task(send_verification_email, user.email, user.nickname, user.verification_token)
     return MessageResponse(message="If the account exists and is not verified yet, a new activation link was sent.")
@@ -246,10 +293,19 @@ def verify_email(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "INVALID_VERIFICATION_TOKEN", "message": "Invalid or expired email verification token"},
         )
+    if verification_expired(user.verification_sent_at):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "VERIFICATION_TOKEN_EXPIRED",
+                "message": "The activation link has expired. Request a new one from the login window.",
+            },
+        )
 
     user.email_verified = True
     user.status = "active"
     user.verification_token = None
+    user.verification_sent_at = None
     db.commit()
 
     return VerifyEmailResponse(
@@ -271,21 +327,38 @@ def verify_email(
         **STANDARD_ERRORS,
         401: {"model": ErrorResponse, "description": "Invalid email or password"},
         403: {"model": ErrorResponse, "description": "Email is not verified"},
+        429: {"model": ErrorResponse, "description": "Too many failed attempts from this address; see Retry-After"},
     },
 )
 def login(
     req: UserLoginRequest,
+    request: Request,
     response: Response,
     db: Session = Depends(get_db),
 ):
+    # Brute-force protection: a few wrong passwords per minute from one address (rate_limit.py)
+    client = request.client.host if request.client else "unknown"
+    wait = login_limiter.retry_after(client)
+    if wait is not None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "TOO_MANY_ATTEMPTS",
+                "message": f"Too many failed login attempts. Try again in {wait} seconds.",
+            },
+            headers={"Retry-After": str(wait)},
+        )
+
     email_clean = req.email.strip().lower()
     user = db.query(User).filter(User.email == email_clean).first()
 
     if not user or not verify_password(req.password, user.password_hash):
+        login_limiter.record_failure(client)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "INVALID_CREDENTIALS", "message": "Invalid email or password"},
         )
+    login_limiter.reset(client)
 
     if not user.email_verified:
         raise HTTPException(
@@ -296,23 +369,8 @@ def login(
             },
         )
 
-    access_token = create_access_token(
-        {
-            "sub": str(user.user_id),
-            "email": user.email,
-            "nickname": user.nickname,
-            "role": user.role,
-        }
-    )
-
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        samesite="lax",
-        secure=True,
-        max_age=86400,
-    )
+    access_token = access_token_for(user)
+    set_session_cookie(response, access_token)
 
     return TokenResponse(
         access_token=access_token,
@@ -367,15 +425,20 @@ ACCOUNT_ERRORS = {
     "/change-password",
     response_model=MessageResponse,
     summary="Change my password",
-    description="Requires the current password. Demo (seed) accounts are managed by the server settings.",
+    description=(
+        "Requires the current password. Demo (seed) accounts are managed by the server settings. "
+        "All other sessions of the account end; this one continues with a new session cookie."
+    ),
     responses={**STANDARD_ERRORS, **ACCOUNT_ERRORS},
 )
 def change_my_password(
     req: ChangePasswordRequest,
+    response: Response,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     change_password(db, current_user, req.current_password, req.new_password)
+    set_session_cookie(response, access_token_for(current_user))
     return MessageResponse(message="Password changed")
 
 

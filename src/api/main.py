@@ -11,7 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, status
 from pathlib import Path
-from src.api.db.database import Base, engine, upgrade_content_tmdb_uniqueness
+from src.api.db.database import Base, engine, upgrade_schema
 from src.api.schemas.errors import ErrorDetail, ErrorPayload, ErrorResponse, STANDARD_ERRORS
 from src.api.routers.reviews import router as reviews_router
 from src.api.routers.movies import router as movies_router
@@ -30,6 +30,8 @@ from src.api.services.genres import link_catalog_genres
 from src.api.services.tmdb import seed_catalog_if_empty
 from src.api.db.database import SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from src.api.security_headers import SecurityHeadersMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +104,11 @@ async def lifespan(app: FastAPI):
 
     if database_available:
         try:
-            # A movie and a series may share a TMDB number (old databases had UNIQUE(tmdb_id))
-            upgrade_content_tmdb_uniqueness(engine)
-        except Exception as exc:  # never block the startup: the import then skips such titles
-            logger.error("Schema upgrade of content.tmdb_id failed: %s", exc)
+            # Existing databases: a movie and a series may share a TMDB number (old UNIQUE(tmdb_id)),
+            # new user columns (activation link time, token version)
+            upgrade_schema(engine)
+        except Exception as exc:  # never block the startup
+            logger.error("Schema upgrade failed: %s", exc)
 
         db = SessionLocal()
 
@@ -194,6 +197,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# The whole catalog is a few hundred KB of JSON: compressed it is several times smaller
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+# Security headers on every response (security_headers.py)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # GLOBAL EXCEPTION HANDLERS
 
@@ -240,7 +247,8 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
             documentation=f"https://api.our-movie-platform.com/docs/errors#{code.lower().replace('_', '-')}",
         )
     )
-    return JSONResponse(status_code=exc.status_code, content=error_content.model_dump())
+    # Headers of the exception are kept (e.g. Retry-After of 429 Too Many Requests)
+    return JSONResponse(status_code=exc.status_code, content=error_content.model_dump(), headers=exc.headers)
 
 
 @app.exception_handler(Exception)

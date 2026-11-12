@@ -140,3 +140,16 @@ describe('AuthModal email confirmation (FR-001)', () => {
     expect(apiClient.post).toHaveBeenCalledWith('/auth/resend-verification', { email: 'late@example.com' });
   });
 });
+
+describe('AuthModal login limit', () => {
+  it('asks to wait after too many failed attempts', async () => {
+    const onLogin = vi.fn().mockResolvedValue({ success: false, code: 'TOO_MANY_ATTEMPTS' });
+    render(<AuthModal close={() => {}} onLogin={onLogin} />);
+
+    fireEvent.change(await screen.findByPlaceholderText('Email'), { target: { value: 'user@demo.test' } });
+    fireEvent.change(screen.getByPlaceholderText('Пароль'), { target: { value: 'wrong-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Увійти' }));
+
+    expect(await screen.findByText(/Забагато невдалих спроб входу/)).toBeInTheDocument();
+  });
+});

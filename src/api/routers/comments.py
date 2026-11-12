@@ -1,10 +1,8 @@
 import logging
-import uuid
 from datetime import UTC, datetime
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, status
-import jwt
 from pydantic import UUID4
 from sqlalchemy.orm import Session
 
@@ -12,7 +10,7 @@ from src.api.db import models
 from src.api.db.database import SessionLocal
 from src.api.schemas.comment import CommentCreate, CommentResponse, CommentThreadResponse
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
-from src.api.services.auth import decode_access_token
+from src.api.routers.auth import token_from_request, user_from_token
 from src.api.services.bans import ensure_can_contribute
 from src.api.utils import check_comment_policy_violations
 
@@ -90,52 +88,21 @@ def create_comment(
 ):
     review_id = comment.review_id
 
-    # Resolve user from JWT access token (FR-001, findings 1 and 17)
-    token = None
-    if authorization:
-        parts = authorization.split(" ")
-        if len(parts) == 2 and parts[0].lower() == "bearer":
-            token = parts[1]
-    if not token and access_token_cookie:
-        token = access_token_cookie
-
+    # Resolve user from JWT access token (FR-001, findings 1 and 17): the same checks as every other
+    # endpoint (signature, expiry, existing user, token not revoked by a password change)
+    token = token_from_request(authorization, access_token_cookie)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "AUTH_REQUIRED", "message": "Please log in to leave a comment"},
         )
-
     try:
-        payload = decode_access_token(token)
-    except jwt.PyJWTError as error:
-        logger.warning("Invalid access token provided for comment: %s", error)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "INVALID_TOKEN", "message": "Invalid or expired access token"},
-        )
-
-    sub = payload.get("sub")
-    if not sub:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "INVALID_TOKEN", "message": "Token missing subject identifier"},
-        )
-
-    try:
-        user_uuid = uuid.UUID(sub)
-    except (ValueError, AttributeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "INVALID_TOKEN", "message": "Token subject is not a valid UUID"},
-        )
-
-    auth_user = db.query(models.User).filter(models.User.user_id == user_uuid).first()
-    if not auth_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "USER_NOT_FOUND", "message": "User associated with token not found"},
-        )
-
+        auth_user = user_from_token(db, token)
+    except HTTPException as error:
+        # Reliability (finding 17): a broken or forged token is worth a line in the log
+        if isinstance(error.detail, dict) and error.detail.get("code") == "INVALID_TOKEN":
+            logger.warning("Invalid access token provided for comment")
+        raise
     user_id = auth_user.user_id
     author_name = auth_user.nickname or "Viewer"
 

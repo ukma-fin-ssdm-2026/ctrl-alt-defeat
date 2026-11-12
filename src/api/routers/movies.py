@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy import func, or_, select
 
 from src.api.db.database import SessionLocal
@@ -16,6 +16,10 @@ SORT_COLUMNS = {
 }
 
 router = APIRouter(prefix="/api/v1/movies", tags=["Movies & Series Catalog"])
+
+# Long texts left out of a compact list (`compact=true`): the page of a title loads them with GET /movies/{id}
+LONG_FIELDS = ("description", "description_en")
+LIST_FIELDS = [name for name in ContentResponse.model_fields if name not in LONG_FIELDS]
 
 
 def get_db():
@@ -52,16 +56,26 @@ def get_movies(
     order: SortOrder = Query(SortOrder.desc, description="Sort direction: 'desc' (default) or 'asc'"),
     skip: int = Query(0, ge=0, description="Number of items to skip"),
     limit: int = Query(20, ge=1, le=100, description="Maximum items per page"),
+    compact: bool = Query(
+        False,
+        description="Leave out the synopses (`description`, `description_en` are null): a list for cards and "
+        "search is several times smaller; the details of one title come from GET /movies/{movie_id}",
+    ),
     db: Session = Depends(get_db),
 ):
     query = db.query(Content)
+    if compact:
+        # The synopses are not even read from the database
+        query = query.options(*(defer(getattr(Content, name)) for name in LONG_FIELDS))
 
-    if search:
-        search_filter = f"%{search.strip()}%"
+    if search and search.strip():
+        # `%` and `_` typed by the user are plain characters, not LIKE wildcards
+        escaped = search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search_filter = f"%{escaped}%"
         query = query.filter(
             or_(
-                Content.title.ilike(search_filter),
-                Content.title_en.ilike(search_filter),
+                Content.title.ilike(search_filter, escape="\\"),
+                Content.title_en.ilike(search_filter, escape="\\"),
             )
         )
 
@@ -100,6 +114,9 @@ def get_movies(
 
     items = query.offset(skip).limit(limit).all()
     has_more = (skip + limit) < total
+    if compact:
+        # Only the loaded columns are read: touching a deferred one would load it row by row
+        items = [ContentResponse.model_validate({name: getattr(row, name) for name in LIST_FIELDS}) for row in items]
 
     return PaginatedContentResponse(
         items=items,

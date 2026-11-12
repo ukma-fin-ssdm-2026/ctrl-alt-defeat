@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from src.api.db.database import Base
 from src.api.db.models import User
 from src.api.main import app
+from src.api.services import auth as auth_service
 from src.api.routers.auth import get_db, get_current_admin
 from src.api.services.auth import (
     decode_access_token,
@@ -246,6 +247,8 @@ def test_login_success_t037(client: TestClient):
     assert decoded["role"] == "user"
 
     assert "access_token" in login_res.cookies
+    # The cookie lives exactly as long as the token (ACCESS_TOKEN_EXPIRE_MINUTES), not a fixed day
+    assert f"Max-Age={auth_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60}" in login_res.headers["set-cookie"]
 
 
 def test_login_invalid_password(client: TestClient):

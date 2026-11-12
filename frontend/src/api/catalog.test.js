@@ -18,7 +18,7 @@ describe('fetchWholeCatalog', () => {
     const catalog = await fetchWholeCatalog();
 
     expect(catalog).toHaveLength(230);
-    expect(apiClient.get).toHaveBeenNthCalledWith(2, '/movies', { params: { skip: 100, limit: CATALOG_PAGE_SIZE } });
+    expect(apiClient.get).toHaveBeenNthCalledWith(2, '/movies', { params: { skip: 100, limit: CATALOG_PAGE_SIZE, compact: true } });
     expect(apiClient.get).toHaveBeenCalledTimes(3);
   });
 
@@ -42,7 +42,7 @@ describe('fetchWholeCatalog with filters', () => {
     await fetchWholeCatalog({ category: 'Cartoons', sort_by: 'rating', order: 'desc' });
 
     expect(apiClient.get).toHaveBeenLastCalledWith('/movies', {
-      params: { category: 'Cartoons', sort_by: 'rating', order: 'desc', skip: 100, limit: CATALOG_PAGE_SIZE },
+      params: { category: 'Cartoons', sort_by: 'rating', order: 'desc', skip: 100, limit: CATALOG_PAGE_SIZE, compact: true },
     });
   });
 });

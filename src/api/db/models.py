@@ -207,6 +207,10 @@ class User(Base):
     email_verified = Column(Boolean, nullable=False, default=False)
     status = Column(String(20), nullable=False, default="pending")  # 'pending' | 'active' | 'banned'
     verification_token = Column(String(255), nullable=True, index=True)
+    # When the current activation link was sent: the link works for VERIFICATION_TOKEN_HOURS (FR-001)
+    verification_sent_at = Column(DateTime(timezone=True), nullable=True)
+    # Written into every access token; a password change increases it, so older tokens stop working
+    token_version = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),

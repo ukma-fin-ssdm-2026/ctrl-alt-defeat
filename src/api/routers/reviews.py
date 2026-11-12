@@ -69,7 +69,7 @@ def get_db():
         409: {"model": ErrorResponse, "description": "User has already reviewed this content"},
     },
 )
-async def create_review(
+def create_review(
     review: ReviewCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -147,7 +147,7 @@ async def create_review(
     status_code=status.HTTP_200_OK,
     summary="Get a list of reviews (with pagination)",
 )
-async def get_reviews(
+def get_reviews(
     content_id: Optional[UUID4] = Query(None, description="Filter by content ID"),
     user_id: Optional[UUID4] = Query(None, description="Filter by user ID"),
     min_rating: Annotated[Optional[int], Query(ge=1, le=10, description="Filter by minimum rating (1-10)")] = None,
@@ -167,6 +167,8 @@ async def get_reviews(
         query = query.filter(models.Review.rating >= min_rating)
 
     total = query.count()
+    # Newest first, review_id as a tie-breaker: without an order the pages could overlap or skip reviews
+    query = query.order_by(models.Review.created_at.desc(), models.Review.review_id.asc())
     paginated_items = query.offset(skip).limit(limit).all()
     has_more = (skip + limit) < total
 
@@ -180,7 +182,7 @@ async def get_reviews(
     summary="Audience rating of a movie: average, number of ratings and reviews (US-008)",
     responses=STANDARD_ERRORS,
 )
-async def get_review_summary(
+def get_review_summary(
     content_id: UUID4 = Query(..., description="Movie or series to summarize"),
     db: Session = Depends(get_db),
 ):
@@ -223,7 +225,7 @@ def _vote_totals(db: Session, review_id) -> tuple[int, int]:
         403: {"model": ErrorResponse, "description": "Own review, banned or unverified user"},
     },
 )
-async def vote_for_review(
+def vote_for_review(
     vote: ReviewVoteRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -269,7 +271,7 @@ async def vote_for_review(
     summary="My votes for the reviews of a movie or series",
     responses={**STANDARD_ERRORS, 401: {"model": ErrorResponse, "description": "User is not authenticated"}},
 )
-async def get_my_votes(
+def get_my_votes(
     content_id: UUID4 = Query(..., description="Movie or series whose reviews to check"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -290,7 +292,7 @@ async def get_my_votes(
     summary="Get a specific review by ID",
     responses=STANDARD_ERRORS,
 )
-async def get_review(
+def get_review(
     review_id: UUID4 = Path(..., description="ID of the review"),
     db: Session = Depends(get_db),
 ):
@@ -308,7 +310,7 @@ async def get_review(
     summary="Partially update my review",
     responses={**STANDARD_ERRORS, **AUTH_ERRORS},
 )
-async def update_review(
+def update_review(
     review_update: ReviewUpdate,
     review_id: UUID4 = Path(..., description="ID of the review to update"),
     db: Session = Depends(get_db),
@@ -384,7 +386,7 @@ DELETE_RESPONSES = {
     description="Same as DELETE /reviews/{review_id}, with the id as a query parameter (constant client URLs).",
     responses=DELETE_RESPONSES,
 )
-async def delete_review_by_query(
+def delete_review_by_query(
     review_id: UUID4 = Query(..., description="ID of the review to delete"),
     current_user: models.User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -398,7 +400,7 @@ async def delete_review_by_query(
     summary="Delete a review (FR-008, US-006)",
     responses=DELETE_RESPONSES,
 )
-async def delete_review(
+def delete_review(
     review_id: UUID4 = Path(..., description="ID of the review to delete"),
     current_user: models.User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
