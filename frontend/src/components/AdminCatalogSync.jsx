@@ -53,8 +53,8 @@ export default function AdminCatalogSync({ language = 'UKR' }) {
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {isUkr
-              ? 'Імпорт 100 популярних фільмів, 100 серіалів і 100 мультфільмів із постерами, описами, жанрами й тривалістю. Наявні фільми оновлюються, нічого не видаляється.'
-              : 'Imports 100 popular movies, 100 series and 100 cartoons with posters, descriptions, genres and runtime. Existing titles are updated, nothing is deleted.'}
+              ? 'Імпорт по 500 популярних фільмів, серіалів і мультфільмів із постерами, описами, жанрами й тривалістю (кілька хвилин). Наявні фільми оновлюються, нічого не видаляється.'
+              : 'Imports 500 popular movies, 500 series and 500 cartoons with posters, descriptions, genres and runtime (a few minutes). Existing titles are updated, nothing is deleted.'}
           </p>
         </div>
         <button
