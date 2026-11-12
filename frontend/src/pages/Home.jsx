@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { fetchWholeCatalog } from '../api/catalog';
 import MovieCard from '../components/MovieCard';
 import { SORT_OPTIONS, sortMovies } from '../utils/sortMovies';
 import { translateGenre } from '../utils/genres';
 import { buildCatalogParams } from '../utils/catalogParams';
+
+// Cards drawn at once; the next portion is drawn when the end of the list comes near the screen.
+// The catalog has up to 1500 titles: drawing all of them at once makes the page slow on phones.
+export const RENDER_STEP = 60;
 
 export default function Home({ selectedCategory, selectedGenre, selectedYear, onSelectMovie, language = 'UKR', watchlist = [], onToggleWatchlist }) {
   const [movies, setMovies] = useState([]);
@@ -24,6 +28,13 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
   const loading = loadedKey !== requestKey;
 
   const isUkr = language === 'UKR';
+
+  // Portion rendering: starts over when the filters or the sorting change
+  const listKey = `${requestKey}|${sortKey}`;
+  const [shown, setShown] = useState({ key: listKey, count: RENDER_STEP });
+  const visibleCount = shown.key === listKey ? shown.count : RENDER_STEP;
+  const showMore = () => setShown({ key: listKey, count: visibleCount + RENDER_STEP });
+  const sentinelRef = useRef(null);
 
   const getGenreLabel = (genre) => translateGenre(genre, isUkr ? 'UKR' : 'EN');
 
@@ -81,6 +92,21 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
 
   // Sorting is applied only to the filtered selection (FR-010)
   const displayedMovies = sortMovies(filteredMovies, sortKey);
+  const visibleMovies = displayedMovies.slice(0, visibleCount);
+  const hasMore = visibleMovies.length < displayedMovies.length;
+
+  // Draw the next portion when the end of the list is about one screen away
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!hasMore || !sentinel || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setShown({ key: listKey, count: visibleCount + RENDER_STEP });
+      }
+    }, { rootMargin: '800px 0px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, listKey, visibleCount]);
 
   const getCategoryTitle = (cat) => {
     if (!cat) return '';
@@ -132,7 +158,7 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {displayedMovies.map(movie => (
+          {visibleMovies.map(movie => (
             <MovieCard 
               key={movie.id || movie.content_id} 
               movie={movie} 
@@ -142,6 +168,23 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
               onToggleWatchlist={onToggleWatchlist}
             />
           ))}
+        </div>
+      )}
+
+      {!loading && !loadError && hasMore && (
+        <div ref={sentinelRef} className="mt-8 text-center">
+          {/* Fallback for browsers without IntersectionObserver: there the next portion is drawn on click */}
+          {typeof IntersectionObserver === 'undefined' && (
+          <button
+            type="button"
+            onClick={showMore}
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            {isUkr
+              ? `Показати ще (${visibleMovies.length} з ${displayedMovies.length})`
+              : `Show more (${visibleMovies.length} of ${displayedMovies.length})`}
+          </button>
+          )}
         </div>
       )}
 

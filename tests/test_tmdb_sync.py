@@ -1,5 +1,6 @@
 """Catalog import from TMDB (FR-012, US-012): sections, details, matching by TMDB id and the admin update."""
 
+import urllib.error
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -165,6 +166,81 @@ def test_each_section_is_limited_and_pages_are_followed():
     assert [
         params["page"] for path, params in fake.calls if path == "/discover/movie" and "without_genres" in params
     ] == [1, 2]
+
+
+def test_titles_without_description_are_replaced_by_the_next_candidates():
+    # Trace: T-045
+    no_text = movie(2, "Без опису")
+    no_text["overview"] = ""
+    english_only = movie(3, "Лише англійською")
+    english_only["overview"] = ""
+    fake = FakeTmdb(
+        movies=[movie(1, "Перший"), no_text, english_only, movie(4, "Четвертий"), movie(5, "П'ятий")],
+        details={
+            "/movie/3": {"translations": {"translations": [{"iso_639_1": "en", "data": {"overview": "English"}}]}},
+        },
+    )
+    with patch.object(tmdb, "_tmdb_get", fake):
+        catalog = fetch_tmdb_catalog("key", per_section=3)
+
+    movies = [item for item in catalog if item["category"] == "Movie"]
+    # Popularity order is kept; the title without any description is replaced by the next one
+    assert [item["tmdb_id"] for item in movies] == [1, 3, 4]
+    assert movies[1]["description"] == "English"
+    assert all(item["description"] != NO_DESCRIPTION for item in catalog)
+    # Selection rules are sent to TMDB
+    discover = [params for path, params in fake.calls if path.startswith("/discover/")]
+    assert all(params["vote_count.gte"] == 100 and params["include_adult"] == "false" for params in discover)
+    assert all(params["sort_by"] == "popularity.desc" for params in discover)
+
+
+def test_section_stops_at_the_last_tmdb_page(monkeypatch):
+    # Trace: T-045
+    class EndlessTmdb(FakeTmdb):
+        def __call__(self, path, params, api_key):
+            self.calls.append((path, params))
+            if path == "/discover/movie" and "without_genres" in params:
+                start = params["page"] * 100
+                return {"results": [movie(start + i, f"Фільм {start + i}", poster=None) for i in range(20)]}
+            return {"results": []} if path.startswith("/discover/") else {}
+
+    monkeypatch.setattr(tmdb, "TMDB_MAX_PAGE", 3)
+    fake = EndlessTmdb()
+    with patch.object(tmdb, "_tmdb_get", fake):
+        # Every candidate is dropped (no poster): the import ends after the last page instead of looping
+        assert fetch_tmdb_catalog("key", per_section=10) == []
+    pages = [params["page"] for path, params in fake.calls if path == "/discover/movie" and "without_genres" in params]
+    assert pages == [1, 2, 3]
+
+
+def test_rate_limit_answers_are_retried(monkeypatch):
+    # Trace: T-045
+    def too_many(retry_after):
+        headers = {"Retry-After": retry_after} if retry_after is not None else {}
+        return urllib.error.HTTPError("https://api.themoviedb.org/3/x", 429, "Too Many Requests", headers, None)
+
+    response = MagicMock(status=200)
+    response.read.return_value = b'{"results": [1]}'
+    response.__enter__.return_value = response
+    sleeps = []
+    monkeypatch.setattr(tmdb.time, "sleep", sleeps.append)
+
+    with patch("urllib.request.urlopen", side_effect=[too_many("2"), too_many("600"), response]):
+        assert tmdb._tmdb_get("/discover/movie", {}, "key") == {"results": [1]}
+    # TMDB asks to wait: the wait is honoured but capped
+    assert sleeps == [2.0, tmdb.MAX_RETRY_AFTER]
+
+    sleeps.clear()
+    with patch("urllib.request.urlopen", side_effect=[too_many(None)] * (tmdb.RATE_LIMIT_RETRIES + 1)):
+        with pytest.raises(urllib.error.HTTPError):
+            tmdb._tmdb_get("/discover/movie", {}, "key")
+    assert sleeps == [1.0] * tmdb.RATE_LIMIT_RETRIES
+
+    # Other HTTP errors are not retried
+    with patch("urllib.request.urlopen", side_effect=urllib.error.HTTPError("u", 404, "Not Found", {}, None)):
+        with pytest.raises(urllib.error.HTTPError):
+            tmdb._tmdb_get("/movie/1", {}, "key")
+    assert len(sleeps) == tmdb.RATE_LIMIT_RETRIES
 
 
 def test_list_failure_falls_back_to_the_built_in_catalog():

@@ -97,8 +97,16 @@ def test_tmdb_genre_ids_become_real_genres():
             "release_date": "2024-01-01",
             "poster_path": "/a.jpg",
             "genre_ids": [878, 53, 99999],
+            "overview": "Опис",
         },
-        {"id": 2, "title": "Без жанрів", "release_date": "2023-01-01", "poster_path": "/b.jpg", "genre_ids": []},
+        {
+            "id": 2,
+            "title": "Без жанрів",
+            "release_date": "2023-01-01",
+            "poster_path": "/b.jpg",
+            "genre_ids": [],
+            "overview": "Опис",
+        },
     ]
 
     def fake_tmdb(path, params, api_key):
