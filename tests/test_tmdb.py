@@ -51,6 +51,7 @@ def test_fetch_tmdb_movies_success():
                         "release_date": "2024-05-01",
                         "poster_path": "/t.jpg",
                         "genre_ids": [18],
+                        "overview": "Test overview",
                     }
                 ]
             }

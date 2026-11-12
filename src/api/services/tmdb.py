@@ -2,6 +2,8 @@ import json
 import logging
 import math
 import os
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -600,8 +602,19 @@ FALLBACK_MOVIES = [
 TMDB_API = "https://api.themoviedb.org/3"
 TMDB_IMAGES = "https://image.tmdb.org/t/p/w500"
 TMDB_PAGE_SIZE = 20
+# TMDB serves at most 500 pages of a list
+TMDB_MAX_PAGE = 500
 # How many titles of each section the catalog keeps (movies, series, cartoons)
-TITLES_PER_SECTION = env_int("TMDB_TITLES_PER_SECTION", 100, minimum=1, maximum=500)
+TITLES_PER_SECTION = env_int("TMDB_TITLES_PER_SECTION", 500, minimum=1, maximum=500)
+# Selection rules: titles with fewer votes are obscure and often have no texts, posters or a stable rating
+MIN_VOTE_COUNT = 100
+# Some candidates are dropped (no poster, release year or description), so a little more is requested
+CANDIDATE_RESERVE = 1.2
+# Parallel detail requests: ~40 requests per second, below the TMDB limit (~50 per second)
+DETAIL_WORKERS = 8
+# HTTP 429 (rate limit): wait as TMDB asks (Retry-After, at most MAX_RETRY_AFTER s) and retry
+RATE_LIMIT_RETRIES = 3
+MAX_RETRY_AFTER = 10
 NO_DESCRIPTION = "Опис оновлюється."
 
 # Catalog sections: category in the catalog, TMDB media type and discover filters.
@@ -623,8 +636,20 @@ def tmdb_kind(category: Optional[str]) -> str:
     return "tv" if category == "Series" else "movie"
 
 
+def _retry_after(error: urllib.error.HTTPError) -> float:
+    """Seconds to wait after HTTP 429: the Retry-After header (1 s if missing), at most MAX_RETRY_AFTER."""
+    try:
+        seconds = float((error.headers or {}).get("Retry-After") or 1)
+    except (TypeError, ValueError):
+        seconds = 1.0
+    return min(max(seconds, 0.0), MAX_RETRY_AFTER)
+
+
 def _tmdb_get(path: str, params: Dict[str, Any], api_key: str) -> Dict[str, Any]:
-    """GET a TMDB v3 endpoint. Accepts both the v3 API key and the v4 read access token."""
+    """
+    GET a TMDB v3 endpoint. Accepts both the v3 API key and the v4 read access token.
+    HTTP 429 (too many requests) is retried up to RATE_LIMIT_RETRIES times after the time TMDB asks for.
+    """
     query = dict(params)
     headers = {"User-Agent": "PislyaTytriv/1.0", "Accept": "application/json"}
     if api_key.startswith("eyJ"):
@@ -632,12 +657,19 @@ def _tmdb_get(path: str, params: Dict[str, Any], api_key: str) -> Dict[str, Any]
     else:
         query["api_key"] = api_key
     url = f"{TMDB_API}{path}?{urllib.parse.urlencode(query)}"
-    request = urllib.request.Request(url, headers=headers)
-    # Only the fixed https://api.themoviedb.org address is requested
-    with urllib.request.urlopen(request, timeout=10) as response:  # nosec B310
-        if response.status != 200:
-            raise TmdbError(f"TMDB answered {response.status}")
-        return json.loads(response.read().decode("utf-8"))
+    for attempt in range(RATE_LIMIT_RETRIES + 1):
+        request = urllib.request.Request(url, headers=headers)
+        try:
+            # Only the fixed https://api.themoviedb.org address is requested
+            with urllib.request.urlopen(request, timeout=10) as response:  # nosec B310
+                if response.status != 200:
+                    raise TmdbError(f"TMDB answered {response.status}")
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            if error.code != 429 or attempt == RATE_LIMIT_RETRIES:
+                raise
+            time.sleep(_retry_after(error))
+    raise TmdbError("TMDB rate limit")  # pragma: no cover - the loop always returns or raises
 
 
 def _year(date: Optional[str]) -> Optional[int]:
@@ -665,15 +697,16 @@ def _runtime(kind: str, details: Dict[str, Any]) -> Optional[int]:
 def build_catalog_item(category: str, kind: str, item: Dict[str, Any], details: Dict[str, Any]) -> Optional[Dict]:
     """
     Catalog fields of one TMDB title (list entry + details in Ukrainian with English translations).
-    Titles without a poster or a release year are skipped (None).
+    Titles without a poster, a release year or a description (Ukrainian or English) are skipped (None).
     """
     data = {**item, **details}
     poster = data.get("poster_path")
     year = _year(data.get("release_date") if kind == "movie" else data.get("first_air_date"))
-    if not poster or year is None:
+    english = _english(details)
+    description = (data.get("overview") or english.get("overview") or "").strip()
+    if not poster or year is None or not description:
         return None
 
-    english = _english(details)
     title_key = "title" if kind == "movie" else "name"
     original = data.get("original_title" if kind == "movie" else "original_name")
     title_en = english.get(title_key) or (original if data.get("original_language") == "en" else None)
@@ -695,7 +728,7 @@ def build_catalog_item(category: str, kind: str, item: Dict[str, Any], details: 
         "rating": round(vote, 1),
         "rotten_rating": f"{int(vote * 10)}%",
         "img": f"{TMDB_IMAGES}{poster}",
-        "description": data.get("overview") or english.get("overview") or NO_DESCRIPTION,
+        "description": description,
         "description_en": english.get("overview") or None,
     }
 
@@ -711,52 +744,79 @@ def _details(kind: str, tmdb_id: int, api_key: str) -> Dict[str, Any]:
         return {}
 
 
+def _discover_page(kind: str, filters: Dict[str, Any], page: int, api_key: str) -> List[Dict[str, Any]]:
+    """One page of a section list: popular, not adult, with at least MIN_VOTE_COUNT votes."""
+    params = {
+        "language": "uk-UA",
+        "sort_by": "popularity.desc",
+        "include_adult": "false",
+        "vote_count.gte": MIN_VOTE_COUNT,
+        "page": page,
+        **filters,
+    }
+    try:
+        return _tmdb_get(f"/discover/{kind}", params, api_key).get("results") or []
+    except TmdbError:
+        raise
+    except Exception as error:
+        raise TmdbError(f"TMDB list request failed: {error}") from error
+
+
+def _fetch_section(
+    pool: ThreadPoolExecutor,
+    section: Tuple[str, str, Dict[str, Any]],
+    per_section: int,
+    api_key: str,
+    seen: set,
+) -> List[Dict[str, Any]]:
+    """
+    `per_section` titles of one section in popularity order. Candidates are built in batches (details in
+    parallel, each turned into a small catalog item right away, so the large detail answers are not kept);
+    when some are dropped by the selection rules, the next candidates from the list replace them.
+    """
+    category, kind, filters = section
+    kept: List[Dict[str, Any]] = []
+    pending: List[Dict[str, Any]] = []
+    page, exhausted = 1, False
+    while len(kept) < per_section:
+        wanted = math.ceil((per_section - len(kept)) * CANDIDATE_RESERVE)
+        while len(pending) < wanted and not exhausted:
+            results = _discover_page(kind, filters, page, api_key)
+            for item in results:
+                key = (kind, item.get("id"))
+                if item.get("id") is None or key in seen:
+                    continue
+                seen.add(key)
+                pending.append(item)
+            exhausted = len(results) < TMDB_PAGE_SIZE or page >= TMDB_MAX_PAGE
+            page += 1
+        if not pending:
+            break
+        batch, pending = pending[:wanted], pending[wanted:]
+        built = pool.map(
+            lambda item: build_catalog_item(category, kind, item, _details(kind, item["id"], api_key)), batch
+        )
+        kept.extend(item for item in built if item is not None)
+    return kept[:per_section]
+
+
 def fetch_tmdb_catalog(api_key: str, per_section: int = TITLES_PER_SECTION) -> List[Dict[str, Any]]:
     """
-    Popular movies, series and cartoons from TMDB (FR-012): `per_section` titles of each section,
-    Ukrainian texts with English fallback, real genres, runtime and posters. Raises TmdbError if a list fails.
+    Popular movies, series and cartoons from TMDB (FR-012): `per_section` titles of each section
+    (500 by default), Ukrainian texts with English fallback, real genres, runtime and posters.
+
+    Selection rules: sorted by popularity, no adult titles, at least MIN_VOTE_COUNT votes; cartoons are
+    animated movies, movies exclude animation, series exclude news, reality and talk shows; a title needs
+    a poster, a release year and a description. Raises TmdbError if a list request fails.
     """
     if not api_key:
         raise TmdbError("TMDB_API_KEY is not configured")
 
-    entries: List[Tuple[str, str, Dict[str, Any]]] = []
-    seen = set()
-    for category, kind, filters in SECTIONS:
-        taken = 0
-        for page in range(1, math.ceil(per_section / TMDB_PAGE_SIZE) + 1):
-            params = {
-                "language": "uk-UA",
-                "sort_by": "popularity.desc",
-                "include_adult": "false",
-                "vote_count.gte": 100,
-                "page": page,
-                **filters,
-            }
-            try:
-                results = _tmdb_get(f"/discover/{kind}", params, api_key).get("results") or []
-            except TmdbError:
-                raise
-            except Exception as error:
-                raise TmdbError(f"TMDB list request failed: {error}") from error
-            for item in results:
-                key = (kind, item.get("id"))
-                if item.get("id") is None or key in seen or taken >= per_section:
-                    continue
-                seen.add(key)
-                entries.append((category, kind, item))
-                taken += 1
-            if len(results) < TMDB_PAGE_SIZE:
-                break
-
-    # Details in parallel: about 300 small requests, well below the TMDB rate limit
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        details = list(pool.map(lambda entry: _details(entry[1], entry[2]["id"], api_key), entries))
-
-    catalog = []
-    for (category, kind, item), extra in zip(entries, details):
-        built = build_catalog_item(category, kind, item, extra)
-        if built is not None:
-            catalog.append(built)
+    catalog: List[Dict[str, Any]] = []
+    seen: set = set()
+    with ThreadPoolExecutor(max_workers=DETAIL_WORKERS) as pool:
+        for section in SECTIONS:
+            catalog.extend(_fetch_section(pool, section, per_section, api_key, seen))
     return catalog
 
 
