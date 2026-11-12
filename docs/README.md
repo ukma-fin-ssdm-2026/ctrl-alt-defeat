@@ -39,8 +39,15 @@
 - [План тестування (Test Plan)](./validation/test-plan.md)
 - [Журнал верифікації ШІ-коду (AI Code Review Log)](./validation/review-log.md)
 
-### 7. [Рефакторинг (Refactoring)](./refactoring/README.md)
-- [Звіт про якість коду SonarCloud](./refactoring/sonarcloud-report.md)
+### 7. [Рефакторинг та управління релізами (Refactoring)](./refactoring/README.md) — Лабораторна робота 8
+- [Звіт SonarQube Cloud: метрики до/після, рефакторинги, регресія, реліз](./refactoring/sonarcloud-report.md)
+- [Скриншоти SonarQube Cloud до/після](./refactoring/images/)
+- [Журнал змін (CHANGELOG.md)](../CHANGELOG.md)
+
+### 8. [Надійність (Reliability)](./reliability/README.md) — Лабораторна робота 9
+- [Resilience Scavenger Hunt: знайдені ризики надійності та їх виправлення](./reliability/scavenger-hunt.md)
+- [Звіт про надійність: виправлення, тести, відкриті проблеми, бонуси](./reliability/reliability-report.md)
+- Тести надійності: [`tests/reliability/`](../tests/reliability/) (бекенд) і [`frontend/src/reliability/`](../frontend/src/reliability/) (фронтенд), окремий обов'язковий job `reliability` у CI
 
 ---
 [AI-assisted]
