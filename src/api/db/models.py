@@ -20,10 +20,17 @@ from sqlalchemy.sql import func
 
 from src.api.db.database import Base
 
+CONTENT_TMDB_UNIQUE = "uq_content_category_tmdb"
+
 
 class Content(Base):
     __tablename__ = "content"
-    __table_args__ = {"extend_existing": True}
+    # TMDB numbers movies and TV series separately: a movie and a series may have the same tmdb_id,
+    # so the number is unique within a category, not in the whole table (see upgrade_content_tmdb_uniqueness)
+    __table_args__ = (
+        UniqueConstraint("category", "tmdb_id", name=CONTENT_TMDB_UNIQUE),
+        {"extend_existing": True},
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     content_id = Column(Uuid(as_uuid=True), default=uuid.uuid4, unique=True, index=True)
@@ -40,7 +47,7 @@ class Content(Base):
     img = Column(String(500), nullable=True)
     description = Column(Text, nullable=True)
     description_en = Column(Text, nullable=True)
-    tmdb_id = Column(Integer, unique=True, nullable=True)
+    tmdb_id = Column(Integer, nullable=True)
 
 
 # Alias for backward compatibility
