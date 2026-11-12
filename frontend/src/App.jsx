@@ -15,15 +15,18 @@ import useWatchlist from './hooks/useWatchlist';
 import useWatchedList from './hooks/useWatchedList';
 import useUserReviews from './hooks/useUserReviews';
 import useAchievementNotifications from './hooks/useAchievementNotifications';
+import useViewHistory from './hooks/useViewHistory';
+import { readDarkMode, readLanguage, saveDarkMode, saveLanguage } from './utils/preferences';
 
 export default function App() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Theme and language are remembered in this browser (the theme follows the system setting until chosen)
+  const [isDarkMode, setIsDarkMode] = useState(readDarkMode);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   
   const [user, setUser] = useState(() => getStoredUser());
   const isLoggedIn = !!user;
 
-  const [language, setLanguage] = useState('UKR'); 
+  const [language, setLanguage] = useState(readLanguage);
   const isUkr = language === 'UKR';
   const [catalogMovies, setCatalogMovies] = useState([]);
 
@@ -78,12 +81,20 @@ export default function App() {
   // Which profile tab to open and which badge to highlight ("View" in the pop-up)
   const [profileTarget, setProfileTarget] = useState({ tab: 'general', highlight: null, visit: 0 });
 
-  const [selectedMovie, setSelectedMovie] = useState(null);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedGenre, setSelectedGenre] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(null); // Додали стан для року
+  // The page shown (home with filters, a movie, the profile, the admin page) lives in the browser history:
+  // the Back button returns to the previous page and a reload keeps the current one
+  const { view, navigate, goBack } = useViewHistory();
+  const {
+    movie: selectedMovie,
+    profile: showProfile,
+    admin: showAdmin,
+    category: selectedCategory,
+    genre: selectedGenre,
+    year: selectedYear,
+  } = view;
+  const filters = { category: selectedCategory, genre: selectedGenre, year: selectedYear };
+  // A movie opens on top of the current filters, so "Back" returns to the same list
+  const openMovie = movie => navigate({ ...filters, movie });
 
   // FR-001: the activation link from the email opens /verify-email?token=...
   useEffect(() => {
@@ -96,7 +107,8 @@ export default function App() {
         : 'Посилання недійсне або вже використане. Увійдіть або надішліть лист ще раз.'))
       .finally(() => {
         setIsAuthOpen(true);
-        window.history.replaceState(null, '', '/');
+        // Keep the page state of the history entry, only drop the token from the address
+        window.history.replaceState(window.history.state, '', '/');
       });
   }, []);
 
@@ -128,7 +140,13 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    saveDarkMode(isDarkMode);
   }, [isDarkMode]);
+
+  useEffect(() => {
+    saveLanguage(language);
+    document.documentElement.lang = language === 'UKR' ? 'uk' : 'en';
+  }, [language]);
 
   // The server rejected the session (expired token, page reload without cookie): log out visibly
   useEffect(() => {
@@ -144,20 +162,15 @@ export default function App() {
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
   }, [language]);
 
-  const handleGoHome = () => {
-    setSelectedMovie(null);
-    setShowProfile(false);
-    setShowAdmin(false);
-    setSelectedCategory(null);
-    setSelectedGenre(null);
-    setSelectedYear(null);
-  };
+  const handleGoHome = () => navigate({});
 
   const handleApplyFilter = (category, genre, year) => {
-    handleGoHome();
-    setSelectedCategory(category);
-    if (genre) setSelectedGenre(genre);
-    if (year) setSelectedYear(Number(year));
+    navigate({ category: category || null, genre: genre || null, year: year ? Number(year) : null });
+  };
+
+  const openProfile = (tab = 'general', highlight = null) => {
+    setProfileTarget(current => ({ tab, highlight, visit: current.visit + 1 }));
+    navigate({ profile: true });
   };
 
   const handleLogin = async (email, password) => {
@@ -195,28 +208,16 @@ export default function App() {
         user={user}
         onLogout={handleLogout}
         onGoHome={handleGoHome}
-        onGoProfile={() => {
-          setSelectedMovie(null);
-          setShowAdmin(false);
-          setProfileTarget(current => ({ tab: 'general', highlight: null, visit: current.visit + 1 }));
-          setShowProfile(true);
-        }}
-        onGoAdmin={() => { setSelectedMovie(null); setShowProfile(false); setShowAdmin(true); }}
+        onGoProfile={() => openProfile()}
+        onGoAdmin={() => navigate({ admin: true })}
         
         language={language}
         onToggleLanguage={() => setLanguage(l => l === 'UKR' ? 'EN' : 'UKR')}
         movies={catalogMovies}
-        onSelectMovie={(movie) => { setShowProfile(false); setShowAdmin(false); setSelectedMovie(movie); }}
+        onSelectMovie={movie => navigate({ movie })}
         
-        onSelectCategory={(category) => {
-          handleGoHome();
-          setSelectedCategory(category);
-        }}
-        onSelectGenre={(category, genre) => {
-          handleGoHome();
-          setSelectedCategory(category);
-          setSelectedGenre(genre);
-        }}
+        onSelectCategory={category => navigate({ category })}
+        onSelectGenre={(category, genre) => navigate({ category, genre })}
         onApplyFilter={handleApplyFilter}
       />
       
@@ -235,7 +236,7 @@ export default function App() {
             language={language}
             watchlistMovies={watchlistMovies}
             watchedMovies={watchedMovies}
-            onSelectMovie={(movie) => { setShowProfile(false); setSelectedMovie(movie); }}
+            onSelectMovie={movie => navigate({ movie })}
             onToggleWatchlist={toggleWatchlist}
             onToggleWatched={toggleWatched}
             onDeleteProfile={() => {
@@ -253,7 +254,7 @@ export default function App() {
             user={user}
             isLoggedIn={isLoggedIn}
             openAuth={() => setIsAuthOpen(true)}
-            onBack={() => setSelectedMovie(null)}
+            onBack={goBack}
             language={language}
             isWatchlisted={watchlist.includes(selectedMovie.id || selectedMovie.content_id)}
             onToggleWatchlist={() => toggleWatchlist(selectedMovie)}
@@ -269,7 +270,7 @@ export default function App() {
                 user={user}
                 isLoggedIn={isLoggedIn}
                 openAuth={() => setIsAuthOpen(true)}
-                onSelectMovie={(movie) => setSelectedMovie(movie)}
+                onSelectMovie={openMovie}
                 language={language}
                 watchlist={watchlist}
                 onToggleWatchlist={toggleWatchlist}
@@ -279,7 +280,7 @@ export default function App() {
             selectedCategory={selectedCategory}
             selectedGenre={selectedGenre} 
             selectedYear={selectedYear}
-            onSelectMovie={(movie) => setSelectedMovie(movie)} 
+            onSelectMovie={openMovie}
             language={language}
             watchlist={watchlist}
             onToggleWatchlist={toggleWatchlist}
@@ -322,10 +323,7 @@ export default function App() {
           onClose={achievementToast.dismiss}
           onView={badge => {
             achievementToast.dismiss();
-            setSelectedMovie(null);
-            setShowAdmin(false);
-            setProfileTarget(current => ({ tab: 'achievements', highlight: badge.id, visit: current.visit + 1 }));
-            setShowProfile(true);
+            openProfile('achievements', badge.id);
             window.scrollTo?.({ top: 0, behavior: 'smooth' });
           }}
         />

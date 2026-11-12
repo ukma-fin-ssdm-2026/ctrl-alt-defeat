@@ -5,6 +5,9 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Після титрів — Рецензії та рекомендації фільмів</title>
+    <!-- Dark theme before the app loads, so a reload does not flash the light theme (see src/utils/preferences.js).
+         A separate file, not an inline script: the Content-Security-Policy of the site allows only own script files. -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
