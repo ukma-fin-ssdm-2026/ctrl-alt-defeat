@@ -1,12 +1,21 @@
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session, defer
+from sqlalchemy.orm import Session, defer, undefer_group
 from sqlalchemy import func, or_, select
 
 from src.api.db.database import SessionLocal
-from src.api.db.models import Content, ContentGenre, Genre
-from src.api.schemas.movie import ContentResponse, ContentSortField, PaginatedContentResponse, SortOrder
+from src.api.db.models import TMDB_DETAILS, Content, ContentGenre, Genre
+from src.api.schemas.movie import (
+    CollectionInfo,
+    ContentDetailsResponse,
+    ContentResponse,
+    ContentSortField,
+    PaginatedContentResponse,
+    RelatedContentResponse,
+    SortOrder,
+)
+from src.api.services.tmdb import tmdb_kind
 
 # Maps public sort keys to DB columns (FR-010). "release_date" uses the release year.
 SORT_COLUMNS = {
@@ -127,21 +136,17 @@ def get_movies(
     )
 
 
-@router.get(
-    "/{movie_id}",
-    response_model=ContentResponse,
-    summary="Get movie details by ID or content UUID",
-    description="Retrieve a single movie or series by its numeric ID or UUID content_id.",
-)
-def get_movie_by_id(
-    movie_id: str,
-    db: Session = Depends(get_db),
-):
+def find_content(db: Session, movie_id: str, with_details: bool = False) -> Content:
+    """A title by its UUID `content_id` or numeric id; 404 CONTENT_NOT_FOUND otherwise."""
+    query = db.query(Content)
+    if with_details:
+        # The deferred TMDB details of the page (trailers, cast, seasons…) in the same query
+        query = query.options(undefer_group(TMDB_DETAILS))
     content = None
     # Check if movie_id is a valid UUID
     try:
         content_uuid = uuid.UUID(movie_id)
-        content = db.query(Content).filter(Content.content_id == content_uuid).first()
+        content = query.filter(Content.content_id == content_uuid).first()
     except (ValueError, AttributeError):
         pass
 
@@ -149,7 +154,7 @@ def get_movie_by_id(
     if not content and movie_id.isdigit() and len(movie_id) <= 10:
         numeric_id = int(movie_id)
         if numeric_id <= 2_147_483_647:
-            content = db.query(Content).filter(Content.id == numeric_id).first()
+            content = query.filter(Content.id == numeric_id).first()
 
     if not content:
         raise HTTPException(
@@ -159,5 +164,76 @@ def get_movie_by_id(
                 "message": f"Content with ID '{movie_id}' was not found in catalog",
             },
         )
-
     return content
+
+
+def collection_of(content: Content) -> Optional[CollectionInfo]:
+    if content.collection_id is None or not content.collection_name:
+        return None
+    return CollectionInfo(id=content.collection_id, name=content.collection_name)
+
+
+@router.get(
+    "/{movie_id}",
+    response_model=ContentDetailsResponse,
+    summary="Get movie details by ID or content UUID",
+    description=(
+        "Retrieve a single movie or series by its numeric ID or UUID content_id, with the details of its page "
+        "from TMDB (US-013): Ukrainian and English trailers, cast, directors and writers or creators, "
+        "seasons and episodes of a series, and the film series it belongs to."
+    ),
+)
+def get_movie_by_id(
+    movie_id: str,
+    db: Session = Depends(get_db),
+):
+    content = find_content(db, movie_id, with_details=True)
+    return ContentDetailsResponse(
+        **ContentResponse.model_validate(content).model_dump(),
+        trailer_uk=content.trailer_uk,
+        trailer_en=content.trailer_en,
+        cast=content.cast_members or [],
+        crew=content.crew_members or {},
+        series=content.series_details,
+        collection=collection_of(content),
+    )
+
+
+@router.get(
+    "/{movie_id}/related",
+    response_model=RelatedContentResponse,
+    summary="Other parts of the film series and similar titles",
+    description=(
+        "Titles of the catalog related to one title (US-013): the other parts of its film series by year, "
+        "and the TMDB recommendations for it that are present in the catalog, in TMDB order (up to `limit`)."
+    ),
+)
+def get_related(
+    movie_id: str,
+    limit: int = Query(12, ge=1, le=20, description="Maximum number of similar titles"),
+    db: Session = Depends(get_db),
+):
+    content = find_content(db, movie_id, with_details=True)
+
+    parts = []
+    if content.collection_id is not None:
+        parts = (
+            db.query(Content)
+            .filter(Content.collection_id == content.collection_id, Content.id != content.id)
+            .order_by(Content.year.asc(), Content.id.asc())
+            .all()
+        )
+
+    similar = []
+    wanted = [tmdb_id for tmdb_id in content.similar_tmdb_ids or [] if isinstance(tmdb_id, int)]
+    if wanted:
+        # TMDB numbers movies and series separately: a recommendation is of the same media type
+        kind = tmdb_kind(content.category)
+        found = {
+            row.tmdb_id: row
+            for row in db.query(Content).filter(Content.tmdb_id.in_(wanted), Content.id != content.id)
+            if tmdb_kind(row.category) == kind
+        }
+        similar = [found[tmdb_id] for tmdb_id in wanted if tmdb_id in found][:limit]
+
+    return RelatedContentResponse(collection=collection_of(content), collection_items=parts, similar=similar)

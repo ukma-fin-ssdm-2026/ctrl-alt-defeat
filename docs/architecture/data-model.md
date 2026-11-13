@@ -51,6 +51,14 @@
 |---|---|---|
 | content_id | UUID, PK | Унікальний ідентифікатор |
 | tmdb_id | integer | Ідентифікатор контенту у зовнішньому API; унікальний разом із `category` (TMDB нумерує фільми й серіали окремо) |
+| trailer_uk, trailer_en | varchar(20), null | Ключ відео YouTube трейлера українською та англійською (US-013) |
+| cast_members | JSON, null | До 10 акторів у порядку титрів: ім'я, роль, фото |
+| crew_members | JSON, null | Режисери, сценаристи (фільми) та автори (серіали), до 3 імен у кожній групі |
+| series_details | JSON, null | Для серіалів: статус, кількість сезонів і серій, наступна серія, список сезонів |
+| similar_tmdb_ids | JSON, null | Номери TMDB рекомендованих тайтлів у порядку TMDB (до 20) |
+| collection_id, collection_name | integer / varchar(255), null | Серія фільмів TMDB (наприклад, «Володар перснів»), за `collection_id` знаходяться інші частини |
+
+Колонки даних сторінки, крім `collection_id` і `collection_name`, завантажуються відкладено (deferred): списки каталогу їх не читають, лише сторінка одного тайтлу. До наявної бази вони додаються автоматично під час старту.
 | title | varchar | Назва |
 | content_type | enum | movie / series |
 | release_year | integer | Рік випуску |

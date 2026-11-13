@@ -255,6 +255,7 @@ export default function App() {
             isLoggedIn={isLoggedIn}
             openAuth={() => setIsAuthOpen(true)}
             onBack={goBack}
+            onSelectMovie={openMovie}
             language={language}
             isWatchlisted={watchlist.includes(selectedMovie.id || selectedMovie.content_id)}
             onToggleWatchlist={() => toggleWatchlist(selectedMovie)}
