@@ -190,6 +190,12 @@ app.include_router(admin_router)
 if os.getenv("FRONTEND_DIST_DIR"):
     mount_frontend(app, os.environ["FRONTEND_DIST_DIR"])
 
+# The whole catalog is a few hundred KB of JSON: compressed it is several times smaller
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+# Security headers on every response (security_headers.py)
+app.add_middleware(SecurityHeadersMiddleware)
+# Added last, so it is the outermost middleware: CORS headers and preflight answers come before
+# any other middleware can answer or change the response
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -197,10 +203,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# The whole catalog is a few hundred KB of JSON: compressed it is several times smaller
-app.add_middleware(GZipMiddleware, minimum_size=1000)
-# Security headers on every response (security_headers.py)
-app.add_middleware(SecurityHeadersMiddleware)
 
 # GLOBAL EXCEPTION HANDLERS
 

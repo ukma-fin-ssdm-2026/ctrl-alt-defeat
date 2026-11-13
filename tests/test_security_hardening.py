@@ -243,6 +243,24 @@ def test_security_headers_on_pages_and_errors(client):
     assert "https://image.tmdb.org" in CONTENT_SECURITY_POLICY
 
 
+def test_cors_is_the_outermost_middleware(client):
+    # Trace: T-047
+    from fastapi.middleware.cors import CORSMiddleware
+
+    # Starlette runs the middleware added last first (SonarQube: CORSMiddleware must be added last)
+    assert app.user_middleware[0].cls is CORSMiddleware
+    preflight = client.options(
+        "/api/v1/movies",
+        headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "GET"},
+    )
+    assert preflight.status_code == 200
+    assert preflight.headers["access-control-allow-origin"] == "http://localhost:5173"
+    # A normal answer gets both the CORS and the security headers
+    answer = client.get("/api/v1/movies", headers={"Origin": "http://localhost:5173"})
+    assert answer.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert answer.headers["X-Content-Type-Options"] == "nosniff"
+
+
 def test_api_docs_keep_working_without_the_csp(client):
     # Trace: T-047
     # Swagger UI loads its scripts from a CDN with inline code: the CSP would block it
