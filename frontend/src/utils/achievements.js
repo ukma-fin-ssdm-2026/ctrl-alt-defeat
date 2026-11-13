@@ -19,7 +19,7 @@ const watchedGenreCount = ({ watched }) => {
   return genres.size;
 };
 const daysSinceRegistration = ({ createdAt, now }) => {
-  const registered = createdAt ? new Date(createdAt).getTime() : NaN;
+  const registered = createdAt ? new Date(createdAt).getTime() : Number.NaN;
   if (Number.isNaN(registered)) return 0;
   return Math.max(0, Math.floor((now - registered) / DAY_MS));
 };
