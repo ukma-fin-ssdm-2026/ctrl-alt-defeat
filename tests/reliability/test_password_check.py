@@ -1,8 +1,9 @@
 """
 Reliability, finding 7 (error handling): a damaged password hash in the database.
 
-Chosen reaction: safe failure for the user (an ordinary 401, no 500 and no internal details) plus an error
-in the log, because only an administrator can repair the account.
+Chosen reaction: fast, closed failure (fail closed), as in the reliability report: the login is refused with an
+ordinary 401 (no 500 and no internal details) and the error goes to the log, because only an administrator can
+repair the account.
 """
 
 import logging
