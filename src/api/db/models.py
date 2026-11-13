@@ -15,12 +15,13 @@ from sqlalchemy import (
     Uuid,
     select,
 )
-from sqlalchemy.orm import column_property, relationship
+from sqlalchemy.orm import column_property, deferred, relationship
 from sqlalchemy.sql import func
 
 from src.api.db.database import Base
 
 CONTENT_TMDB_UNIQUE = "uq_content_category_tmdb"
+TMDB_DETAILS = "tmdb_details"
 
 
 class Content(Base):
@@ -48,6 +49,18 @@ class Content(Base):
     description = Column(Text, nullable=True)
     description_en = Column(Text, nullable=True)
     tmdb_id = Column(Integer, nullable=True)
+
+    # Details from TMDB for the page of a title (US-013). Deferred: lists of titles do not load them,
+    # only GET /movies/{id} does (group "tmdb_details").
+    trailer_uk = deferred(Column(String(20), nullable=True), group=TMDB_DETAILS)  # YouTube video key
+    trailer_en = deferred(Column(String(20), nullable=True), group=TMDB_DETAILS)
+    cast_members = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # [{name, character, photo}]
+    crew_members = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # {directors, writers, creators}
+    series_details = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # seasons, episodes, status
+    similar_tmdb_ids = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # TMDB recommendations, in order
+    # A film series ("collection" in TMDB), e.g. all parts of The Lord of the Rings
+    collection_id = Column(Integer, nullable=True, index=True)
+    collection_name = Column(String(255), nullable=True)
 
 
 # Alias for backward compatibility

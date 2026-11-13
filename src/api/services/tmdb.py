@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -601,6 +602,8 @@ FALLBACK_MOVIES = [
 
 TMDB_API = "https://api.themoviedb.org/3"
 TMDB_IMAGES = "https://image.tmdb.org/t/p/w500"
+# Small pictures: photos of actors, posters of seasons
+TMDB_THUMBS = "https://image.tmdb.org/t/p/w185"
 TMDB_PAGE_SIZE = 20
 # TMDB serves at most 500 pages of a list
 TMDB_MAX_PAGE = 500
@@ -694,6 +697,124 @@ def _runtime(kind: str, details: Dict[str, Any]) -> Optional[int]:
     return details.get("runtime") or None
 
 
+# Details of the page of a title (US-013)
+CAST_LIMIT = 10
+CREW_LIMIT = 3
+SIMILAR_LIMIT = 20
+# A YouTube video id: only these characters end up in the embedded player address
+YOUTUBE_KEY = re.compile(r"^[A-Za-z0-9_-]{6,20}$")
+WRITER_JOBS = ("Screenplay", "Writer", "Story", "Novel")
+
+
+def _thumb(path: Optional[str]) -> Optional[str]:
+    return f"{TMDB_THUMBS}{path}" if path else None
+
+
+def pick_trailer(videos: Dict[str, Any], language: str) -> Optional[str]:
+    """
+    YouTube key of the best trailer in `language` (uk/en): a trailer before a teaser, an official one first,
+    then the newest. None if TMDB has no YouTube video in that language.
+    """
+    candidates = [
+        video
+        for video in (videos or {}).get("results") or []
+        if video.get("site") == "YouTube"
+        and video.get("iso_639_1") == language
+        and video.get("type") in ("Trailer", "Teaser")
+        and YOUTUBE_KEY.match(str(video.get("key") or ""))
+    ]
+    # Stable sorts: newest first, then trailers before teasers and official videos first
+    candidates.sort(key=lambda video: video.get("published_at") or "", reverse=True)
+    candidates.sort(key=lambda video: (video.get("type") != "Trailer", not video.get("official")))
+    return candidates[0]["key"] if candidates else None
+
+
+def cast_from_credits(credits: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The first CAST_LIMIT actors in billing order: name, role and photo."""
+    cast = sorted((credits or {}).get("cast") or [], key=lambda person: person.get("order", 999))
+    return [
+        {
+            "name": person.get("name"),
+            "character": person.get("character") or None,
+            "photo": _thumb(person.get("profile_path")),
+        }
+        for person in cast[:CAST_LIMIT]
+        if person.get("name")
+    ]
+
+
+def _unique_names(people: List[Dict[str, Any]]) -> List[str]:
+    names: List[str] = []
+    for person in people:
+        name = person.get("name")
+        if name and name not in names:
+            names.append(name)
+    return names[:CREW_LIMIT]
+
+
+def crew_from_details(kind: str, details: Dict[str, Any]) -> Dict[str, List[str]]:
+    """Directors and writers (movies), creators (series)."""
+    crew = (details.get("credits") or {}).get("crew") or []
+    return {
+        "directors": _unique_names([person for person in crew if person.get("job") == "Director"]),
+        "writers": _unique_names([person for person in crew if person.get("job") in WRITER_JOBS]),
+        "creators": _unique_names(details.get("created_by") or []) if kind == "tv" else [],
+    }
+
+
+def series_from_details(details: Dict[str, Any]) -> Dict[str, Any]:
+    """Seasons and episodes of a series, its status and the next episode."""
+    next_episode = details.get("next_episode_to_air") or None
+    seasons = sorted(details.get("seasons") or [], key=lambda season: season.get("season_number", 0))
+    return {
+        "status": details.get("status"),
+        "number_of_seasons": details.get("number_of_seasons"),
+        "number_of_episodes": details.get("number_of_episodes"),
+        "last_air_date": details.get("last_air_date"),
+        "next_episode": (
+            {
+                "air_date": next_episode.get("air_date"),
+                "season_number": next_episode.get("season_number"),
+                "episode_number": next_episode.get("episode_number"),
+                "name": next_episode.get("name") or None,
+            }
+            if next_episode
+            else None
+        ),
+        "seasons": [
+            {
+                "season_number": season.get("season_number"),
+                "name": season.get("name"),
+                "episode_count": season.get("episode_count"),
+                "air_date": season.get("air_date") or None,
+                "poster": _thumb(season.get("poster_path")),
+            }
+            for season in seasons
+        ],
+    }
+
+
+def page_details(kind: str, details: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Fields for the page of a title (US-013): trailers, cast and crew, series details, film series and
+    similar titles. Empty when the details request failed, so an update never erases stored data.
+    """
+    if not details:
+        return {}
+    collection = details.get("belongs_to_collection") or None
+    similar = [title.get("id") for title in ((details.get("recommendations") or {}).get("results") or [])]
+    return {
+        "trailer_uk": pick_trailer(details.get("videos"), "uk"),
+        "trailer_en": pick_trailer(details.get("videos"), "en"),
+        "cast_members": cast_from_credits(details.get("credits")),
+        "crew_members": crew_from_details(kind, details),
+        "series_details": series_from_details(details) if kind == "tv" else None,
+        "similar_tmdb_ids": [tmdb_id for tmdb_id in similar if isinstance(tmdb_id, int)][:SIMILAR_LIMIT],
+        "collection_id": collection.get("id") if collection else None,
+        "collection_name": collection.get("name") if collection else None,
+    }
+
+
 def build_catalog_item(category: str, kind: str, item: Dict[str, Any], details: Dict[str, Any]) -> Optional[Dict]:
     """
     Catalog fields of one TMDB title (list entry + details in Ukrainian with English translations).
@@ -730,6 +851,7 @@ def build_catalog_item(category: str, kind: str, item: Dict[str, Any], details: 
         "img": f"{TMDB_IMAGES}{poster}",
         "description": description,
         "description_en": english.get("overview") or None,
+        **page_details(kind, details),
     }
 
 
@@ -737,7 +859,14 @@ def _details(kind: str, tmdb_id: int, api_key: str) -> Dict[str, Any]:
     """Details with translations; a failure leaves the list data only (no runtime, no English texts)."""
     try:
         return _tmdb_get(
-            f"/{kind}/{int(tmdb_id)}", {"language": "uk-UA", "append_to_response": "translations"}, api_key
+            f"/{kind}/{int(tmdb_id)}",
+            {
+                "language": "uk-UA",
+                # One request: English texts, trailers, cast and crew, similar titles (US-013)
+                "append_to_response": "translations,videos,credits,recommendations",
+                "include_video_language": "uk,en",
+            },
+            api_key,
         )
     except Exception as error:  # one title must not stop the whole import
         logger.warning("TMDB details of %s %s failed: %s", kind, tmdb_id, error)
@@ -869,6 +998,17 @@ def _find_existing(db: Session, item: Dict[str, Any]) -> Optional[Content]:
 
 
 UPDATED_FIELDS = ("title", "title_en", "category", "year", "runtime", "rating", "rotten_rating", "img")
+# Details of the page of a title: replaced as a whole whenever the details request succeeded
+PAGE_FIELDS = (
+    "trailer_uk",
+    "trailer_en",
+    "cast_members",
+    "crew_members",
+    "series_details",
+    "similar_tmdb_ids",
+    "collection_id",
+    "collection_name",
+)
 
 
 def _update(db: Session, content: Content, item: Dict[str, Any]) -> None:
@@ -881,6 +1021,11 @@ def _update(db: Session, content: Content, item: Dict[str, Any]) -> None:
         value = item.get(field)
         if value and value != NO_DESCRIPTION:
             setattr(content, field, value)
+    # No details (the request failed): the stored page data stays; otherwise it is replaced, a removed
+    # trailer or a title that left a film series included
+    if "cast_members" in item:
+        for field in PAGE_FIELDS:
+            setattr(content, field, item.get(field))
     if item.get("tmdb_id") is not None and content.tmdb_id is None:
         content.tmdb_id = item["tmdb_id"]
     if item.get("genres") and content.content_id is not None:
@@ -922,6 +1067,7 @@ def sync_catalog(db: Session, items: List[Dict[str, Any]]) -> SyncResult:
             description=item.get("description"),
             description_en=item.get("description_en"),
             tmdb_id=item.get("tmdb_id"),
+            **{field: item.get(field) for field in PAGE_FIELDS},
         )
         try:
             # Savepoint: an old local SQLite database still has UNIQUE(tmdb_id) (see upgrade_content_tmdb_uniqueness);

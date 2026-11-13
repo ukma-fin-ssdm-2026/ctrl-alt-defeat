@@ -607,7 +607,10 @@ paths:
       tags:
       - Movies & Series Catalog
       summary: Get movie details by ID or content UUID
-      description: Retrieve a single movie or series by its numeric ID or UUID content_id.
+      description: 'Retrieve a single movie or series by its numeric ID or UUID content_id,
+        with the details of its page from TMDB (US-013): Ukrainian and English trailers,
+        cast, directors and writers or creators, seasons and episodes of a series,
+        and the film series it belongs to.'
       operationId: get_movie_by_id_api_v1_movies__movie_id__get
       parameters:
       - name: movie_id
@@ -622,7 +625,47 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContentResponse'
+                $ref: '#/components/schemas/ContentDetailsResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/movies/{movie_id}/related:
+    get:
+      tags:
+      - Movies & Series Catalog
+      summary: Other parts of the film series and similar titles
+      description: 'Titles of the catalog related to one title (US-013): the other
+        parts of its film series by year, and the TMDB recommendations for it that
+        are present in the catalog, in TMDB order (up to `limit`).'
+      operationId: get_related_api_v1_movies__movie_id__related_get
+      parameters:
+      - name: movie_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Movie Id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 20
+          minimum: 1
+          description: Maximum number of similar titles
+          default: 12
+          title: Limit
+        description: Maximum number of similar titles
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelatedContentResponse'
         '422':
           description: Validation Error (Unprocessable Entity)
           content:
@@ -2451,6 +2494,28 @@ components:
       - temporary
       - permanent
       title: BanType
+    CastMember:
+      properties:
+        name:
+          type: string
+          title: Name
+          description: Actor or actress
+        character:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Character
+          description: Role in this title
+        photo:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Photo
+          description: Photo URL (TMDB, 185 px wide)
+      type: object
+      required:
+      - name
+      title: CastMember
     CatalogSyncStatus:
       properties:
         configured:
@@ -2541,6 +2606,21 @@ components:
       - current_password
       - new_password
       title: ChangePasswordRequest
+    CollectionInfo:
+      properties:
+        id:
+          type: integer
+          title: Id
+          description: TMDB collection id
+        name:
+          type: string
+          title: Name
+          description: Name of the film series
+      type: object
+      required:
+      - id
+      - name
+      title: CollectionInfo
     CommentCreate:
       properties:
         review_id:
@@ -2655,6 +2735,130 @@ components:
       - items
       - total
       title: CommentThreadResponse
+    ContentDetailsResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+          description: Numeric identifier for backward compatibility with frontend
+        content_id:
+          type: string
+          format: uuid
+          title: Content Id
+          description: Unique UUID identifier of the movie or series
+        title:
+          type: string
+          title: Title
+          description: Ukrainian title of the movie/series
+        title_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title En
+          description: Original or English title
+        category:
+          type: string
+          title: Category
+          description: 'Category: ''Movie'' or ''Series'''
+          default: Movie
+        genre:
+          type: string
+          title: Genre
+          description: Primary genre
+        genres:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Genres
+          description: List of genre tags
+        year:
+          type: integer
+          title: Year
+          description: Release year
+        runtime:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Runtime
+          description: 'Runtime in minutes (for series: average episode length)'
+        rating:
+          type: number
+          title: Rating
+          description: Average user rating (0.0 - 10.0)
+          default: 0.0
+        rotten_rating:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Rotten Rating
+          description: Rotten Tomatoes / Critic score percentage
+        img:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Img
+          description: Poster image URL
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: Ukrainian synopsis
+        description_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description En
+          description: English synopsis
+        tmdb_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Tmdb Id
+          description: External TMDB identifier
+        trailer_uk:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Trailer Uk
+          description: YouTube video id of the Ukrainian trailer
+        trailer_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Trailer En
+          description: YouTube video id of the English trailer
+        cast:
+          items:
+            $ref: '#/components/schemas/CastMember'
+          type: array
+          title: Cast
+          description: Main cast in billing order (up to 10)
+        crew:
+          $ref: '#/components/schemas/CrewInfo'
+          description: Directors and writers or creators
+        series:
+          anyOf:
+          - $ref: '#/components/schemas/SeriesInfo'
+          - type: 'null'
+          description: Seasons and episodes (series only)
+        collection:
+          anyOf:
+          - $ref: '#/components/schemas/CollectionInfo'
+          - type: 'null'
+          description: Film series the title belongs to
+      type: object
+      required:
+      - id
+      - content_id
+      - title
+      - genre
+      - year
+      title: ContentDetailsResponse
+      description: 'One title with the details of its page (US-013): trailers, cast
+        and crew, series details, film series.'
     ContentResponse:
       properties:
         id:
@@ -2754,6 +2958,28 @@ components:
       - runtime
       title: ContentSortField
       description: Sorting criteria for the catalog (FR-010).
+    CrewInfo:
+      properties:
+        directors:
+          items:
+            type: string
+          type: array
+          title: Directors
+          description: Directors (movies)
+        writers:
+          items:
+            type: string
+          type: array
+          title: Writers
+          description: Screenplay and story (movies)
+        creators:
+          items:
+            type: string
+          type: array
+          title: Creators
+          description: Creators (series)
+      type: object
+      title: CrewInfo
     DeleteAccountRequest:
       properties:
         password:
@@ -2957,6 +3183,31 @@ components:
       required:
       - items
       title: MyReviewVotesResponse
+    NextEpisode:
+      properties:
+        air_date:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Air Date
+          description: Air date, YYYY-MM-DD
+        season_number:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Season Number
+        episode_number:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Episode Number
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+      type: object
+      title: NextEpisode
     PaginatedContentResponse:
       properties:
         items:
@@ -3061,6 +3312,28 @@ components:
       - message
       - email
       title: RegisterResponse
+    RelatedContentResponse:
+      properties:
+        collection:
+          anyOf:
+          - $ref: '#/components/schemas/CollectionInfo'
+          - type: 'null'
+          description: Film series of the title
+        collection_items:
+          items:
+            $ref: '#/components/schemas/ContentResponse'
+          type: array
+          title: Collection Items
+          description: Other parts of the film series present in the catalog, by year
+        similar:
+          items:
+            $ref: '#/components/schemas/ContentResponse'
+          type: array
+          title: Similar
+          description: Similar titles from TMDB recommendations present in the catalog
+      type: object
+      title: RelatedContentResponse
+      description: Titles of the catalog related to one title (US-013).
     ResendVerificationRequest:
       properties:
         email:
@@ -3348,6 +3621,72 @@ components:
         likes: 5
         my_vote: 1
         review_id: 550e8400-e29b-41d4-a716-446655440000
+    SeasonInfo:
+      properties:
+        season_number:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Season Number
+          description: 0 is specials
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        episode_count:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Episode Count
+        air_date:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Air Date
+          description: First air date, YYYY-MM-DD
+        poster:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Poster
+          description: Poster URL (TMDB, 185 px wide)
+      type: object
+      title: SeasonInfo
+    SeriesInfo:
+      properties:
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+          description: 'TMDB status: Returning Series, Ended, Canceled, In Production…'
+        number_of_seasons:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Number Of Seasons
+        number_of_episodes:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Number Of Episodes
+        last_air_date:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Air Date
+        next_episode:
+          anyOf:
+          - $ref: '#/components/schemas/NextEpisode'
+          - type: 'null'
+        seasons:
+          items:
+            $ref: '#/components/schemas/SeasonInfo'
+          type: array
+          title: Seasons
+      type: object
+      title: SeriesInfo
     SortOrder:
       type: string
       enum:
