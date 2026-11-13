@@ -103,3 +103,38 @@ describe('Header admin entry (FR-009)', () => {
     expect(onGoAdmin).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Header search suggestions follow the interface language', () => {
+  // As the API sends it: `title_en`, not `titleEn`
+  const rings = { id: 9, title: 'Володар перснів: Дві вежі', title_en: 'The Lord of the Rings: The Two Towers', year: 2002, genre: 'Пригоди', img: '/ttt.jpg' };
+  const noEnglish = { id: 10, title: 'Захар Беркут', title_en: null, year: 2019, genre: 'Драма', img: '/zb.jpg' };
+
+  it('shows the English title first when the interface is in English', async () => {
+    render(<Header {...baseProps} language="EN" user={null} movies={[rings]} />);
+
+    await userEvent.type(screen.getByPlaceholderText('Search ...'), 'lord of the');
+
+    const suggestion = screen.getByRole('button', { name: /The Lord of the Rings: The Two Towers/ });
+    // The Ukrainian title is the second line
+    expect(suggestion).toHaveTextContent('Володар перснів: Дві вежі • 2002');
+    expect(screen.getByAltText('The Lord of the Rings: The Two Towers')).toBeInTheDocument();
+  });
+
+  it('shows the Ukrainian title first in Ukrainian, with the English one below', async () => {
+    render(<Header {...baseProps} user={null} movies={[rings]} />);
+
+    await userEvent.type(screen.getByPlaceholderText('Пошук ...'), 'lord');
+
+    expect(screen.getByAltText('Володар перснів: Дві вежі')).toBeInTheDocument();
+    expect(screen.getByText(/The Lord of the Rings: The Two Towers • 2002/)).toBeInTheDocument();
+  });
+
+  it('falls back to the Ukrainian title without repeating it when there is no English one', async () => {
+    render(<Header {...baseProps} language="EN" user={null} movies={[noEnglish]} />);
+
+    await userEvent.type(screen.getByPlaceholderText('Search ...'), 'захар');
+
+    expect(screen.getByAltText('Захар Беркут')).toBeInTheDocument();
+    expect(screen.queryByText(/Захар Беркут •/)).not.toBeInTheDocument();
+  });
+});

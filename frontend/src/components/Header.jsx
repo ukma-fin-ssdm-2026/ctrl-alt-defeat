@@ -99,8 +99,11 @@ export default function Header({
           {isOpenSuggestions && suggestions.length > 0 && (
             <div className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-50">
               {suggestions.map(movie => {
-                const mainTitle = !isUkr ? (movie.titleEn || movie.title) : movie.title;
-                const subTitle = !isUkr ? movie.title : movie.titleEn;
+                // The title in the interface language first, the other one below (the API sends `title_en`)
+                const titleEn = movie.title_en || movie.titleEn || '';
+                const mainTitle = isUkr ? movie.title : (titleEn || movie.title);
+                const otherTitle = isUkr ? titleEn : movie.title;
+                const subTitle = otherTitle && otherTitle !== mainTitle ? otherTitle : '';
 
                 return (
                   <button
