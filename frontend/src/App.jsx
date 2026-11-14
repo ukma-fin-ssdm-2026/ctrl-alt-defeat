@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import MovieDetails from './pages/MovieDetails';
 import Recommendations from './components/Recommendations';
 import AuthModal from './components/AuthModal';
+import ResetPasswordModal from './components/ResetPasswordModal';
 import UserProfile from './pages/UserProfile';
 import AdminUsers from './pages/AdminUsers';
 import AdminCatalogSync from './components/AdminCatalogSync';
@@ -95,6 +96,26 @@ export default function App() {
   const filters = { category: selectedCategory, genre: selectedGenre, year: selectedYear };
   // A movie opens on top of the current filters, so "Back" returns to the same list
   const openMovie = movie => navigate({ ...filters, movie });
+
+  // "Forgot password?": the link from the email opens /reset-password?token=...
+  const [resetToken, setResetToken] = useState(() =>
+    window.location.pathname === '/reset-password'
+      ? new URLSearchParams(window.location.search).get('token')
+      : null
+  );
+  useEffect(() => {
+    if (window.location.pathname !== '/reset-password') return;
+    // Keep the page state of the history entry, only drop the token from the address
+    window.history.replaceState(window.history.state, '', '/');
+  }, []);
+
+  const finishPasswordReset = () => {
+    setResetToken(null);
+    setAuthNotice(isUkr
+      ? 'Пароль змінено! Увійдіть з новим паролем.'
+      : 'Password changed! Log in with the new password.');
+    setIsAuthOpen(true);
+  };
 
   // FR-001: the activation link from the email opens /verify-email?token=...
   useEffect(() => {
@@ -336,6 +357,15 @@ export default function App() {
           onLogin={handleLogin} 
           language={language}
           notice={authNotice}
+        />
+      )}
+
+      {resetToken && (
+        <ResetPasswordModal
+          token={resetToken}
+          language={language}
+          close={() => setResetToken(null)}
+          onDone={finishPasswordReset}
         />
       )}
     </div>

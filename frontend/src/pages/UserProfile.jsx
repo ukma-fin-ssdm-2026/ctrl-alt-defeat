@@ -96,8 +96,9 @@ export default function UserProfile({
     if (code === 'INVALID_PASSWORD') return isUkr ? 'Поточний пароль неправильний.' : 'The current password is incorrect.';
     if (code === 'SAME_PASSWORD') return isUkr ? 'Новий пароль має відрізнятися від поточного.' : 'The new password must differ from the current one.';
     if (code === 'SEED_ACCOUNT_LOCKED') return isUkr ? 'Демо-акаунт не можна змінити чи видалити: ним користуються всі відвідувачі.' : 'The demo account cannot be changed or deleted: all visitors use it.';
+    if (code === 'ACCOUNT_BANNED') return isUkr ? 'Поки діє блокування, акаунт видалити не можна.' : 'The account cannot be deleted while it is banned.';
     if (code === 'ADMIN_ACCOUNT') return isUkr ? 'Акаунт адміністратора не можна видалити з профілю.' : 'An administrator account cannot be deleted from the profile.';
-    if (code === 'VALIDATION_ERROR') return isUkr ? 'Новий пароль — щонайменше 6 символів.' : 'The new password needs at least 6 characters.';
+    if (code === 'VALIDATION_ERROR') return isUkr ? 'Новий пароль — щонайменше 8 символів.' : 'The new password needs at least 8 characters.';
     return isUkr ? 'Не вдалося виконати дію. Спробуйте ще раз.' : 'Something went wrong. Please try again.';
   };
 

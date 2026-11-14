@@ -15,10 +15,11 @@ from sqlalchemy import (
     Uuid,
     select,
 )
-from sqlalchemy.orm import column_property, deferred, relationship
+from sqlalchemy.orm import column_property, deferred, relationship, validates
 from sqlalchemy.sql import func
 
 from src.api.db.database import Base
+from src.api.services.email_identity import canonical_email
 
 CONTENT_TMDB_UNIQUE = "uq_content_category_tmdb"
 TMDB_DETAILS = "tmdb_details"
@@ -229,6 +230,8 @@ class User(Base):
 
     user_id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, index=True, nullable=False)
+    # One mailbox, one account: `email` without `+tag` (and Gmail dots), kept in step by _sync_canonical_email
+    email_canonical = Column(String(255), unique=True, index=True, nullable=True)
     password_hash = Column(String(255), nullable=False)
     nickname = Column(String(100), unique=True, index=True, nullable=False)
     role = Column(String(20), nullable=False, default="user")  # 'user' | 'admin'
@@ -237,6 +240,9 @@ class User(Base):
     verification_token = Column(String(255), nullable=True, index=True)
     # When the current activation link was sent: the link works for VERIFICATION_TOKEN_HOURS (FR-001)
     verification_sent_at = Column(DateTime(timezone=True), nullable=True)
+    # Password reset (forgot password): only the SHA-256 of the emailed token is stored, valid for an hour
+    password_reset_token = Column(String(64), nullable=True, index=True)
+    password_reset_sent_at = Column(DateTime(timezone=True), nullable=True)
     # Written into every access token; a password change increases it, so older tokens stop working
     token_version = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(
@@ -244,6 +250,11 @@ class User(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    @validates("email")
+    def _sync_canonical_email(self, key, value):
+        self.email_canonical = canonical_email(value)
+        return value
 
 
 class WatchlistItem(Base):

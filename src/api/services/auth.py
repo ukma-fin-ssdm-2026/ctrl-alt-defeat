@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import os
 import re
@@ -102,3 +103,28 @@ def generate_verification_token() -> str:
     Generate a cryptographically secure random token for email verification (FR-001).
     """
     return secrets.token_urlsafe(32)
+
+
+# A password reset link from the email works for this many minutes
+PASSWORD_RESET_MINUTES = 60
+
+
+def as_utc(moment: Optional[datetime]) -> Optional[datetime]:
+    """SQLite returns naive datetimes; they are stored in UTC."""
+    if moment is not None and moment.tzinfo is None:
+        return moment.replace(tzinfo=timezone.utc)
+    return moment
+
+
+def password_reset_expired(sent_at: Optional[datetime], now: Optional[datetime] = None) -> bool:
+    """True if the reset link sent at `sent_at` is too old (or there is no time stored)."""
+    sent_at = as_utc(sent_at)
+    if sent_at is None:
+        return True
+    now = now or datetime.now(timezone.utc)
+    return now - sent_at > timedelta(minutes=PASSWORD_RESET_MINUTES)
+
+
+def hash_reset_token(token: str) -> str:
+    """Only this hash is stored: a leaked database does not give working reset links."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

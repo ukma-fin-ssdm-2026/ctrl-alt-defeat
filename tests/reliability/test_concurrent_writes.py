@@ -26,6 +26,7 @@ def test_registration_integrity_error_returns_409(monkeypatch):
 
     # Email and nickname are not found during initial checks.
     db.query.return_value.filter.return_value.first.return_value = None
+    db.query.return_value.filter.return_value.all.return_value = []
 
     # Simulate a concurrent insert violating a UNIQUE constraint.
     db.commit.side_effect = make_integrity_error()
@@ -51,6 +52,7 @@ def test_registration_integrity_error_returns_409(monkeypatch):
     with pytest.raises(HTTPException) as exc_info:
         auth.register_user(
             req=request,
+            request=MagicMock(client=MagicMock(host="203.0.113.7")),
             background_tasks=BackgroundTasks(),
             db=db,
         )
