@@ -5,6 +5,7 @@ import { getDisplayName } from '../utils/displayName';
 import { computeAchievements } from '../utils/achievements';
 import { RANKS, XP_RULES, activityXp, rankForXp } from '../utils/ranks';
 import { posterFor } from '../utils/poster';
+import { translateGenre } from '../utils/genres';
 
 export default function UserProfile({ 
   user, 
@@ -32,6 +33,9 @@ export default function UserProfile({
   const canDeleteAccount = user?.role !== 'admin';
 
   const isUkr = language === 'UKR';
+  // Title and genre of a title in the interface language (lists of the profile)
+  const titleOf = movie => (isUkr ? movie.title : (movie.title_en || movie.titleEn || movie.title)) || (isUkr ? 'Фільм' : 'Title');
+  const genreOf = movie => translateGenre(movie.genre, isUkr ? 'UKR' : 'EN');
   // Real date from the server (users.created_at), e.g. "5 листопада 2026 р."
   const registrationDate = user?.created_at
     ? new Date(user.created_at).toLocaleDateString(isUkr ? 'uk-UA' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -49,6 +53,22 @@ export default function UserProfile({
     return () => { ignore = true; };
   }, [userId]);
   const reviewsLoaded = reviewsState.userId === userId;
+
+  // A review opens the page of its title: the full card comes from the catalog API; if that fails,
+  // the page opens with what the review knows and loads the rest itself
+  const openReviewedTitle = review => {
+    if (!onSelectMovie) return;
+    const fallback = {
+      content_id: review.content_id,
+      title: review.content_title,
+      title_en: review.content_title_en,
+      img: review.content_img,
+      img_en: review.content_img_en,
+    };
+    Promise.resolve(apiClient.get(`/movies/${review.content_id}`))
+      .then(response => onSelectMovie(response?.data?.content_id ? response.data : fallback))
+      .catch(() => onSelectMovie(fallback));
+  };
   const userReviews = reviewsLoaded ? reviewsState.items : [];
 
   // Badges computed from real activity instead of hardcoded "unlocked" examples
@@ -377,11 +397,20 @@ export default function UserProfile({
                       <div>
                         <img 
                           src={posterFor(movie, language)}
-                          alt={movie.title} 
+                          alt={titleOf(movie)}
                           className="w-full h-40 object-cover rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => onSelectMovie(movie)}
                         />
-                        <h4 className="font-bold text-xs text-gray-900 dark:text-white mt-2 truncate">{movie.title}</h4>
+                        <button
+                          type="button"
+                          onClick={() => onSelectMovie(movie)}
+                          className="block w-full text-left font-bold text-xs text-gray-900 dark:text-white mt-2 truncate hover:text-yellow-600 dark:hover:text-yellow-400"
+                        >
+                          {titleOf(movie)}
+                        </button>
+                        {movie.genre && (
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{genreOf(movie)}</p>
+                        )}
                       </div>
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
                         <span className="text-[10px] text-gray-400">{movie.year}</span>
@@ -418,16 +447,20 @@ export default function UserProfile({
                         {movie.img && (
                           <img 
                             src={posterFor(movie, language)}
-                            alt={movie.title || 'Movie'} 
+                            alt={titleOf(movie)}
                             className="w-full h-40 object-cover rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
                             onClick={() => onSelectMovie && onSelectMovie(movie)}
                           />
                         )}
-                        <h4 className="font-bold text-xs text-gray-900 dark:text-white mt-2 truncate">
-                          {isUkr ? movie.title : (movie.title_en || movie.title)}
-                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => onSelectMovie && onSelectMovie(movie)}
+                          className="block w-full text-left font-bold text-xs text-gray-900 dark:text-white mt-2 truncate hover:text-yellow-600 dark:hover:text-yellow-400"
+                        >
+                          {titleOf(movie)}
+                        </button>
                         {movie.genre && (
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{movie.genre}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{genreOf(movie)}</p>
                         )}
                       </div>
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
@@ -465,11 +498,39 @@ export default function UserProfile({
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {userReviews.map(review => (
-                    <div key={review.review_id} className="p-4 bg-gray-50 dark:bg-gray-700/40 rounded-2xl border border-gray-100 dark:border-gray-700 flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-sm text-gray-900 dark:text-white">{review.content_title || (isUkr ? 'Фільм' : 'Title')}</h4>
-                        <span className="px-2.5 py-0.5 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-full text-xs font-black">
+                  {userReviews.map(review => {
+                    const reviewedTitle = isUkr
+                      ? review.content_title
+                      : (review.content_title_en || review.content_title);
+                    const poster = posterFor({ img: review.content_img, img_en: review.content_img_en }, language);
+                    const titleLabel = reviewedTitle || (isUkr ? 'Фільм' : 'Title');
+                    return (
+                    <div key={review.review_id} className="p-4 bg-gray-50 dark:bg-gray-700/40 rounded-2xl border border-gray-100 dark:border-gray-700 flex gap-4">
+                      {/* The poster and the title open the page of the reviewed title */}
+                      <button
+                        type="button"
+                        onClick={() => openReviewedTitle(review)}
+                        // The title button below is the keyboard stop; the poster is an extra target for the mouse
+                        tabIndex={-1}
+                        aria-label={titleLabel}
+                        className="shrink-0 self-start"
+                      >
+                        {poster ? (
+                          <img src={poster} alt="" loading="lazy" className="w-12 aspect-[2/3] object-cover rounded-md shadow-sm hover:ring-2 hover:ring-yellow-500" />
+                        ) : (
+                          <span className="w-12 aspect-[2/3] rounded-md bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-lg">🎬</span>
+                        )}
+                      </button>
+                      <div className="flex flex-col gap-2 flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => openReviewedTitle(review)}
+                          className="text-left font-bold text-sm text-gray-900 dark:text-white hover:text-yellow-600 dark:hover:text-yellow-400 hover:underline"
+                        >
+                          {titleLabel}
+                        </button>
+                        <span className="shrink-0 px-2.5 py-0.5 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-full text-xs font-black">
                           ⭐ {review.rating}/10
                         </span>
                       </div>
@@ -481,8 +542,10 @@ export default function UserProfile({
                       <div className="text-[11px] text-gray-400 mt-1">
                         {new Date(review.created_at).toLocaleDateString(isUkr ? 'uk-UA' : 'en-US')}
                       </div>
+                      </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
