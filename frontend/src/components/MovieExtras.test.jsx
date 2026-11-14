@@ -149,6 +149,25 @@ describe('MovieExtras: the page of a title from TMDB (US-013)', () => {
     expect(within(parts).getByRole('heading')).toHaveTextContent('All parts of the series: The Lord of the Rings Collection');
   });
 
+  it('marks a season that has not aired yet instead of "0 episodes"', async () => {
+    // Trace: T-049
+    apiClient.get.mockResolvedValue({ data: { collection: null, collection_items: [], similar: [] } });
+    const seasons = [
+      { season_number: 3, name: 'Сезон 3', episode_count: 8, air_date: '2024-05-01' },
+      { season_number: 4, name: 'Сезон 4', episode_count: 0, air_date: null },
+      { season_number: 5, name: 'Сезон 5', episode_count: 6, air_date: '2999-01-01' },
+    ];
+    const { rerender } = render(<MovieExtras movie={{ ...movie, series: { seasons } }} isUkr />);
+
+    const list = screen.getByRole('region', { name: 'Сезони' });
+    expect(within(list).getByText('8 сер. · 2024')).toBeInTheDocument();
+    expect(within(list).getAllByText('Незабаром')).toHaveLength(2);
+    expect(within(list).queryByText(/^0 сер/)).not.toBeInTheDocument();
+
+    rerender(<MovieExtras movie={{ ...movie, series: { seasons } }} isUkr={false} />);
+    expect(within(screen.getByRole('region', { name: 'Seasons' })).getAllByText('Coming soon')).toHaveLength(2);
+  });
+
   it('leaves out the Ukrainian name of a film series on the English page', async () => {
     // Trace: T-049
     render(<MovieExtras movie={movie} isUkr={false} />);
