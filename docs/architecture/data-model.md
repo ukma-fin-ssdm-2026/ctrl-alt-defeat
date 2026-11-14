@@ -31,16 +31,19 @@
 |---|---|---|
 | user_id | UUID, PK | Унікальний ідентифікатор користувача |
 | email | varchar | Email користувача [PERSONAL, UNIQUE] |
+| email_canonical | varchar, null | Та сама скринька без `+тегу` (для Gmail ще без крапок і `googlemail.com` → `gmail.com`) [PERSONAL, UNIQUE]: одна скринька — один акаунт (T-051) |
 | password_hash | varchar | Хеш пароля [SENSITIVE] |
 | nickname | varchar | Ім'я, що відображається на платформі [PERSONAL, UNIQUE] |
 | role | enum | user / admin |
 | email_verified | boolean | Ознака підтвердження email |
 | status | enum | Стан акаунта |
+| password_reset_token | varchar(64), null | SHA-256 токена з листа «Забули пароль?» [SENSITIVE]; після використання очищується (T-052) |
+| password_reset_sent_at | datetime, null | Коли надіслано посилання для нового пароля: діє 1 годину (T-052) |
 | created_at | datetime | Дата створення акаунта |
 
 Інваріанти:
-- email та nickname мають бути унікальними;
-- пароль не зберігається у відкритому вигляді;
+- email та nickname мають бути унікальними; nickname — без огляду на регістр літер, email — з урахуванням псевдонімів однієї скриньки (`email_canonical`);
+- пароль не зберігається у відкритому вигляді; новий пароль — щонайменше 8 символів;
 - користувач може авторизуватися тільки після підтвердження email.
 
 ### Content
