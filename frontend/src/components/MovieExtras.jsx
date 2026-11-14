@@ -99,6 +99,9 @@ export default function MovieExtras({ movie, isUkr, onSelectMovie }) {
     if (isUkr) return season.name || `Сезон ${season.season_number}`;
     return season.season_number === 0 ? 'Specials' : `Season ${season.season_number}`;
   };
+  // A season that TMDB lists before it airs has no episodes yet (or a future date): "0 ep." says nothing
+  const today = new Date().toISOString().slice(0, 10);
+  const isUpcoming = season => !season.episode_count || Boolean(season.air_date && season.air_date > today);
   const collectionName = isUkr ? relatedData?.collection?.name : relatedData?.collection?.name_en;
 
   const status = series?.status ? (SERIES_STATUS[series.status] || [series.status, series.status])[isUkr ? 0 : 1] : null;
@@ -209,10 +212,16 @@ export default function MovieExtras({ movie, isUkr, onSelectMovie }) {
                   <span className="block mt-1 text-xs font-semibold text-gray-900 dark:text-gray-100">
                     {seasonName(season)}
                   </span>
-                  <span className="block text-[11px] text-gray-500 dark:text-gray-400">
-                    {season.episode_count != null && `${season.episode_count} ${isUkr ? 'сер.' : 'ep.'}`}
-                    {season.air_date && ` · ${season.air_date.slice(0, 4)}`}
-                  </span>
+                  {isUpcoming(season) ? (
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-yellow-500/15 text-[11px] font-semibold text-yellow-700 dark:text-yellow-400">
+                      {isUkr ? 'Незабаром' : 'Coming soon'}
+                    </span>
+                  ) : (
+                    <span className="block text-[11px] text-gray-500 dark:text-gray-400">
+                      {`${season.episode_count} ${isUkr ? 'сер.' : 'ep.'}`}
+                      {season.air_date && ` · ${season.air_date.slice(0, 4)}`}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
