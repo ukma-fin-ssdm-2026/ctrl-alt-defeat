@@ -24,6 +24,8 @@ const texts = {
     emptyText: 'Текст коментаря не може бути порожнім',
     authRequired: 'Будь ласка, авторизуйтесь, щоб залишити коментар',
     policy: 'Коментар містить заборонений вміст (HTML, посилання або образи).',
+    tooMany: 'Забагато коментарів за короткий час. Зачекайте трохи й спробуйте знову.',
+    duplicate: 'Ви вже залишили такий самий коментар тут.',
     failed: 'Не вдалося надіслати коментар.',
     commentLabel: 'Коментар',
   },
@@ -43,6 +45,8 @@ const texts = {
     emptyText: 'Comment text cannot be empty',
     authRequired: 'Please log in to leave a comment',
     policy: 'The comment contains forbidden content (HTML, links or insults).',
+    tooMany: 'Too many comments in a short time. Wait a little and try again.',
+    duplicate: 'You have already posted the same comment here.',
     failed: 'Failed to send the comment.',
     commentLabel: 'Comment',
   },
@@ -92,7 +96,9 @@ function CommentForm({ reviewId, parentId, isLoggedIn, openAuth, user, t, placeh
         const status = err.response?.status;
         if (status === 401) setError(t.authRequired);
         else if (status === 422) setError(t.emptyText);
-        else if (status === 400) setError(t.policy);
+        else if (status === 400 && err.response?.data?.error?.code === 'POLICY_VIOLATION') setError(t.policy);
+        else if (status === 429) setError(t.tooMany);
+        else if (status === 409) setError(t.duplicate);
         else setError(err.response?.data?.error?.message || t.failed);
         setSending(false);
       });

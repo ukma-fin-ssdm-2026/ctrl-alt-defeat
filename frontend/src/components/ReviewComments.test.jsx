@@ -174,6 +174,20 @@ describe('ReviewComments (FR-011)', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('заборонений вміст');
   });
+
+  it('asks to wait when the user posts too many comments', async () => {
+    // Trace: T-051
+    apiClient.get.mockResolvedValue(thread([]));
+    apiClient.post.mockRejectedValue({ response: { status: 429, data: { error: { code: 'TOO_MANY_ATTEMPTS' } } } });
+    renderComments();
+    await openThread();
+    await screen.findByText(/Коментарів ще немає/);
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Коментар' }), 'Ще один коментар');
+    await userEvent.click(screen.getByRole('button', { name: 'Відправити' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Забагато коментарів');
+  });
 });
 
 describe('ReviewComments for a banned user (FR-009)', () => {

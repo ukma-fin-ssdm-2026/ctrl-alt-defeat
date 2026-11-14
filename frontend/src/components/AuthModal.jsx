@@ -13,6 +13,9 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
   // FR-001: address that still needs confirmation, for "send the link again"
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [resendStatus, setResendStatus] = useState('');
+  // "Forgot password?": the form that asks for the email to send a reset link to
+  const [isForgot, setIsForgot] = useState(false);
+  const [forgotStatus, setForgotStatus] = useState(null);
   // Demo accounts come from the server configuration (DEMO_MODE), never from the frontend code
   const [demoAccounts, setDemoAccounts] = useState([]);
 
@@ -96,6 +99,18 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
           setError(isUkr ? 'Цей email уже зареєстровано.' : 'This email is already registered.');
         } else if (errCode === 'NICKNAME_ALREADY_EXISTS') {
           setError(isUkr ? 'Цей нікнейм уже зайнято.' : 'This nickname is already taken.');
+        } else if (errCode === 'TOO_MANY_ATTEMPTS') {
+          setError(isUkr
+            ? 'Забагато нових акаунтів з вашої адреси. Спробуйте пізніше.'
+            : 'Too many new accounts from your address. Please try later.');
+        } else if (errCode === 'DISPOSABLE_EMAIL') {
+          setError(isUkr
+            ? 'Тимчасові (одноразові) поштові скриньки не підходять. Вкажіть свою основну пошту.'
+            : 'Temporary (throwaway) mailboxes are not accepted. Please use your regular email.');
+        } else if (errCode === 'VALIDATION_ERROR') {
+          setError(isUkr
+            ? 'Перевірте дані: коректний email, нікнейм від 2 символів, пароль від 8 символів.'
+            : 'Check the data: a valid email, a nickname of 2+ characters, a password of 8+ characters.');
         } else {
           setError(err.response?.data?.error?.message || (isUkr ? 'Помилка реєстрації.' : 'Registration error.'));
         }
@@ -108,10 +123,102 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
     try {
       await apiClient.post('/auth/resend-verification', { email: unverifiedEmail });
       setResendStatus(isUkr ? `Лист надіслано ще раз на ${unverifiedEmail}.` : `The link was sent again to ${unverifiedEmail}.`);
-    } catch {
-      setResendStatus(isUkr ? 'Не вдалося надіслати лист. Спробуйте пізніше.' : 'Could not send the email. Please try later.');
+    } catch (err) {
+      setResendStatus(err.response?.status === 429
+        ? (isUkr ? 'Забагато запитів на лист. Спробуйте пізніше.' : 'Too many email requests. Please try later.')
+        : (isUkr ? 'Не вдалося надіслати лист. Спробуйте пізніше.' : 'Could not send the email. Please try later.'));
     }
   };
+
+  const openForgot = () => {
+    setIsForgot(true);
+    setError('');
+    setSuccessInfo(null);
+    setForgotStatus(null);
+  };
+
+  const backToLogin = () => {
+    setIsForgot(false);
+    setIsLogin(true);
+    setForgotStatus(null);
+  };
+
+  const handleForgot = async (e) => {
+    e.preventDefault();
+    setForgotStatus(null);
+    setLoading(true);
+    try {
+      await apiClient.post('/auth/forgot-password', { email: email.trim().toLowerCase() });
+      setForgotStatus({
+        ok: true,
+        text: isUkr
+          ? 'Якщо акаунт з цією поштою існує, ми надіслали лист із посиланням для нового пароля. Посилання діє 1 годину.'
+          : 'If an account with this email exists, we sent a link to set a new password. The link works for 1 hour.',
+      });
+    } catch (err) {
+      setForgotStatus({
+        ok: false,
+        text: err.response?.status === 429
+          ? (isUkr ? 'Забагато запитів. Спробуйте пізніше.' : 'Too many requests. Please try later.')
+          : (isUkr ? 'Не вдалося надіслати лист. Спробуйте пізніше.' : 'Could not send the email. Please try later.'),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inputClass =
+    'border border-gray-300 dark:border-gray-600 p-3 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-yellow-500 focus:outline-none';
+
+  if (isForgot) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+        <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl shadow-xl p-8 relative border border-gray-100 dark:border-gray-700">
+          <button onClick={close} aria-label={isUkr ? 'Закрити' : 'Close'} className="absolute top-4 right-4 text-gray-400 hover:text-black dark:hover:text-white text-xl">
+            ✕
+          </button>
+          <h2 className="text-3xl font-black mb-4 text-center text-gray-900 dark:text-white">
+            {isUkr ? 'Відновлення пароля' : 'Reset password'}
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
+            {isUkr
+              ? 'Вкажіть пошту акаунта — ми надішлемо посилання, щоб задати новий пароль.'
+              : 'Enter the email of your account and we will send a link to set a new password.'}
+          </p>
+          {forgotStatus && (
+            <p
+              role="status"
+              className={`text-sm mb-4 text-center font-semibold ${forgotStatus.ok ? 'text-green-700 dark:text-green-400' : 'text-red-500'}`}
+            >
+              {forgotStatus.text}
+            </p>
+          )}
+          <form onSubmit={handleForgot} className="flex flex-col gap-4">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              required
+              className={inputClass}
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-yellow-500 text-gray-900 font-bold py-3 rounded-xl mt-2 hover:bg-yellow-600 transition shadow-sm disabled:opacity-50"
+            >
+              {loading ? (isUkr ? 'Обробка...' : 'Processing...') : (isUkr ? 'Надіслати посилання' : 'Send the link')}
+            </button>
+          </form>
+          <p className="text-center mt-6 text-sm">
+            <button type="button" onClick={backToLogin} className="text-yellow-600 dark:text-yellow-400 font-bold hover:underline">
+              {isUkr ? '← Повернутися до входу' : '← Back to login'}
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
@@ -201,9 +308,14 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
             onChange={(e) => setPassword(e.target.value)}
             placeholder={isUkr ? "Пароль" : "Password"} 
             required
-            minLength={6}
+            minLength={isLogin ? undefined : 8}
             className="border border-gray-300 dark:border-gray-600 p-3 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-yellow-500 focus:outline-none" 
           />
+          {!isLogin && (
+            <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
+              {isUkr ? 'Пароль — щонайменше 8 символів.' : 'The password needs at least 8 characters.'}
+            </p>
+          )}
           
           <button 
             type="submit" 
@@ -215,6 +327,14 @@ export default function AuthModal({ close, onLogin, language = 'UKR', notice = '
               : (isUkr ? 'Зареєструватись' : 'Sign Up'))}
           </button>
         </form>
+
+        {isLogin && (
+          <p className="text-center mt-4 text-sm">
+            <button type="button" onClick={openForgot} className="text-gray-600 dark:text-gray-300 hover:underline">
+              {isUkr ? 'Забули пароль?' : 'Forgot password?'}
+            </button>
+          </p>
+        )}
 
         <p className="text-center mt-6 text-sm text-gray-600 dark:text-gray-400">
           {isLogin 
