@@ -30,6 +30,7 @@ class ContentResponse(BaseModel):
 
 class CastMember(BaseModel):
     name: str = Field(..., description="Actor or actress")
+    name_en: Optional[str] = Field(None, description="The name in English (empty for data imported earlier)")
     character: Optional[str] = Field(None, description="Role in this title")
     photo: Optional[str] = Field(None, description="Photo URL (TMDB, 185 px wide)")
 
@@ -38,6 +39,9 @@ class CrewInfo(BaseModel):
     directors: List[str] = Field(default_factory=list, description="Directors (movies)")
     writers: List[str] = Field(default_factory=list, description="Screenplay and story (movies)")
     creators: List[str] = Field(default_factory=list, description="Creators (series)")
+    directors_en: List[str] = Field(default_factory=list, description="Directors in English")
+    writers_en: List[str] = Field(default_factory=list, description="Writers in English")
+    creators_en: List[str] = Field(default_factory=list, description="Creators in English")
 
 
 class NextEpisode(BaseModel):
@@ -67,6 +71,7 @@ class SeriesInfo(BaseModel):
 class CollectionInfo(BaseModel):
     id: int = Field(..., description="TMDB collection id")
     name: str = Field(..., description="Name of the film series")
+    name_en: Optional[str] = Field(None, description="Name of the film series in English")
 
 
 class ContentDetailsResponse(ContentResponse):

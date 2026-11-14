@@ -114,6 +114,49 @@ describe('MovieExtras: the page of a title from TMDB (US-013)', () => {
     expect(onSelectMovie).toHaveBeenCalledWith(king);
   });
 
+  it('shows names, seasons and the film series in English on the English page', async () => {
+    // Trace: T-049
+    apiClient.get.mockResolvedValue({
+      data: { ...related, collection: { id: 119, name: 'Володар перснів (Колекція)', name_en: 'The Lord of the Rings Collection' } },
+    });
+    const english = {
+      ...movie,
+      cast: [
+        { name: 'Елайджа Вуд', name_en: 'Elijah Wood', character: 'Frodo', photo: null },
+        { name: 'Шон Остін', character: 'Sam', photo: null },
+      ],
+      crew: { directors: ['Пітер Джексон'], directors_en: ['Peter Jackson'], writers: ['Френ Волш'], creators: [] },
+      series: {
+        seasons: [
+          { season_number: 0, name: 'Спецвипуски', episode_count: 2 },
+          { season_number: 1, name: 'Сезон 1', episode_count: 10 },
+        ],
+      },
+    };
+    render(<MovieExtras movie={english} isUkr={false} />);
+
+    const crew = screen.getByRole('region', { name: 'Crew and cast' });
+    expect(within(crew).getByText('Elijah Wood')).toBeInTheDocument();
+    expect(within(crew).getByText('Peter Jackson')).toBeInTheDocument();
+    // Data imported before the English names keeps showing what it has
+    expect(within(crew).getByText('Шон Остін')).toBeInTheDocument();
+    expect(within(crew).getByText('Френ Волш')).toBeInTheDocument();
+    const seasons = screen.getByRole('region', { name: 'Seasons' });
+    expect(within(seasons).getByText('Specials')).toBeInTheDocument();
+    expect(within(seasons).getByText('Season 1')).toBeInTheDocument();
+    expect(within(seasons).queryByText('Сезон 1')).not.toBeInTheDocument();
+    const parts = await screen.findByRole('region', { name: 'All parts of the series' });
+    expect(within(parts).getByRole('heading')).toHaveTextContent('All parts of the series: The Lord of the Rings Collection');
+  });
+
+  it('leaves out the Ukrainian name of a film series on the English page', async () => {
+    // Trace: T-049
+    render(<MovieExtras movie={movie} isUkr={false} />);
+
+    const parts = await screen.findByRole('region', { name: 'All parts of the series' });
+    expect(within(parts).getByRole('heading')).toHaveTextContent(/^All parts of the series$/);
+  });
+
   it('shows nothing extra for a title without TMDB details', async () => {
     // Trace: T-049
     apiClient.get.mockRejectedValue(new Error('offline'));

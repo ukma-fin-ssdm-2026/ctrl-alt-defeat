@@ -744,11 +744,13 @@ def pick_english_poster(images: Dict[str, Any]) -> Optional[str]:
 
 
 def cast_from_credits(credits: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """The first CAST_LIMIT actors in billing order: name, role and photo."""
+    """The first CAST_LIMIT actors in billing order: name (Ukrainian and English), role and photo."""
     cast = sorted((credits or {}).get("cast") or [], key=lambda person: person.get("order", 999))
     return [
         {
             "name": person.get("name"),
+            # The request is in Ukrainian; `original_name` is the name as TMDB keeps it (English)
+            "name_en": person.get("original_name") or person.get("name"),
             "character": person.get("character") or None,
             "photo": _thumb(person.get("profile_path")),
         }
@@ -757,23 +759,29 @@ def cast_from_credits(credits: Dict[str, Any]) -> List[Dict[str, Any]]:
     ]
 
 
-def _unique_names(people: List[Dict[str, Any]]) -> List[str]:
+def _unique_names(people: List[Dict[str, Any]], key: str = "name") -> List[str]:
     names: List[str] = []
     for person in people:
-        name = person.get("name")
+        name = person.get(key) or person.get("name")
         if name and name not in names:
             names.append(name)
     return names[:CREW_LIMIT]
 
 
 def crew_from_details(kind: str, details: Dict[str, Any]) -> Dict[str, List[str]]:
-    """Directors and writers (movies), creators (series)."""
+    """Directors and writers (movies), creators (series); `*_en` are the same people in English."""
     crew = (details.get("credits") or {}).get("crew") or []
-    return {
-        "directors": _unique_names([person for person in crew if person.get("job") == "Director"]),
-        "writers": _unique_names([person for person in crew if person.get("job") in WRITER_JOBS]),
-        "creators": _unique_names(details.get("created_by") or []) if kind == "tv" else [],
+    groups = {
+        "directors": [person for person in crew if person.get("job") == "Director"],
+        "writers": [person for person in crew if person.get("job") in WRITER_JOBS],
+        "creators": (details.get("created_by") or []) if kind == "tv" else [],
     }
+    result: Dict[str, List[str]] = {}
+    for group, people in groups.items():
+        result[group] = _unique_names(people)
+        # `created_by` has no original_name: the name there stays as TMDB gives it
+        result[f"{group}_en"] = _unique_names(people, "original_name")
+    return result
 
 
 def series_from_details(details: Dict[str, Any]) -> Dict[str, Any]:
@@ -827,6 +835,8 @@ def page_details(kind: str, details: Dict[str, Any]) -> Dict[str, Any]:
         "similar_tmdb_ids": [tmdb_id for tmdb_id in similar if isinstance(tmdb_id, int)][:SIMILAR_LIMIT],
         "collection_id": collection.get("id") if collection else None,
         "collection_name": collection.get("name") if collection else None,
+        # Filled by fetch_tmdb_catalog with one request per film series (TMDB gives the name in Ukrainian here)
+        "collection_name_en": None,
     }
 
 
@@ -963,7 +973,25 @@ def fetch_tmdb_catalog(api_key: str, per_section: int = TITLES_PER_SECTION) -> L
     with ThreadPoolExecutor(max_workers=DETAIL_WORKERS) as pool:
         for section in SECTIONS:
             catalog.extend(_fetch_section(pool, section, per_section, api_key, seen))
+        add_english_collection_names(pool, catalog, api_key)
     return catalog
+
+
+def _collection_name_en(collection_id: int, api_key: str) -> Optional[str]:
+    try:
+        return _tmdb_get(f"/collection/{int(collection_id)}", {"language": "en-US"}, api_key).get("name") or None
+    except Exception as error:  # the Ukrainian name is still there
+        logger.warning("TMDB collection %s failed: %s", collection_id, error)
+        return None
+
+
+def add_english_collection_names(pool: ThreadPoolExecutor, catalog: List[Dict[str, Any]], api_key: str) -> None:
+    """English names of the film series of the catalog: one request per series, not per title."""
+    ids = sorted({item["collection_id"] for item in catalog if item.get("collection_id") is not None})
+    names = dict(zip(ids, pool.map(lambda collection_id: _collection_name_en(collection_id, api_key), ids)))
+    for item in catalog:
+        if item.get("collection_id") is not None:
+            item["collection_name_en"] = names.get(item["collection_id"])
 
 
 def fetch_tmdb_movies(api_key: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -1026,6 +1054,7 @@ PAGE_FIELDS = (
     "similar_tmdb_ids",
     "collection_id",
     "collection_name",
+    "collection_name_en",
 )
 
 

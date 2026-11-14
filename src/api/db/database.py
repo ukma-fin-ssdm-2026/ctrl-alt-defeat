@@ -103,6 +103,7 @@ CONTENT_COLUMNS = {
     "similar_tmdb_ids": ("JSON", "JSON"),
     "collection_id": ("INTEGER", "INTEGER"),
     "collection_name": ("VARCHAR(255)", "VARCHAR(255)"),
+    "collection_name_en": ("VARCHAR(255)", "VARCHAR(255)"),
 }
 
 

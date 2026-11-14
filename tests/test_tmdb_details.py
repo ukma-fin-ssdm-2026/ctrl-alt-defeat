@@ -59,9 +59,17 @@ MOVIE_DETAILS = {
             {"name": f"Actor {n}", "character": f"Role {n}", "order": n, "profile_path": f"/a{n}.jpg"}
             for n in range(12, 0, -1)
         ]
-        + [{"name": "Elijah Wood", "character": "Frodo", "order": 0, "profile_path": None}],
+        + [
+            {
+                "name": "Елайджа Вуд",
+                "original_name": "Elijah Wood",
+                "character": "Frodo",
+                "order": 0,
+                "profile_path": None,
+            }
+        ],
         "crew": [
-            {"name": "Peter Jackson", "job": "Director"},
+            {"name": "Пітер Джексон", "original_name": "Peter Jackson", "job": "Director"},
             {"name": "Peter Jackson", "job": "Screenplay"},
             {"name": "Fran Walsh", "job": "Screenplay"},
             {"name": "Fran Walsh", "job": "Writer"},
@@ -117,18 +125,24 @@ def test_page_details_of_a_movie():
 
     assert (page["trailer_uk"], page["trailer_en"]) == ("ukTrailer2", "enNew00001")
     # Billing order, at most 10 actors, photos as full URLs
-    assert [person["name"] for person in page["cast_members"]][:3] == ["Elijah Wood", "Actor 1", "Actor 2"]
+    assert [person["name"] for person in page["cast_members"]][:3] == ["Елайджа Вуд", "Actor 1", "Actor 2"]
+    # English names for the English page: original_name, or the same name when TMDB has no other
+    assert [person["name_en"] for person in page["cast_members"]][:2] == ["Elijah Wood", "Actor 1"]
     assert len(page["cast_members"]) == 10
     assert page["cast_members"][0]["photo"] is None
     assert page["cast_members"][1]["photo"] == "https://image.tmdb.org/t/p/w185/a1.jpg"
     # Each name once, at most 3; music is not crew we show
     assert page["crew_members"] == {
-        "directors": ["Peter Jackson"],
+        "directors": ["Пітер Джексон"],
+        "directors_en": ["Peter Jackson"],
         "writers": ["Peter Jackson", "Fran Walsh", "J.R.R. Tolkien"],
+        "writers_en": ["Peter Jackson", "Fran Walsh", "J.R.R. Tolkien"],
         "creators": [],
+        "creators_en": [],
     }
     assert page["series_details"] is None
     assert (page["collection_id"], page["collection_name"]) == (119, "Володар перснів (Колекція)")
+    assert page["collection_name_en"] is None  # filled once per film series by the import
     assert page["similar_tmdb_ids"] == [122, 120]
 
 
@@ -163,6 +177,30 @@ def test_import_asks_tmdb_for_the_page_details_in_one_request(monkeypatch):
     assert calls[0][1]["include_video_language"] == "uk,en"
     item = build_catalog_item("Movie", "movie", {"id": 121}, details)
     assert item["trailer_uk"] == "ukTrailer2" and item["collection_id"] == 119
+
+
+def test_english_names_of_film_series_one_request_each(monkeypatch):
+    # Trace: T-049
+    calls = []
+
+    def fake_get(path, params, api_key):
+        calls.append((path, params["language"]))
+        if path == "/collection/404":
+            raise tmdb.TmdbError("not found")
+        return {"name": "The Lord of the Rings Collection"}
+
+    monkeypatch.setattr(tmdb, "_tmdb_get", fake_get)
+    catalog = [{"collection_id": 119}, {"collection_id": 119}, {"collection_id": 404}, {"collection_id": None}]
+    with tmdb.ThreadPoolExecutor(max_workers=2) as pool:
+        tmdb.add_english_collection_names(pool, catalog, "key")
+
+    assert sorted(calls) == [("/collection/119", "en-US"), ("/collection/404", "en-US")]
+    assert [item.get("collection_name_en") for item in catalog] == [
+        "The Lord of the Rings Collection",
+        "The Lord of the Rings Collection",
+        None,
+        None,
+    ]
 
 
 @pytest.fixture
@@ -227,9 +265,9 @@ def test_movie_page_returns_the_details_and_lists_stay_light(client, db_session)
     page = client.get(f"/api/v1/movies/{movie.content_id}").json()
 
     assert (page["trailer_uk"], page["trailer_en"]) == ("ukTrailer2", "enNew00001")
-    assert page["cast"][0] == {"name": "Elijah Wood", "character": "Frodo", "photo": None}
-    assert page["crew"]["directors"] == ["Peter Jackson"]
-    assert page["collection"] == {"id": 119, "name": "Володар перснів (Колекція)"}
+    assert page["cast"][0] == {"name": "Елайджа Вуд", "name_en": "Elijah Wood", "character": "Frodo", "photo": None}
+    assert (page["crew"]["directors"], page["crew"]["directors_en"]) == (["Пітер Джексон"], ["Peter Jackson"])
+    assert page["collection"] == {"id": 119, "name": "Володар перснів (Колекція)", "name_en": None}
     assert page["series"] is None
     listed = client.get("/api/v1/movies").json()["items"][0]
     assert "cast" not in listed and "trailer_uk" not in listed
@@ -271,7 +309,7 @@ def test_related_titles_of_the_film_series_and_similar(client, db_session):
 
     related = client.get(f"/api/v1/movies/{two_towers.content_id}/related").json()
 
-    assert related["collection"] == {"id": 119, "name": "Володар перснів"}
+    assert related["collection"] == {"id": 119, "name": "Володар перснів", "name_en": None}
     assert [title["title"] for title in related["collection_items"]] == ["Хранителі персня", "Повернення короля"]
     # TMDB order; titles missing from the catalog and of another media type are left out
     assert [title["title"] for title in related["similar"]] == ["Повернення короля", "Хранителі персня"]
@@ -285,7 +323,15 @@ def test_title_without_tmdb_details(client, db_session):
     page = client.get(f"/api/v1/movies/{plain.id}").json()
     related = client.get(f"/api/v1/movies/{plain.id}/related").json()
 
-    assert page["cast"] == [] and page["crew"] == {"directors": [], "writers": [], "creators": []}
+    assert page["cast"] == []
+    assert page["crew"] == {
+        "directors": [],
+        "writers": [],
+        "creators": [],
+        "directors_en": [],
+        "writers_en": [],
+        "creators_en": [],
+    }
     assert page["trailer_uk"] is None and page["collection"] is None
     assert related == {"collection": None, "collection_items": [], "similar": []}
     assert client.get("/api/v1/movies/missing/related").status_code == 404

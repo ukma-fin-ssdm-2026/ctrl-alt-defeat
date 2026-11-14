@@ -2610,6 +2610,12 @@ components:
           type: string
           title: Name
           description: Actor or actress
+        name_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name En
+          description: The name in English (empty for data imported earlier)
         character:
           anyOf:
           - type: string
@@ -2726,6 +2732,12 @@ components:
           type: string
           title: Name
           description: Name of the film series
+        name_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name En
+          description: Name of the film series in English
       type: object
       required:
       - id
@@ -3102,6 +3114,24 @@ components:
           type: array
           title: Creators
           description: Creators (series)
+        directors_en:
+          items:
+            type: string
+          type: array
+          title: Directors En
+          description: Directors in English
+        writers_en:
+          items:
+            type: string
+          type: array
+          title: Writers En
+          description: Writers in English
+        creators_en:
+          items:
+            type: string
+          type: array
+          title: Creators En
+          description: Creators in English
       type: object
       title: CrewInfo
     DeleteAccountRequest:

@@ -170,7 +170,7 @@ def find_content(db: Session, movie_id: str, with_details: bool = False) -> Cont
 def collection_of(content: Content) -> Optional[CollectionInfo]:
     if content.collection_id is None or not content.collection_name:
         return None
-    return CollectionInfo(id=content.collection_id, name=content.collection_name)
+    return CollectionInfo(id=content.collection_id, name=content.collection_name, name_en=content.collection_name_en)
 
 
 @router.get(
