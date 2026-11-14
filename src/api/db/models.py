@@ -57,13 +57,14 @@ class Content(Base):
     # only GET /movies/{id} does (group "tmdb_details").
     trailer_uk = deferred(Column(String(20), nullable=True), group=TMDB_DETAILS)  # YouTube video key
     trailer_en = deferred(Column(String(20), nullable=True), group=TMDB_DETAILS)
-    cast_members = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # [{name, character, photo}]
-    crew_members = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # {directors, writers, creators}
+    cast_members = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # [{name, name_en, character, photo}]
+    crew_members = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # {directors, writers, creators} and *_en
     series_details = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # seasons, episodes, status
     similar_tmdb_ids = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # TMDB recommendations, in order
     # A film series ("collection" in TMDB), e.g. all parts of The Lord of the Rings
     collection_id = Column(Integer, nullable=True, index=True)
     collection_name = Column(String(255), nullable=True)
+    collection_name_en = Column(String(255), nullable=True)
 
 
 # Alias for backward compatibility
