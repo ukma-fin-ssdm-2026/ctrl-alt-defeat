@@ -35,13 +35,14 @@ const headingClass = 'text-lg font-bold mb-4 text-gray-900 dark:text-white borde
 
 function TitleRow({ titles, isUkr, onSelectMovie }) {
   return (
-    <ul className="flex gap-4 overflow-x-auto pb-2">
+    // Padding inside the scroll area: the hover ring around a poster is drawn outside it and would be cut off
+    <ul className="flex gap-4 overflow-x-auto px-1 pt-1 pb-2 -mx-1">
       {titles.map(title => {
         const name = isUkr ? title.title : (title.title_en || title.title);
         return (
           <li key={title.content_id || title.id} className="w-28 shrink-0">
             <button type="button" onClick={() => onSelectMovie?.(title)} className="text-left w-full group">
-              <img src={title.img} alt={name} loading="lazy" className="w-28 aspect-[2/3] object-cover rounded-lg shadow-sm group-hover:ring-2 group-hover:ring-yellow-500" />
+              <img src={title.img} alt={name} loading="lazy" className="w-28 aspect-[2/3] object-cover rounded-lg shadow-sm group-hover:ring-2 group-hover:ring-yellow-500 group-focus-visible:ring-2 group-focus-visible:ring-yellow-500" />
               <span className="block mt-1 text-xs font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">{name}</span>
               <span className="block text-[11px] text-gray-500 dark:text-gray-400">{title.year}</span>
             </button>
