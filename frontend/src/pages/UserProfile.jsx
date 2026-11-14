@@ -4,6 +4,7 @@ import { forgetStoredToken } from '../auth/currentUser';
 import { getDisplayName } from '../utils/displayName';
 import { computeAchievements } from '../utils/achievements';
 import { RANKS, XP_RULES, activityXp, rankForXp } from '../utils/ranks';
+import { posterFor } from '../utils/poster';
 
 export default function UserProfile({ 
   user, 
@@ -375,7 +376,7 @@ export default function UserProfile({
                     <div key={movie.id || movie.content_id} className="bg-gray-50 dark:bg-gray-700/40 rounded-2xl p-2 border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
                       <div>
                         <img 
-                          src={movie.img} 
+                          src={posterFor(movie, language)}
                           alt={movie.title} 
                           className="w-full h-40 object-cover rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => onSelectMovie(movie)}
@@ -416,7 +417,7 @@ export default function UserProfile({
                       <div>
                         {movie.img && (
                           <img 
-                            src={movie.img} 
+                            src={posterFor(movie, language)}
                             alt={movie.title || 'Movie'} 
                             className="w-full h-40 object-cover rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
                             onClick={() => onSelectMovie && onSelectMovie(movie)}

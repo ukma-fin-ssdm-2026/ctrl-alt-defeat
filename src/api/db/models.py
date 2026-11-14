@@ -46,6 +46,8 @@ class Content(Base):
     rating = Column(Float, nullable=False, default=0.0)
     rotten_rating = Column(String(10), nullable=True)
     img = Column(String(500), nullable=True)
+    # Poster with the English title for the English interface; null: the same poster as `img`
+    img_en = Column(String(500), nullable=True)
     description = Column(Text, nullable=True)
     description_en = Column(Text, nullable=True)
     tmdb_id = Column(Integer, nullable=True)

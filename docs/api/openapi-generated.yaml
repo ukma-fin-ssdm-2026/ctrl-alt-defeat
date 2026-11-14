@@ -2799,7 +2799,14 @@ components:
           - type: string
           - type: 'null'
           title: Img
-          description: Poster image URL
+          description: Poster image URL (Ukrainian poster if TMDB has one)
+        img_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Img En
+          description: 'Poster for the English interface (English or without text);
+            null: use `img`'
         description:
           anyOf:
           - type: string
@@ -2923,7 +2930,14 @@ components:
           - type: string
           - type: 'null'
           title: Img
-          description: Poster image URL
+          description: Poster image URL (Ukrainian poster if TMDB has one)
+        img_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Img En
+          description: 'Poster for the English interface (English or without text);
+            null: use `img`'
         description:
           anyOf:
           - type: string

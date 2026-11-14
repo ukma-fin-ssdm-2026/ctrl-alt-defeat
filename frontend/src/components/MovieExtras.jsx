@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import apiClient from '../api/client';
+import { posterFor } from '../utils/poster';
 
 // Details of the page of a title from TMDB (US-013): trailer, crew and cast, seasons of a series,
 // other parts of the film series and similar titles.
@@ -42,7 +43,7 @@ function TitleRow({ titles, isUkr, onSelectMovie }) {
         return (
           <li key={title.content_id || title.id} className="w-28 shrink-0">
             <button type="button" onClick={() => onSelectMovie?.(title)} className="text-left w-full group">
-              <img src={title.img} alt={name} loading="lazy" className="w-28 aspect-[2/3] object-cover rounded-lg shadow-sm group-hover:ring-2 group-hover:ring-yellow-500 group-focus-visible:ring-2 group-focus-visible:ring-yellow-500" />
+              <img src={posterFor(title, isUkr ? 'UKR' : 'EN')} alt={name} loading="lazy" className="w-28 aspect-[2/3] object-cover rounded-lg shadow-sm group-hover:ring-2 group-hover:ring-yellow-500 group-focus-visible:ring-2 group-focus-visible:ring-yellow-500" />
               <span className="block mt-1 text-xs font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">{name}</span>
               <span className="block text-[11px] text-gray-500 dark:text-gray-400">{title.year}</span>
             </button>

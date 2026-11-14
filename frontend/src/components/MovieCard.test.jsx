@@ -62,3 +62,19 @@ describe('MovieCard accessibility (S6848)', () => {
     });
   });
 });
+describe('MovieCard poster in the interface language (T-050)', () => {
+  const localized = { ...movie, img: '/uk-poster.jpg', img_en: '/en-poster.jpg' };
+
+  it('shows the Ukrainian poster in Ukrainian and the English one in English', () => {
+    const { rerender } = render(<MovieCard movie={localized} onSelect={vi.fn()} />);
+    expect(screen.getByAltText('Тестовий фільм')).toHaveAttribute('src', '/uk-poster.jpg');
+
+    rerender(<MovieCard movie={localized} onSelect={vi.fn()} language="EN" />);
+    expect(screen.getByAltText('Test Movie')).toHaveAttribute('src', '/en-poster.jpg');
+  });
+
+  it('keeps the main poster in English when there is no English one', () => {
+    render(<MovieCard movie={{ ...localized, img_en: null }} onSelect={vi.fn()} language="EN" />);
+    expect(screen.getByAltText('Test Movie')).toHaveAttribute('src', '/uk-poster.jpg');
+  });
+});
