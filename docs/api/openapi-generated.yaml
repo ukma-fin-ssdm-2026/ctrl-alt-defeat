@@ -3442,6 +3442,24 @@ components:
           - type: 'null'
           title: Content Title
           description: Title of the reviewed movie or series
+        content_title_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content Title En
+          description: English title of the reviewed movie or series
+        content_img:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content Img
+          description: Poster of the reviewed title
+        content_img_en:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content Img En
+          description: Poster of the reviewed title for the English interface
         review_id:
           type: string
           format: uuid4
