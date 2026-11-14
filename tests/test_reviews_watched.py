@@ -36,7 +36,17 @@ def db_session():
     for model in (Review, WatchedItem, User, Content):
         db.query(model).delete()
     db.add(
-        Content(id=1, content_id=MOVIE, title="Дюна: Частина друга", category="Movie", genre="Фантастика", year=2024)
+        Content(
+            id=1,
+            content_id=MOVIE,
+            title="Дюна: Частина друга",
+            title_en="Dune: Part Two",
+            img="/dune.jpg",
+            img_en="/dune-en.jpg",
+            category="Movie",
+            genre="Фантастика",
+            year=2024,
+        )
     )
     db.commit()
     try:
@@ -259,6 +269,9 @@ def test_my_reviews_can_be_listed_by_user_id(client, db_session):
 
     assert [item["author_nickname"] for item in items] == ["me"]
     assert items[0]["content_title"] == "Дюна: Частина друга"
+    # The profile shows a small poster and links to the page of the title (T-038)
+    assert items[0]["content_title_en"] == "Dune: Part Two"
+    assert (items[0]["content_img"], items[0]["content_img_en"]) == ("/dune.jpg", "/dune-en.jpg")
 
 
 SUMMARY_URL = f"{URL}/summary"

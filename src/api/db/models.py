@@ -166,6 +166,19 @@ class Review(Base):
     def content_title(self):
         return self.content.title if self.content is not None else None
 
+    # The reviewed title in the English interface and its posters: a review in the profile links to its page
+    @property
+    def content_title_en(self):
+        return self.content.title_en if self.content is not None else None
+
+    @property
+    def content_img(self):
+        return self.content.img if self.content is not None else None
+
+    @property
+    def content_img_en(self):
+        return self.content.img_en if self.content is not None else None
+
 
 class Rating(Base):
     __tablename__ = "ratings"
