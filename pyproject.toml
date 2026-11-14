@@ -1,7 +1,7 @@
 [project]
 name = "pislya-tytriv"
 # Semantic Versioning; the same number is in frontend/package.json, CHANGELOG.md and the git tag (v<version>)
-version = "1.0.2"
+version = "1.1.0"
 description = "«Після титрів» — сайт рецензій та рекомендацій фільмів і серіалів"
 requires-python = ">=3.11"
 
