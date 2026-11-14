@@ -33,11 +33,13 @@ function chooseTrailer(movie, isUkr) {
 
 const sectionClass = 'mb-12 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700';
 const headingClass = 'text-lg font-bold mb-4 text-gray-900 dark:text-white border-l-4 border-yellow-500 pl-3';
+// Horizontal rows: the bottom padding keeps the overlay scrollbar (macOS) off the captions
+const rowClass = 'flex gap-4 overflow-x-auto pb-5';
 
 function TitleRow({ titles, isUkr, onSelectMovie }) {
   return (
     // Padding inside the scroll area: the hover ring around a poster is drawn outside it and would be cut off
-    <ul className="flex gap-4 overflow-x-auto px-1 pt-1 pb-2 -mx-1">
+    <ul className={`${rowClass} px-1 pt-1 -mx-1`}>
       {titles.map(title => {
         const name = isUkr ? title.title : (title.title_en || title.title);
         return (
@@ -84,11 +86,20 @@ export default function MovieExtras({ movie, isUkr, onSelectMovie }) {
     }
   };
 
+  // English names come with the import after this change; older data has only the Ukrainian ones
+  const crewNames = group => (!isUkr && crew[`${group}_en`]?.length ? crew[`${group}_en`] : crew[group]);
   const crewLines = [
-    [isUkr ? 'Режисер' : 'Director', crew.directors],
-    [isUkr ? 'Сценарій' : 'Writers', crew.writers],
-    [isUkr ? 'Автори серіалу' : 'Created by', crew.creators],
+    [isUkr ? 'Режисер' : 'Director', crewNames('directors')],
+    [isUkr ? 'Сценарій' : 'Writers', crewNames('writers')],
+    [isUkr ? 'Автори серіалу' : 'Created by', crewNames('creators')],
   ].filter(([, names]) => names && names.length > 0);
+  const personName = person => (isUkr ? person.name : (person.name_en || person.name));
+  // Season names come from TMDB in Ukrainian ("Сезон 1"), so the English page builds its own
+  const seasonName = season => {
+    if (isUkr) return season.name || `Сезон ${season.season_number}`;
+    return season.season_number === 0 ? 'Specials' : `Season ${season.season_number}`;
+  };
+  const collectionName = isUkr ? relatedData?.collection?.name : relatedData?.collection?.name_en;
 
   const status = series?.status ? (SERIES_STATUS[series.status] || [series.status, series.status])[isUkr ? 0 : 1] : null;
   const next = series?.next_episode;
@@ -133,17 +144,17 @@ export default function MovieExtras({ movie, isUkr, onSelectMovie }) {
             </dl>
           )}
           {cast.length > 0 && (
-            <ul className="flex gap-4 overflow-x-auto pb-2">
+            <ul className={rowClass}>
               {cast.map(person => (
                 <li key={`${person.name}|${person.character}`} className="w-24 shrink-0 text-center">
                   {person.photo ? (
-                    <img src={person.photo} alt={person.name} loading="lazy" className="w-20 h-20 mx-auto rounded-full object-cover shadow-sm" />
+                    <img src={person.photo} alt={personName(person)} loading="lazy" className="w-20 h-20 mx-auto rounded-full object-cover shadow-sm" />
                   ) : (
                     <span aria-hidden="true" className="w-20 h-20 mx-auto rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-2xl font-black flex items-center justify-center">
-                      {person.name[0]}
+                      {personName(person)[0]}
                     </span>
                   )}
-                  <span className="block mt-2 text-xs font-semibold text-gray-900 dark:text-gray-100">{person.name}</span>
+                  <span className="block mt-2 text-xs font-semibold text-gray-900 dark:text-gray-100">{personName(person)}</span>
                   {person.character && <span className="block text-[11px] text-gray-500 dark:text-gray-400">{person.character}</span>}
                 </li>
               ))}
@@ -185,18 +196,18 @@ export default function MovieExtras({ movie, isUkr, onSelectMovie }) {
             )}
           </dl>
           {series.seasons?.length > 0 && (
-            <ul className="flex gap-4 overflow-x-auto pb-2">
+            <ul className={rowClass}>
               {series.seasons.map(season => (
                 <li key={season.season_number} className="w-28 shrink-0">
                   {season.poster ? (
-                    <img src={season.poster} alt={season.name || ''} loading="lazy" className="w-28 aspect-[2/3] object-cover rounded-lg shadow-sm" />
+                    <img src={season.poster} alt={seasonName(season)} loading="lazy" className="w-28 aspect-[2/3] object-cover rounded-lg shadow-sm" />
                   ) : (
                     <span aria-hidden="true" className="w-28 aspect-[2/3] rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 text-xl font-black">
                       {season.season_number}
                     </span>
                   )}
                   <span className="block mt-1 text-xs font-semibold text-gray-900 dark:text-gray-100">
-                    {season.name || `${isUkr ? 'Сезон' : 'Season'} ${season.season_number}`}
+                    {seasonName(season)}
                   </span>
                   <span className="block text-[11px] text-gray-500 dark:text-gray-400">
                     {season.episode_count != null && `${season.episode_count} ${isUkr ? 'сер.' : 'ep.'}`}
@@ -212,7 +223,8 @@ export default function MovieExtras({ movie, isUkr, onSelectMovie }) {
       {relatedData?.collection && parts.length > 0 && (
         <section className={sectionClass} aria-label={isUkr ? 'Усі частини серії' : 'All parts of the series'}>
           <h3 className={headingClass}>
-            {isUkr ? 'Усі частини серії' : 'All parts of the series'}: {relatedData.collection.name}
+            {isUkr ? 'Усі частини серії' : 'All parts of the series'}
+            {collectionName && `: ${collectionName}`}
           </h3>
           <TitleRow titles={parts} isUkr={isUkr} onSelectMovie={openTitle} />
         </section>
