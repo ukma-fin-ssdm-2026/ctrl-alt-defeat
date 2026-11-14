@@ -220,7 +220,13 @@ def test_old_users_table_gets_the_new_columns():
         connection.exec_driver_sql("CREATE TABLE users (user_id VARCHAR PRIMARY KEY, email VARCHAR)")
         connection.exec_driver_sql("INSERT INTO users VALUES ('u1', 'old@example.com')")
 
-    assert upgrade_user_columns(engine) == ["verification_sent_at", "token_version"]
+    assert upgrade_user_columns(engine) == [
+        "verification_sent_at",
+        "token_version",
+        "email_canonical",
+        "password_reset_token",
+        "password_reset_sent_at",
+    ]
     assert upgrade_user_columns(engine) == []
     columns = {column["name"] for column in inspect(engine).get_columns("users")}
     assert {"verification_sent_at", "token_version"} <= columns

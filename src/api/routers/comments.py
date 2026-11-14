@@ -10,8 +10,9 @@ from src.api.db import models
 from src.api.db.database import SessionLocal
 from src.api.schemas.comment import CommentCreate, CommentResponse, CommentThreadResponse
 from src.api.schemas.errors import STANDARD_ERRORS, ErrorResponse
-from src.api.routers.auth import token_from_request, user_from_token
+from src.api.routers.auth import ensure_within_limit, token_from_request, user_from_token
 from src.api.services.bans import ensure_can_contribute
+from src.api.services.rate_limit import comment_hour_limiter, comment_minute_limiter
 from src.api.utils import check_comment_policy_violations
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,8 @@ def get_comments(
         **STANDARD_ERRORS,
         401: {"model": ErrorResponse, "description": "User is not authenticated"},
         403: {"model": ErrorResponse, "description": "The account is banned (FR-009)"},
+        409: {"model": ErrorResponse, "description": "The same text as the author's previous comment here"},
+        429: {"model": ErrorResponse, "description": "Too many comments from this user; see Retry-After"},
     },
 )
 def create_comment(
@@ -109,6 +112,11 @@ def create_comment(
     # FR-009: a banned user cannot comment (team decision: comments are treated like reviews)
     ensure_can_contribute(db, auth_user)
 
+    # Spam protection: a few comments a minute and a limited number an hour per user
+    author_key = str(user_id)
+    ensure_within_limit(comment_minute_limiter, author_key, "Too many comments in a short time.")
+    ensure_within_limit(comment_hour_limiter, author_key, "Too many comments in the last hour.")
+
     _get_review_or_404(db, review_id)
 
     violations = check_comment_policy_violations(comment.text)
@@ -139,6 +147,19 @@ def create_comment(
                 },
             )
 
+    # The same text twice in a row under one review is a double click or spam
+    last_comment = (
+        db.query(models.Comment)
+        .filter(models.Comment.review_id == review_id, models.Comment.user_id == user_id)
+        .order_by(models.Comment.created_at.desc())
+        .first()
+    )
+    if last_comment is not None and last_comment.text.strip().casefold() == comment.text.casefold():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "DUPLICATE_COMMENT", "message": "You have already posted this comment under the review"},
+        )
+
     db_comment = models.Comment(
         review_id=review_id,
         parent_id=comment.parent_id,
@@ -152,4 +173,6 @@ def create_comment(
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
+    comment_minute_limiter.record(author_key)
+    comment_hour_limiter.record(author_key)
     return db_comment

@@ -15,9 +15,12 @@ import pytest  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def reset_login_limiter():
-    """Failed logins of one test must not block the logins of the next one (same test client address)."""
-    from src.api.services.rate_limit import login_limiter
+    """Failed logins, registrations and resent emails of one test must not block the next one
+    (every test uses the same test client address)."""
+    from src.api.services.rate_limit import ALL_LIMITERS
 
-    login_limiter.clear()
+    for limiter in ALL_LIMITERS:
+        limiter.clear()
     yield
-    login_limiter.clear()
+    for limiter in ALL_LIMITERS:
+        limiter.clear()

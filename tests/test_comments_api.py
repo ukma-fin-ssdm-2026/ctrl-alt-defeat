@@ -15,6 +15,7 @@ from src.api.routers import auth as auth_router
 from src.api.routers import comments as comments_router
 from src.api.routers import reviews as reviews_router
 from src.api.services.auth import create_access_token
+from src.api.services.rate_limit import comment_minute_limiter
 
 engine_test = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
@@ -139,8 +140,10 @@ def test_replies_form_a_multi_level_thread(client):
     assert level1[0]["replies"][0]["depth"] == 2
 
 
-def test_reply_depth_is_limited(client):
+def test_reply_depth_is_limited(client, monkeypatch):
     # Trace: T-029
+    # Six comments in a row: more than the per-minute spam limit (T-051), which is not tested here
+    monkeypatch.setattr(comment_minute_limiter, "max_failures", 100)
     parent_id = None
     for level in range(comments_router.MAX_COMMENT_DEPTH + 1):
         response = post(client, text=f"Level {level} comment", parent_id=parent_id)
