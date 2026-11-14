@@ -6,6 +6,7 @@ import UserProfile from './UserProfile';
 
 vi.mock('../api/client', () => ({ default: { get: vi.fn(), post: vi.fn(), delete: vi.fn() } }));
 
+const CONTENT_ID = '11111111-1111-4111-8111-111111111111';
 const user = { user_id: 'u-1', nickname: 'cinema_fan', email: 'user@example.com' };
 const renderProfile = () =>
   render(<UserProfile user={user} language="UKR" watchlistMovies={[]} onSelectMovie={() => {}} onToggleWatchlist={() => {}} />);
@@ -42,6 +43,55 @@ describe('UserProfile', () => {
     expect(screen.getByText('"Неймовірна атмосфера!"')).toBeInTheDocument();
     expect(screen.getByText('Лише оцінка, без тексту')).toBeInTheDocument();
     expect(screen.queryByText(/Interstellar/)).not.toBeInTheDocument();
+  });
+
+  it('opens the reviewed title from its poster or title, in the interface language', async () => {
+    // Trace: T-038
+    const review = {
+      review_id: 'r1', content_id: CONTENT_ID, content_title: 'Дюна: Частина друга', content_title_en: 'Dune: Part Two',
+      content_img: '/dune.jpg', content_img_en: '/dune-en.jpg', rating: 9, review_text: 'Сильно', created_at: '2026-11-01T10:00:00Z',
+    };
+    const full = { id: 1, content_id: CONTENT_ID, title: 'Дюна: Частина друга', title_en: 'Dune: Part Two', year: 2024 };
+    apiClient.get.mockImplementation(url => Promise.resolve({ data: url === `/movies/${CONTENT_ID}` ? full : { items: [review] } }));
+    const onSelectMovie = vi.fn();
+    render(<UserProfile user={user} language="EN" watchlistMovies={[]} onSelectMovie={onSelectMovie} onToggleWatchlist={() => {}} />);
+    await userEvent.click(screen.getByRole('button', { name: /My Reviews/ }));
+
+    // Two targets: the poster (for the mouse) and the title (also for the keyboard)
+    const [posterButton, title] = await screen.findAllByRole('button', { name: 'Dune: Part Two' });
+    expect(posterButton.querySelector('img')).toHaveAttribute('src', '/dune-en.jpg');
+    expect(posterButton).toHaveAttribute('tabindex', '-1');
+    await userEvent.click(title);
+    // The full card from the catalog API opens the page
+    await waitFor(() => expect(onSelectMovie).toHaveBeenCalledWith(full));
+    expect(apiClient.get).toHaveBeenCalledWith(`/movies/${CONTENT_ID}`);
+  });
+
+  it('opens the reviewed title with what the review knows when the catalog is unavailable', async () => {
+    // Trace: T-038
+    const review = { review_id: 'r1', content_id: CONTENT_ID, content_title: 'Шрек', content_img: '/shrek.jpg', rating: 7, created_at: '2026-11-01T10:00:00Z' };
+    apiClient.get.mockImplementation(url => (url === `/movies/${CONTENT_ID}` ? Promise.reject(new Error('offline')) : Promise.resolve({ data: { items: [review] } })));
+    const onSelectMovie = vi.fn();
+    render(<UserProfile user={user} language="UKR" watchlistMovies={[]} onSelectMovie={onSelectMovie} onToggleWatchlist={() => {}} />);
+    await openReviewsTab();
+
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Шрек' }))[1]);
+
+    await waitFor(() => expect(onSelectMovie).toHaveBeenCalledWith(expect.objectContaining({ content_id: CONTENT_ID, title: 'Шрек', img: '/shrek.jpg' })));
+  });
+
+  it('does not put a broken content id into the request path', async () => {
+    // Trace: T-038
+    const review = { review_id: 'r1', content_id: '../admin/users', content_title: 'Шрек', rating: 7, created_at: '2026-11-01T10:00:00Z' };
+    apiClient.get.mockResolvedValue({ data: { items: [review] } });
+    const onSelectMovie = vi.fn();
+    render(<UserProfile user={user} language="UKR" watchlistMovies={[]} onSelectMovie={onSelectMovie} onToggleWatchlist={() => {}} />);
+    await openReviewsTab();
+
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Шрек' }))[1]);
+
+    expect(onSelectMovie).toHaveBeenCalledWith(expect.objectContaining({ title: 'Шрек' }));
+    expect(apiClient.get).not.toHaveBeenCalledWith(expect.stringContaining('admin'));
   });
 
   it('shows an empty state when I have no reviews', async () => {
@@ -232,5 +282,41 @@ describe('UserProfile rank', () => {
     expect(screen.getByTestId('rank-fan')).toHaveAttribute('aria-current', 'step');
     expect(screen.getByTestId('rank-viewer')).toHaveAttribute('data-reached', 'true');
     expect(screen.getByTestId('rank-reviewer')).toHaveAttribute('data-reached', 'false');
+  });
+});
+
+describe('UserProfile lists in the interface language', () => {
+  const iceAge = {
+    id: 7, content_id: 'c-7', title: 'Льодовиковий період: Погоня за яйцями', title_en: 'Ice Age: The Great Egg-Scapade',
+    genre: 'Мультфільм', year: 2016, img: '/ice-uk.jpg', img_en: '/ice-en.jpg',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    apiClient.get.mockResolvedValue({ data: { items: [] } });
+  });
+
+  it.each([
+    ['watchlist', { initialTab: 'watchlist', watchlistMovies: [iceAge] }],
+    ['watched', { initialTab: 'watched', watchlistMovies: [], watchedMovies: [iceAge] }],
+  ])('shows the %s with the English title, genre and poster in English, and opens the title', async (_, props) => {
+    const onSelectMovie = vi.fn();
+    render(<UserProfile user={user} language="EN" onSelectMovie={onSelectMovie} onToggleWatchlist={() => {}} onToggleWatched={() => {}} {...props} />);
+
+    expect(screen.getByAltText('Ice Age: The Great Egg-Scapade')).toHaveAttribute('src', '/ice-en.jpg');
+    expect(screen.getByText('Animation')).toBeInTheDocument();
+    expect(screen.queryByText(/Льодовиковий період/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Мультфільм')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ice Age: The Great Egg-Scapade' }));
+    expect(onSelectMovie).toHaveBeenCalledWith(iceAge);
+  });
+
+  it('shows the Ukrainian title and genre in Ukrainian', () => {
+    render(<UserProfile user={user} language="UKR" initialTab="watchlist" watchlistMovies={[iceAge]} onSelectMovie={() => {}} onToggleWatchlist={() => {}} />);
+
+    expect(screen.getByRole('button', { name: 'Льодовиковий період: Погоня за яйцями' })).toBeInTheDocument();
+    expect(screen.getByText('Мультфільм')).toBeInTheDocument();
+    expect(screen.getByAltText('Льодовиковий період: Погоня за яйцями')).toHaveAttribute('src', '/ice-uk.jpg');
   });
 });
