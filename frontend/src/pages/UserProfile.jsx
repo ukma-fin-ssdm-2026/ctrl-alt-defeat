@@ -7,6 +7,9 @@ import { RANKS, XP_RULES, activityXp, rankForXp } from '../utils/ranks';
 import { posterFor } from '../utils/poster';
 import { translateGenre } from '../utils/genres';
 
+// content_id of a catalog title
+const CONTENT_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function UserProfile({ 
   user, 
   language, 
@@ -65,7 +68,13 @@ export default function UserProfile({
       img: review.content_img,
       img_en: review.content_img_en,
     };
-    Promise.resolve(apiClient.get(`/movies/${review.content_id}`))
+    // Only a real UUID goes into the request path (and encoded): a broken value cannot reach another endpoint
+    const contentId = String(review.content_id ?? '');
+    if (!CONTENT_UUID.test(contentId)) {
+      onSelectMovie(fallback);
+      return;
+    }
+    Promise.resolve(apiClient.get(`/movies/${encodeURIComponent(contentId)}`))
       .then(response => onSelectMovie(response?.data?.content_id ? response.data : fallback))
       .catch(() => onSelectMovie(fallback));
   };

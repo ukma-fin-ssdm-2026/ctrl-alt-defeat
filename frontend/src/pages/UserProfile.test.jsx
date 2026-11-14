@@ -6,6 +6,7 @@ import UserProfile from './UserProfile';
 
 vi.mock('../api/client', () => ({ default: { get: vi.fn(), post: vi.fn(), delete: vi.fn() } }));
 
+const CONTENT_ID = '11111111-1111-4111-8111-111111111111';
 const user = { user_id: 'u-1', nickname: 'cinema_fan', email: 'user@example.com' };
 const renderProfile = () =>
   render(<UserProfile user={user} language="UKR" watchlistMovies={[]} onSelectMovie={() => {}} onToggleWatchlist={() => {}} />);
@@ -47,11 +48,11 @@ describe('UserProfile', () => {
   it('opens the reviewed title from its poster or title, in the interface language', async () => {
     // Trace: T-038
     const review = {
-      review_id: 'r1', content_id: 'c-1', content_title: 'Дюна: Частина друга', content_title_en: 'Dune: Part Two',
+      review_id: 'r1', content_id: CONTENT_ID, content_title: 'Дюна: Частина друга', content_title_en: 'Dune: Part Two',
       content_img: '/dune.jpg', content_img_en: '/dune-en.jpg', rating: 9, review_text: 'Сильно', created_at: '2026-11-01T10:00:00Z',
     };
-    const full = { id: 1, content_id: 'c-1', title: 'Дюна: Частина друга', title_en: 'Dune: Part Two', year: 2024 };
-    apiClient.get.mockImplementation(url => Promise.resolve({ data: url === '/movies/c-1' ? full : { items: [review] } }));
+    const full = { id: 1, content_id: CONTENT_ID, title: 'Дюна: Частина друга', title_en: 'Dune: Part Two', year: 2024 };
+    apiClient.get.mockImplementation(url => Promise.resolve({ data: url === `/movies/${CONTENT_ID}` ? full : { items: [review] } }));
     const onSelectMovie = vi.fn();
     render(<UserProfile user={user} language="EN" watchlistMovies={[]} onSelectMovie={onSelectMovie} onToggleWatchlist={() => {}} />);
     await userEvent.click(screen.getByRole('button', { name: /My Reviews/ }));
@@ -63,20 +64,34 @@ describe('UserProfile', () => {
     await userEvent.click(title);
     // The full card from the catalog API opens the page
     await waitFor(() => expect(onSelectMovie).toHaveBeenCalledWith(full));
-    expect(apiClient.get).toHaveBeenCalledWith('/movies/c-1');
+    expect(apiClient.get).toHaveBeenCalledWith(`/movies/${CONTENT_ID}`);
   });
 
   it('opens the reviewed title with what the review knows when the catalog is unavailable', async () => {
     // Trace: T-038
-    const review = { review_id: 'r1', content_id: 'c-1', content_title: 'Шрек', content_img: '/shrek.jpg', rating: 7, created_at: '2026-11-01T10:00:00Z' };
-    apiClient.get.mockImplementation(url => (url === '/movies/c-1' ? Promise.reject(new Error('offline')) : Promise.resolve({ data: { items: [review] } })));
+    const review = { review_id: 'r1', content_id: CONTENT_ID, content_title: 'Шрек', content_img: '/shrek.jpg', rating: 7, created_at: '2026-11-01T10:00:00Z' };
+    apiClient.get.mockImplementation(url => (url === `/movies/${CONTENT_ID}` ? Promise.reject(new Error('offline')) : Promise.resolve({ data: { items: [review] } })));
     const onSelectMovie = vi.fn();
     render(<UserProfile user={user} language="UKR" watchlistMovies={[]} onSelectMovie={onSelectMovie} onToggleWatchlist={() => {}} />);
     await openReviewsTab();
 
     await userEvent.click((await screen.findAllByRole('button', { name: 'Шрек' }))[1]);
 
-    await waitFor(() => expect(onSelectMovie).toHaveBeenCalledWith(expect.objectContaining({ content_id: 'c-1', title: 'Шрек', img: '/shrek.jpg' })));
+    await waitFor(() => expect(onSelectMovie).toHaveBeenCalledWith(expect.objectContaining({ content_id: CONTENT_ID, title: 'Шрек', img: '/shrek.jpg' })));
+  });
+
+  it('does not put a broken content id into the request path', async () => {
+    // Trace: T-038
+    const review = { review_id: 'r1', content_id: '../admin/users', content_title: 'Шрек', rating: 7, created_at: '2026-11-01T10:00:00Z' };
+    apiClient.get.mockResolvedValue({ data: { items: [review] } });
+    const onSelectMovie = vi.fn();
+    render(<UserProfile user={user} language="UKR" watchlistMovies={[]} onSelectMovie={onSelectMovie} onToggleWatchlist={() => {}} />);
+    await openReviewsTab();
+
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Шрек' }))[1]);
+
+    expect(onSelectMovie).toHaveBeenCalledWith(expect.objectContaining({ title: 'Шрек' }));
+    expect(apiClient.get).not.toHaveBeenCalledWith(expect.stringContaining('admin'));
   });
 
   it('shows an empty state when I have no reviews', async () => {
