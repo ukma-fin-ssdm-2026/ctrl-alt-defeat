@@ -9,6 +9,7 @@ import { applyVote, nextVote } from '../utils/reviewVotes';
 import { isUuid } from '../utils/uuid';
 import { formatAudienceRating } from '../utils/audienceRating';
 import { translateGenre } from '../utils/genres';
+import { posterFor } from '../utils/poster';
 const MIN_TEXT = 10;
 // Reviews of one title shown on its page (the API answers at most 100 per request, newest first)
 const REVIEWS_LIMIT = 100;
@@ -330,7 +331,7 @@ export default function MovieDetails({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
         <div>
-          <img src={movie.img} alt={primaryTitle} className="w-full rounded-xl shadow-md object-cover aspect-[2/3]" />
+          <img src={posterFor(fullMovie, language)} alt={primaryTitle} className="w-full rounded-xl shadow-md object-cover aspect-[2/3]" />
         </div>
         <div className="md:col-span-2 flex flex-col justify-between">
           <div>

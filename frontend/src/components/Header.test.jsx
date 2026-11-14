@@ -106,7 +106,7 @@ describe('Header admin entry (FR-009)', () => {
 
 describe('Header search suggestions follow the interface language', () => {
   // As the API sends it: `title_en`, not `titleEn`
-  const rings = { id: 9, title: 'Володар перснів: Дві вежі', title_en: 'The Lord of the Rings: The Two Towers', year: 2002, genre: 'Пригоди', img: '/ttt.jpg' };
+  const rings = { id: 9, title: 'Володар перснів: Дві вежі', title_en: 'The Lord of the Rings: The Two Towers', year: 2002, genre: 'Пригоди', img: '/ttt.jpg', img_en: '/ttt-en.jpg' };
   const noEnglish = { id: 10, title: 'Захар Беркут', title_en: null, year: 2019, genre: 'Драма', img: '/zb.jpg' };
 
   it('shows the English title first when the interface is in English', async () => {
@@ -117,7 +117,8 @@ describe('Header search suggestions follow the interface language', () => {
     const suggestion = screen.getByRole('button', { name: /The Lord of the Rings: The Two Towers/ });
     // The Ukrainian title is the second line
     expect(suggestion).toHaveTextContent('Володар перснів: Дві вежі • 2002');
-    expect(screen.getByAltText('The Lord of the Rings: The Two Towers')).toBeInTheDocument();
+    // The English poster too (T-050)
+    expect(screen.getByAltText('The Lord of the Rings: The Two Towers')).toHaveAttribute('src', '/ttt-en.jpg');
   });
 
   it('shows the Ukrainian title first in Ukrainian, with the English one below', async () => {
@@ -125,7 +126,7 @@ describe('Header search suggestions follow the interface language', () => {
 
     await userEvent.type(screen.getByPlaceholderText('Пошук ...'), 'lord');
 
-    expect(screen.getByAltText('Володар перснів: Дві вежі')).toBeInTheDocument();
+    expect(screen.getByAltText('Володар перснів: Дві вежі')).toHaveAttribute('src', '/ttt.jpg');
     expect(screen.getByText(/The Lord of the Rings: The Two Towers • 2002/)).toBeInTheDocument();
   });
 

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { getDisplayName } from '../utils/displayName';
 import { translateGenre } from '../utils/genres';
 import useCatalogGenres from '../hooks/useCatalogGenres';
+import { posterFor } from '../utils/poster';
 
 export default function Header({ 
   toggleTheme, 
@@ -112,7 +113,7 @@ export default function Header({
                     onClick={() => selectSuggestion(movie)}
                     className="w-full text-left px-4 py-2.5 hover:bg-yellow-50 dark:hover:bg-gray-700/60 cursor-pointer flex items-center gap-3 transition-colors border-b border-gray-50 dark:border-gray-700/50 last:border-none"
                   >
-                    <img src={movie.img} alt={mainTitle} className="w-8 h-10 object-cover rounded shadow-sm" />
+                    <img src={posterFor(movie, language)} alt={mainTitle} className="w-8 h-10 object-cover rounded shadow-sm" />
                     <span className="block flex-1 overflow-hidden">
                       <span className="block text-xs font-bold text-gray-900 dark:text-white truncate">{mainTitle}</span>
                       <span className="block text-[10px] text-gray-500 dark:text-gray-400 truncate">
