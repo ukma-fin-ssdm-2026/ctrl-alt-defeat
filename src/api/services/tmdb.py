@@ -729,6 +729,20 @@ def pick_trailer(videos: Dict[str, Any], language: str) -> Optional[str]:
     return candidates[0]["key"] if candidates else None
 
 
+def pick_english_poster(images: Dict[str, Any]) -> Optional[str]:
+    """
+    Poster for the English interface: the best rated English one, otherwise the best one without text
+    (`iso_639_1` null). None if TMDB has neither: the interface then shows the main poster.
+    """
+    posters = [poster for poster in (images or {}).get("posters") or [] if poster.get("file_path")]
+    for language in ("en", None):
+        candidates = [poster for poster in posters if poster.get("iso_639_1") == language]
+        if candidates:
+            best = max(candidates, key=lambda poster: (poster.get("vote_average") or 0, poster.get("vote_count") or 0))
+            return f"{TMDB_IMAGES}{best['file_path']}"
+    return None
+
+
 def cast_from_credits(credits: Dict[str, Any]) -> List[Dict[str, Any]]:
     """The first CAST_LIMIT actors in billing order: name, role and photo."""
     cast = sorted((credits or {}).get("cast") or [], key=lambda person: person.get("order", 999))
@@ -804,6 +818,7 @@ def page_details(kind: str, details: Dict[str, Any]) -> Dict[str, Any]:
     collection = details.get("belongs_to_collection") or None
     similar = [title.get("id") for title in ((details.get("recommendations") or {}).get("results") or [])]
     return {
+        "img_en": pick_english_poster(details.get("images")),
         "trailer_uk": pick_trailer(details.get("videos"), "uk"),
         "trailer_en": pick_trailer(details.get("videos"), "en"),
         "cast_members": cast_from_credits(details.get("credits")),
@@ -862,9 +877,11 @@ def _details(kind: str, tmdb_id: int, api_key: str) -> Dict[str, Any]:
             f"/{kind}/{int(tmdb_id)}",
             {
                 "language": "uk-UA",
-                # One request: English texts, trailers, cast and crew, similar titles (US-013)
-                "append_to_response": "translations,videos,credits,recommendations",
+                # One request: English texts and posters, trailers, cast and crew, similar titles (US-013)
+                "append_to_response": "translations,videos,credits,recommendations,images",
                 "include_video_language": "uk,en",
+                # Posters for the English interface: English ones and ones without text
+                "include_image_language": "en,null",
             },
             api_key,
         )
@@ -1000,6 +1017,7 @@ def _find_existing(db: Session, item: Dict[str, Any]) -> Optional[Content]:
 UPDATED_FIELDS = ("title", "title_en", "category", "year", "runtime", "rating", "rotten_rating", "img")
 # Details of the page of a title: replaced as a whole whenever the details request succeeded
 PAGE_FIELDS = (
+    "img_en",
     "trailer_uk",
     "trailer_en",
     "cast_members",

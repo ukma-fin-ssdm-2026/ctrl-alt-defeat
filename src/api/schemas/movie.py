@@ -19,7 +19,10 @@ class ContentResponse(BaseModel):
     runtime: Optional[int] = Field(None, description="Runtime in minutes (for series: average episode length)")
     rating: float = Field(0.0, description="Average user rating (0.0 - 10.0)")
     rotten_rating: Optional[str] = Field(None, description="Rotten Tomatoes / Critic score percentage")
-    img: Optional[str] = Field(None, description="Poster image URL")
+    img: Optional[str] = Field(None, description="Poster image URL (Ukrainian poster if TMDB has one)")
+    img_en: Optional[str] = Field(
+        None, description="Poster for the English interface (English or without text); null: use `img`"
+    )
     description: Optional[str] = Field(None, description="Ukrainian synopsis")
     description_en: Optional[str] = Field(None, description="English synopsis")
     tmdb_id: Optional[int] = Field(None, description="External TMDB identifier")

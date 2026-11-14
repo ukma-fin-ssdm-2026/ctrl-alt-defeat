@@ -87,6 +87,7 @@ USER_COLUMNS = {
 
 # Columns of the content table for the TMDB details of a title (US-013)
 CONTENT_COLUMNS = {
+    "img_en": ("VARCHAR(500)", "VARCHAR(500)"),
     "trailer_uk": ("VARCHAR(20)", "VARCHAR(20)"),
     "trailer_en": ("VARCHAR(20)", "VARCHAR(20)"),
     "cast_members": ("JSON", "JSON"),

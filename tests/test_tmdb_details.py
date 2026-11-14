@@ -159,7 +159,7 @@ def test_import_asks_tmdb_for_the_page_details_in_one_request(monkeypatch):
     details = tmdb._details("movie", 121, "key")
 
     assert details is MOVIE_DETAILS
-    assert calls[0][1]["append_to_response"] == "translations,videos,credits,recommendations"
+    assert calls[0][1]["append_to_response"] == "translations,videos,credits,recommendations,images"
     assert calls[0][1]["include_video_language"] == "uk,en"
     item = build_catalog_item("Movie", "movie", {"id": 121}, details)
     assert item["trailer_uk"] == "ukTrailer2" and item["collection_id"] == 119
@@ -306,3 +306,38 @@ def test_old_content_table_gets_the_new_columns():
 def test_trailer_player_is_allowed_by_the_content_security_policy():
     # Trace: T-049
     assert "frame-src https://www.youtube-nocookie.com" in CONTENT_SECURITY_POLICY
+
+
+def test_english_poster_for_the_english_interface():
+    # Trace: T-050
+    images = {
+        "posters": [
+            {"file_path": "/uk.jpg", "iso_639_1": "uk", "vote_average": 9},
+            {"file_path": "/en-low.jpg", "iso_639_1": "en", "vote_average": 5.2, "vote_count": 3},
+            {"file_path": "/en-best.jpg", "iso_639_1": "en", "vote_average": 5.6, "vote_count": 1},
+            {"file_path": "/textless.jpg", "iso_639_1": None, "vote_average": 6},
+        ]
+    }
+    # The best rated English poster; a poster without text only when there is no English one
+    assert tmdb.pick_english_poster(images) == "https://image.tmdb.org/t/p/w500/en-best.jpg"
+    textless_only = {"posters": [images["posters"][3], {"file_path": None, "iso_639_1": "en"}]}
+    assert tmdb.pick_english_poster(textless_only) == "https://image.tmdb.org/t/p/w500/textless.jpg"
+    assert tmdb.pick_english_poster({"posters": [images["posters"][0]]}) is None
+    assert tmdb.pick_english_poster(None) is None
+
+
+def test_english_poster_is_imported_and_listed(client, db_session, monkeypatch):
+    # Trace: T-050
+    calls = []
+    monkeypatch.setattr(tmdb, "_tmdb_get", lambda path, params, api_key: calls.append(params) or {})
+    tmdb._details("movie", 1, "key")
+    assert calls[0]["include_image_language"] == "en,null"
+
+    details = {**MOVIE_DETAILS, "images": {"posters": [{"file_path": "/ttt-en.jpg", "iso_639_1": "en"}]}}
+    sync_catalog(db_session, [build_catalog_item("Movie", "movie", {"id": 121}, details)])
+
+    # In the compact list too: the cards of the English interface need it
+    for params in ({}, {"compact": "true"}):
+        listed = client.get("/api/v1/movies", params=params).json()["items"][0]
+        assert listed["img"] == "https://image.tmdb.org/t/p/w500/ttt.jpg"
+        assert listed["img_en"] == "https://image.tmdb.org/t/p/w500/ttt-en.jpg"
