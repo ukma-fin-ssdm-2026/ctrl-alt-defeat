@@ -16,13 +16,15 @@
 - **Період дослідження**: **01.11.2026 – 13.11.2026** (12.0 днів / 1.71 тижня).
 - **Обсяг вибірки**: **98 запусків** на гілці `main`.
 - **Первинні дані та докази**:
-  - Таблиця первинних запусків: [`docs/ci-cd/metrics-raw.md`](docs/ci-cd/metrics-raw.md)
-  - JSON-експорт історії запусків: [`docs/ci-cd/evidence/gh-runs-raw.json`](docs/ci-cd/evidence/gh-runs-raw.json)
-  - Прямий вивід CLI: [`docs/ci-cd/evidence/gh-run-list-since-nov01.json`](docs/ci-cd/evidence/gh-run-list-since-nov01.json)
+  - Таблиця первинних запусків: [`docs/ci-cd/metrics-raw.md`](metrics-raw.md)
+  - JSON-експорт історії запусків: [`docs/ci-cd/evidence/gh-runs-raw.json`](evidence/gh-runs-raw.json)
+  - Прямий вивід CLI: [`docs/ci-cd/evidence/gh-run-list-since-nov01.json`](evidence/gh-run-list-since-nov01.json)
 
 ---
 
 ## 2. Обчислення чотирьох метрик DORA (Етап 2)
+
+Категорії й частки опитаних взято зі звіту [DORA 2025 «State of AI-assisted Software Development»](https://services.google.com/fh/files/misc/2025_state_of_ai_assisted_software_development.pdf) (рис. 11–14, майже 5 000 опитаних). Наші значення пораховано з історії CI на `main`, а не з розгортань у робоче середовище, тому це наближення до визначень DORA.
 
 | Метрика | Формула | Ваш результат | Категорія (DORA 2025) |
 |---|---|:---:|---|
@@ -35,7 +37,7 @@
 
 ## 3. Порівняння з орієнтирами телеметрії CircleCI (2025 / 2026)
 
-Згідно зі звітами CircleCI *State of Software Delivery* (на основі мільйонів реальних запусків конвеєрів), ефективність конвеєра команди ctrl-alt-defeat зіставляється наступним чином:
+Згідно зі звітами CircleCI *State of Software Delivery* [2025](https://circleci.com/landing-pages/assets/2025-state-of-software-delivery-report.pdf) і [2026](https://circleci.com/landing-pages/assets/2026-state-of-software-delivery-report.pdf) (на основі мільйонів реальних запусків конвеєрів), ефективність конвеєра команди ctrl-alt-defeat зіставляється наступним чином:
 
 | Показник | Рекомендований орієнтир CircleCI | Фактичне значення в індустрії (2025) | Фактичне значення нашої команди | Оцінка |
 |---|:---:|:---:|:---:|:---:|
@@ -88,10 +90,39 @@
 | **Час виконання змін** *(Change Lead Time)* | Довгий «хвіст» очікування в окремих PR (середнє 5.58 год проти медіани 21.4 хв, макс. до 10 год у нічних PR) | Асинхронне код-рев'ю без фіксованого терміну; відкриття PR пізно ввечері, які переглядаються лише наступного дня | Впровадити правило Review SLA: первинний огляд PR до 3 годин у робочий час; розділяти великі фічі на невеликі PR (< 200 рядків) | `@Lifencev` |
 | **Час виконання змін** *(Change Lead Time)* | Запуск повного набору тестів на кожен коміт у PR, навіть для суто документаційних правок | Відсутність селективної фільтрації зачіплених файлів у конвеєрі `ci.yml` | Налаштувати фільтрацію `paths-ignore` (`docs/**`, `*.md`), запускаючи лише швидкі перевірки форматування для документації | `@Lifencev` |
 | **Частота розгортань** *(Deployment Frequency)* | Нерівномірність релізів: сплески перед дедлайнами (18 запусків 01.11, 33 запуски 04.11) та дні без злиття | Накопичення коду в локальних гілках замість щоденного злиття невеликих інкрементів | Застосовувати практику Trunk-Based Development: зливати перевірений код у `main` щодня під Feature Flags або за драфт-інтерфейсами | `@krylov-mykhailo` |
-| **Частота розгортань** *(Deployment Frequency)* | Ручна підготовка версій та релізів (синхронізація версій у `pyproject.toml`, `package.json`, `CHANGELOG.md`) | Ручні операції перед створенням релізного тегу | Автоматизувати створення Release PR за Conventional Commits через конвеєр релізів | `@krylov-mykhailo` |
+| **Частота розгортань** *(Deployment Frequency)* | Оновлення залежностей від Dependabot приходять окремими PR і зливаються пачками, кожен PR займає раннер на повний CI | Dependabot налаштовано на окремий PR для кожного пакета | Групувати оновлення Dependabot (`groups` у `.github/dependabot.yml`) в один PR на тиждень для pip і npm | `@krylov-mykhailo` |
+| **Час виконання змін** *(Change Lead Time)* | Виконання CI на `main` зросло до ~3 хв; крок тестів бекенду займає ~3 хв із них | Кожен тест хешує й перевіряє паролі bcrypt з вартістю 12, як у продакшні | У тестах знизити вартість bcrypt до мінімальної (4) через змінну середовища `BCRYPT_ROUNDS`; продакшн без змін (див. «Бонуси») | `@krylov-mykhailo` |
 | **Частота збоїв змін** *(Change Fail Rate)* | Ризик пропуску дефектів, пов'язаних із нестабільністю зовнішніх сервісів (TMDB, Render) | Тести використовують живі таймаути або недостатньо ізольовані моки зовнішнього API | Додати до тестів надійності тестові дублери з контрольованим введенням збоїв (latency injection, error codes) | `@YuliiaHalka` |
 | **Час відновлення після збою** *(Recovery Time)* | Відсутність автоматизованого відкату сервісу на Render у разі збою після розгортання | Відновлення здійснюється лише ручним комітом або створенням нового хотфіксу | Додати в `production-deployment.yml` крок автоматичного відкату (Rollback via Render Deploy Hook) на попередній стабільний коміт у разі збою liveness check | `@YuliiaHalka` |
 
 ---
 
+### Уже впроваджено
+
+| Метрика | Що було | Що зроблено | Коли |
+|---|---|---|---|
+| **Частота розгортань** *(Deployment Frequency)* | Версії в `pyproject.toml`, `package.json`, `CHANGELOG.md` і релізний тег готувалися вручну | Workflow [`release.yml`](../../.github/workflows/release.yml) сам створює тег і GitHub Release, коли в `main` потрапляє нова версія в `CHANGELOG.md`; так вийшли релізи [v1.0.0–v1.1.0](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/releases) | 12–14.11.2026 |
+
+---
+
 *Розділи 7 (Дашборд і графік) та 8 (Аналіз болю команди) готуються до виконання на Етапі 4 та у домашньому завданні.*
+
+---
+
+## Джерела
+
+- DORA, Google Cloud. [State of AI-assisted Software Development 2025](https://services.google.com/fh/files/misc/2025_state_of_ai_assisted_software_development.pdf) ([сторінка звіту](https://research.google/pubs/dora-2025-state-of-ai-assisted-software-development-report/)) — рівні метрик і частки опитаних (рис. 11–14).
+- CircleCI. [The 2025 State of Software Delivery](https://circleci.com/landing-pages/assets/2025-state-of-software-delivery-report.pdf) — орієнтири частки успішних запусків, повернення до зеленого стану і тривалості workflow.
+- CircleCI. [The 2026 State of Software Delivery](https://circleci.com/landing-pages/assets/2026-state-of-software-delivery-report.pdf).
+
+---
+
+## Бонуси
+
+### Бонус 1. Автоматичний підрахунок метрик
+
+Скрипт, команда запуску, результат і розбіжності з ручним підрахунком: [`bonus-auto-metrics.md`](bonus-auto-metrics.md).
+
+### Бонус 2. Покращення з виміряним ефектом
+
+Дія з плану покращень (вартість bcrypt у тестах), таблиця «до і після»: [`bonus-faster-tests.md`](bonus-faster-tests.md).

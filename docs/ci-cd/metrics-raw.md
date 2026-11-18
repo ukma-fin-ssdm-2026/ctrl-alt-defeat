@@ -13,8 +13,8 @@
 - **Час виконання (execution time)**: інтервал від старту першого завдання (`startedAt`) до завершення останнього (`completedAt`).
 - **Час виконання змін (change lead time)**: інтервал від першого коміту в Pull Request (`authoredDate` першого коміту в PR) до завершення зеленого запуску на `main`.
 - **Джерело доказів**: експорт GitHub Actions збережено у файлах:
-  - [`docs/ci-cd/evidence/gh-runs-raw.json`](docs/ci-cd/evidence/gh-runs-raw.json) — детальні дані по кожному запуску (jobs, commits, lead times);
-  - [`docs/ci-cd/evidence/gh-run-list-since-nov01.json`](docs/ci-cd/evidence/gh-run-list-since-nov01.json) — прямий JSON-дамп команди `gh run list`.
+  - [`docs/ci-cd/evidence/gh-runs-raw.json`](evidence/gh-runs-raw.json) — детальні дані по кожному запуску (jobs, commits, lead times);
+  - [`docs/ci-cd/evidence/gh-run-list-since-nov01.json`](evidence/gh-run-list-since-nov01.json) — прямий JSON-дамп команди `gh run list`.
 
 ## 2. Первинні дані запусків з 01.11 (Таблиця Етапу 1)
 
