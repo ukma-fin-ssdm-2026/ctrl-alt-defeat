@@ -1,0 +1,884 @@
+[
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-13T10:16:38Z",
+    "databaseId": 43407945717,
+    "headSha": "f248673c73e85b7f0686a6a4e96160c3de4291b3",
+    "updatedAt": "2026-11-13T10:19:34Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43407945717",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-13T00:09:24Z",
+    "databaseId": 43334770926,
+    "headSha": "113cbf81bd5c7e98bc98b09a0ccf661ef3dd7609",
+    "updatedAt": "2026-11-13T00:11:43Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43334770926",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-13T00:00:05Z",
+    "databaseId": 43333465657,
+    "headSha": "e65188538a0f9f887a90c3d98128369038372682",
+    "updatedAt": "2026-11-13T00:02:45Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43333465657",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-12T23:56:54Z",
+    "databaseId": 43333055330,
+    "headSha": "082bfdd07fe64701daf2f0a7c707f3f2e52b7701",
+    "updatedAt": "2026-11-12T23:58:46Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43333055330",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-12T22:56:55Z",
+    "databaseId": 43324531738,
+    "headSha": "b80c5e2e650f47fd33a659e9d09cc429b8d06e9e",
+    "updatedAt": "2026-11-12T22:59:03Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43324531738",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-12T22:51:41Z",
+    "databaseId": 43323764490,
+    "headSha": "1d17f98c29aa109c5c33b935aa6bae557225e8bf",
+    "updatedAt": "2026-11-12T22:54:15Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43323764490",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-12T22:37:49Z",
+    "databaseId": 43321665369,
+    "headSha": "d1265e0021f9b18304f8ddc6b3a2fa2e23a1e063",
+    "updatedAt": "2026-11-12T22:40:01Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43321665369",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-12T22:24:08Z",
+    "databaseId": 43319544872,
+    "headSha": "ac883505586cc5222677beea8abdd5d26939f33e",
+    "updatedAt": "2026-11-12T22:26:46Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43319544872",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-12T22:21:35Z",
+    "databaseId": 43319138050,
+    "headSha": "5a9eb84f19952e53a7e7972523a93c26e395a962",
+    "updatedAt": "2026-11-12T22:24:18Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43319138050",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-12T13:14:36Z",
+    "databaseId": 43225429400,
+    "headSha": "2eded36357083f48f68bbc3bc6ade070ae3bf624",
+    "updatedAt": "2026-11-12T13:17:12Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43225429400",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-12T11:31:50Z",
+    "databaseId": 43209933197,
+    "headSha": "8182909f67b095c0d5a3078e0779c1abc0a7cc85",
+    "updatedAt": "2026-11-12T11:34:34Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43209933197",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-12T11:24:39Z",
+    "databaseId": 43208914412,
+    "headSha": "492899e5a78b4e17ef1a51c19f35fa4ef6c9c36e",
+    "updatedAt": "2026-11-12T11:26:43Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43208914412",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T16:52:23Z",
+    "databaseId": 43062571852,
+    "headSha": "1d5376a9ebb5e4bacefaeba4e766bfa67bfa43c9",
+    "updatedAt": "2026-11-11T16:54:54Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43062571852",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T16:24:38Z",
+    "databaseId": 43058044499,
+    "headSha": "c31ebbd365be5e404cf97390772b1bcd1cbfe6db",
+    "updatedAt": "2026-11-11T16:26:45Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43058044499",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T15:34:15Z",
+    "databaseId": 43049671107,
+    "headSha": "065b832fab9fce002c360d9d06c930e3d4ec6558",
+    "updatedAt": "2026-11-11T15:36:25Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43049671107",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T15:25:50Z",
+    "databaseId": 43048274787,
+    "headSha": "055b122d0f26d0379869a60945d9d8acfd9b02b5",
+    "updatedAt": "2026-11-11T15:28:30Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43048274787",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T13:21:58Z",
+    "databaseId": 43028461464,
+    "headSha": "6bdcbe3271c2b2933175a330b4703118b89ca550",
+    "updatedAt": "2026-11-11T13:24:02Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43028461464",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T13:18:55Z",
+    "databaseId": 43028002822,
+    "headSha": "235bfe6be32b1ea38a57506cde31cd42d67766bc",
+    "updatedAt": "2026-11-11T13:21:29Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43028002822",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T13:16:23Z",
+    "databaseId": 43027619962,
+    "headSha": "db781a553294fde7ddbf993b4235ab735ff68e87",
+    "updatedAt": "2026-11-11T13:18:44Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43027619962",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T13:12:50Z",
+    "databaseId": 43027083122,
+    "headSha": "a64e06c7367af5c69d160ef36ef01f8602835dfa",
+    "updatedAt": "2026-11-11T13:15:01Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43027083122",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T13:08:03Z",
+    "databaseId": 43026379163,
+    "headSha": "90bf687b4cdbc5d42cf22cd4813ceabc24f37338",
+    "updatedAt": "2026-11-11T13:10:43Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43026379163",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T13:03:30Z",
+    "databaseId": 43025694201,
+    "headSha": "e238007470d9fca5caffb78e57d7a7f25468889b",
+    "updatedAt": "2026-11-11T13:05:36Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43025694201",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T13:00:07Z",
+    "databaseId": 43025179511,
+    "headSha": "e9023b6d734b52cae262f004b47b2ef72f31320c",
+    "updatedAt": "2026-11-11T13:02:14Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43025179511",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T12:56:33Z",
+    "databaseId": 43024688394,
+    "headSha": "4ab84fdff71fd0d3f01888c8702cfdda1cbce47f",
+    "updatedAt": "2026-11-11T12:58:14Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43024688394",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T12:53:20Z",
+    "databaseId": 43024227359,
+    "headSha": "d1a42d52746a77b1d16a6183969a0d165cf9f58b",
+    "updatedAt": "2026-11-11T12:55:54Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43024227359",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T12:49:41Z",
+    "databaseId": 43023708038,
+    "headSha": "699696131600bc5aea9b2ce13e0c0531f6802ab2",
+    "updatedAt": "2026-11-11T12:51:13Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43023708038",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T12:44:27Z",
+    "databaseId": 43022947278,
+    "headSha": "26adcc7e7448b709af949dc9d058930b87ef322d",
+    "updatedAt": "2026-11-11T12:46:32Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43022947278",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T12:15:06Z",
+    "databaseId": 43018712277,
+    "headSha": "2fe147a1dcbb87834e7a8f744b7414a5e63f982b",
+    "updatedAt": "2026-11-11T12:17:16Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43018712277",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-11T11:01:09Z",
+    "databaseId": 43008429534,
+    "headSha": "f8f1ddb966ab91262098bf2fc62bcd30c6b3bdec",
+    "updatedAt": "2026-11-11T11:02:49Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/43008429534",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-07T15:47:23Z",
+    "databaseId": 42388071536,
+    "headSha": "e6d3fc04e334cb8b4dcf4f4f33cdffc480274502",
+    "updatedAt": "2026-11-07T15:49:03Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42388071536",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-06T00:05:44Z",
+    "databaseId": 42134284359,
+    "headSha": "b70eaa1abe3647aa9ec6fa545d9066097f1d8e3d",
+    "updatedAt": "2026-11-06T00:08:08Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42134284359",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-06T00:02:10Z",
+    "databaseId": 42133839252,
+    "headSha": "c15527b953ac188f7df3ff40dd2e6f637fc2109f",
+    "updatedAt": "2026-11-06T00:04:44Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42133839252",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T22:59:34Z",
+    "databaseId": 42126056105,
+    "headSha": "40ea154c31482087fdad314bb66fb4cf749f2db6",
+    "updatedAt": "2026-11-05T23:01:35Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42126056105",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T22:26:36Z",
+    "databaseId": 42121525184,
+    "headSha": "8f8e3741c6d92588f883616c8b7d92dbd4d1da5a",
+    "updatedAt": "2026-11-05T22:28:30Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42121525184",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T22:07:55Z",
+    "databaseId": 42118815381,
+    "headSha": "65accd60f91a9ff0825ac3051251209bb47f7c7a",
+    "updatedAt": "2026-11-05T22:09:35Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42118815381",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T21:27:24Z",
+    "databaseId": 42112798859,
+    "headSha": "574d497751af8c114003b42cb41eb1d5af5e297e",
+    "updatedAt": "2026-11-05T21:29:15Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42112798859",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T21:03:38Z",
+    "databaseId": 42109114025,
+    "headSha": "63ac54d77d6110afff14f50f61ef2297f6470c37",
+    "updatedAt": "2026-11-05T21:05:18Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42109114025",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T20:56:50Z",
+    "databaseId": 42108056676,
+    "headSha": "f6eb59ce09d8f5d4f917c2de1ca9bb937e1c61ef",
+    "updatedAt": "2026-11-05T20:58:56Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42108056676",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T12:02:44Z",
+    "databaseId": 42023826618,
+    "headSha": "6c5054d2c480c47a2e67b9226d07ddbed6040161",
+    "updatedAt": "2026-11-05T12:04:44Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42023826618",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T11:36:09Z",
+    "databaseId": 42020293188,
+    "headSha": "ff2b2cf28fc0676d72a0563896af34c157b8b1c9",
+    "updatedAt": "2026-11-05T11:38:17Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42020293188",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T11:22:30Z",
+    "databaseId": 42018445483,
+    "headSha": "ed457e1020c6ac26fab216580e6bb2c493d2cc4b",
+    "updatedAt": "2026-11-05T11:24:18Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42018445483",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T11:06:15Z",
+    "databaseId": 42016189087,
+    "headSha": "00a21dd7b00aca3d335035ce2269971962b4143b",
+    "updatedAt": "2026-11-05T11:08:23Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42016189087",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T10:04:02Z",
+    "databaseId": 42007575020,
+    "headSha": "4b5cf14290e21678fffb5dfc739c45b8911f9853",
+    "updatedAt": "2026-11-05T10:06:09Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/42007575020",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T01:32:37Z",
+    "databaseId": 41949225715,
+    "headSha": "6b6ea30d12c14233917a19888d23194a768f4fa5",
+    "updatedAt": "2026-11-05T01:34:28Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41949225715",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T01:08:57Z",
+    "databaseId": 41946494915,
+    "headSha": "9ce191249a616d879a770d1c7fffd57762f23e16",
+    "updatedAt": "2026-11-05T01:11:02Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41946494915",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T00:41:25Z",
+    "databaseId": 41943188375,
+    "headSha": "67eef341108c53cc2070c4c98a2eceb7fd280705",
+    "updatedAt": "2026-11-05T00:43:07Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41943188375",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-05T00:22:06Z",
+    "databaseId": 41940796405,
+    "headSha": "4bd1af8799b181da2d6c23124e1f286e28d9c0ac",
+    "updatedAt": "2026-11-05T00:23:57Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41940796405",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T23:29:17Z",
+    "databaseId": 41934087487,
+    "headSha": "8a9441d72b2f3a34844bbe13d86a13a8b51a359c",
+    "updatedAt": "2026-11-04T23:30:50Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41934087487",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T23:24:19Z",
+    "databaseId": 41933441871,
+    "headSha": "8038e3d6e08e94d0d814b72789e01f2980171760",
+    "updatedAt": "2026-11-04T23:26:05Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41933441871",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T23:18:47Z",
+    "databaseId": 41932702215,
+    "headSha": "5c42560d00f44a2909ec1a00d8702d55550f0468",
+    "updatedAt": "2026-11-04T23:19:58Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41932702215",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T22:38:41Z",
+    "databaseId": 41927072910,
+    "headSha": "640dd1441339f91a44b2a331a005497a107e95b6",
+    "updatedAt": "2026-11-04T22:39:59Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41927072910",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T22:19:13Z",
+    "databaseId": 41924217701,
+    "headSha": "165483e312b6493348c92d28345bbf16443e677b",
+    "updatedAt": "2026-11-04T22:20:40Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41924217701",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T21:12:50Z",
+    "databaseId": 41913957642,
+    "headSha": "af7757ab6da976b26262a456e3ab07bffae85cba",
+    "updatedAt": "2026-11-04T21:14:18Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41913957642",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T20:23:49Z",
+    "databaseId": 41906199619,
+    "headSha": "c90a5e7cf51e73fdc13f7908717b8026043539ab",
+    "updatedAt": "2026-11-04T20:25:10Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41906199619",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T20:14:21Z",
+    "databaseId": 41904682681,
+    "headSha": "2b8e6fa5e8a41a2e21f6b82ef98e10af50f7a80d",
+    "updatedAt": "2026-11-04T20:15:48Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41904682681",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T19:16:15Z",
+    "databaseId": 41895308930,
+    "headSha": "bd23fe75f90441e12799a1ebe2d081f8ae9bde64",
+    "updatedAt": "2026-11-04T19:17:49Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41895308930",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T18:01:42Z",
+    "databaseId": 41882907847,
+    "headSha": "4b5774b1ad8021e387891737173ec1e1d586a8cb",
+    "updatedAt": "2026-11-04T18:02:39Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41882907847",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T17:56:36Z",
+    "databaseId": 41881985624,
+    "headSha": "e34316e2ba46fb3f7aba02bf8184e2ca93125dce",
+    "updatedAt": "2026-11-04T17:57:51Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41881985624",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T17:04:37Z",
+    "databaseId": 41873943327,
+    "headSha": "057e63ea08e570887c87d28e10363fb70cfac11d",
+    "updatedAt": "2026-11-04T17:05:59Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41873943327",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T16:35:35Z",
+    "databaseId": 41868835802,
+    "headSha": "5d009c7bf149faf7d3c2b15a5d5d252a6926e55a",
+    "updatedAt": "2026-11-04T16:37:05Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41868835802",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T15:51:35Z",
+    "databaseId": 41862071221,
+    "headSha": "67de77579f512f268b8588749952e59b2938c5be",
+    "updatedAt": "2026-11-04T16:16:24Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41862071221",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T14:32:17Z",
+    "databaseId": 41848550394,
+    "headSha": "0b9beddb6da1a3e4c7f7b673cc7d35ff0b7f7da5",
+    "updatedAt": "2026-11-04T14:33:19Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41848550394",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T14:26:05Z",
+    "databaseId": 41847509958,
+    "headSha": "1834a796b488866a785ede6fe9f3999c005e6660",
+    "updatedAt": "2026-11-04T14:27:24Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41847509958",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T14:24:23Z",
+    "databaseId": 41847223276,
+    "headSha": "13e3fead809a178d1324b2ff062d110e42c8c384",
+    "updatedAt": "2026-11-04T14:25:27Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41847223276",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T14:22:14Z",
+    "databaseId": 41846865163,
+    "headSha": "34564292919595727ba3b856c2c4e2e18ff2c891",
+    "updatedAt": "2026-11-04T14:23:08Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41846865163",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T14:20:07Z",
+    "databaseId": 41846510590,
+    "headSha": "ab7a9a0f22d8d9459f50041c4282dbb66d74a8f8",
+    "updatedAt": "2026-11-04T14:21:21Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41846510590",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T14:11:26Z",
+    "databaseId": 41845080177,
+    "headSha": "92a3df7465def793d841baa7fa52edd5ec1388c7",
+    "updatedAt": "2026-11-04T14:12:18Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41845080177",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T13:55:48Z",
+    "databaseId": 41842600188,
+    "headSha": "4893f9c807a8d31606ea154dd5f879d4146e5315",
+    "updatedAt": "2026-11-04T13:56:53Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41842600188",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T13:53:12Z",
+    "databaseId": 41842197703,
+    "headSha": "59258276737e8e90261f01fe475d56173690facd",
+    "updatedAt": "2026-11-04T13:54:22Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41842197703",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T13:50:22Z",
+    "databaseId": 41841763847,
+    "headSha": "edd3315abf4fb33a66e0b6677ac30ae0f94b9fd6",
+    "updatedAt": "2026-11-04T13:51:37Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41841763847",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T13:48:29Z",
+    "databaseId": 41841476042,
+    "headSha": "c3e2110a5d57d642b79219619c0f20302ea74f16",
+    "updatedAt": "2026-11-04T13:49:43Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41841476042",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T13:45:10Z",
+    "databaseId": 41840964961,
+    "headSha": "26c2d8be408323f8f4618c1511f8ebe88d71be42",
+    "updatedAt": "2026-11-04T13:46:13Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41840964961",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T13:41:45Z",
+    "databaseId": 41840446655,
+    "headSha": "76c62445c0be86d66cba491f708a8656b8f17e3a",
+    "updatedAt": "2026-11-04T13:43:01Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41840446655",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T13:39:27Z",
+    "databaseId": 41840094954,
+    "headSha": "40729b31f2a182602a97123a3272331f83c55e6e",
+    "updatedAt": "2026-11-04T13:40:41Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41840094954",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T13:36:29Z",
+    "databaseId": 41839648848,
+    "headSha": "67090d25af1681d363c28c973df0fe75a21f4bc1",
+    "updatedAt": "2026-11-04T13:37:34Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41839648848",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T13:32:48Z",
+    "databaseId": 41839074449,
+    "headSha": "2c7c62ac310b45e6470e7d770667171826d14a5c",
+    "updatedAt": "2026-11-04T13:34:01Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41839074449",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T13:03:39Z",
+    "databaseId": 41834657856,
+    "headSha": "6a2a227181d395a176e3ebd003f2b9511c3f905e",
+    "updatedAt": "2026-11-04T13:04:39Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41834657856",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T12:46:31Z",
+    "databaseId": 41832180394,
+    "headSha": "92506f40ee044307920dad7679230ce60080b0cf",
+    "updatedAt": "2026-11-04T12:47:19Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41832180394",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T12:41:03Z",
+    "databaseId": 41831390470,
+    "headSha": "2eea2ed2e90ca2988a575b1dbf2c76b751d22a67",
+    "updatedAt": "2026-11-04T12:42:21Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41831390470",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-04T12:36:31Z",
+    "databaseId": 41830738635,
+    "headSha": "6d4c1eb0e492c8493a907452839b168ee9b3f91f",
+    "updatedAt": "2026-11-04T12:37:41Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41830738635",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T21:59:58Z",
+    "databaseId": 41354828785,
+    "headSha": "b9ab085649bede25e46b8ec92ee6bdb9f476279b",
+    "updatedAt": "2026-11-01T22:00:50Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41354828785",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T21:42:35Z",
+    "databaseId": 41353392228,
+    "headSha": "43caa7fb7ab44d6206f61343c1c8ca43a43ac9ed",
+    "updatedAt": "2026-11-01T21:43:47Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41353392228",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T21:27:34Z",
+    "databaseId": 41352108126,
+    "headSha": "643b2ba3db11a3cb1e99f933e48509edbee91e25",
+    "updatedAt": "2026-11-01T21:28:45Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41352108126",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T21:24:49Z",
+    "databaseId": 41351876121,
+    "headSha": "5d3e5cd374a7b6f0a5653d723a14acbf1abb2d39",
+    "updatedAt": "2026-11-01T21:26:01Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41351876121",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T21:19:15Z",
+    "databaseId": 41351401583,
+    "headSha": "dd799676a5f3c9cd7bde895fc8f0f8411a43676b",
+    "updatedAt": "2026-11-01T21:20:25Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41351401583",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T21:15:44Z",
+    "databaseId": 41351093100,
+    "headSha": "875fed4d58c7a27d98ea49bca58b7db365106305",
+    "updatedAt": "2026-11-01T21:16:47Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41351093100",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T20:02:16Z",
+    "databaseId": 41344754912,
+    "headSha": "047ba5571ce591ebc4b7c150f3326015ae38166d",
+    "updatedAt": "2026-11-01T20:02:58Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41344754912",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T19:43:30Z",
+    "databaseId": 41343166280,
+    "headSha": "06c16903631f7600eb77984ee1a0e8bd30cddb41",
+    "updatedAt": "2026-11-01T19:44:27Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41343166280",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T19:12:20Z",
+    "databaseId": 41340546004,
+    "headSha": "c8101b7fc76037eca065e76af4fa0182321c7a4e",
+    "updatedAt": "2026-11-01T19:13:05Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41340546004",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T18:49:51Z",
+    "databaseId": 41338608738,
+    "headSha": "9700fd2d975bc03c423556cfc28db6befc7dc373",
+    "updatedAt": "2026-11-01T18:50:32Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41338608738",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T18:15:42Z",
+    "databaseId": 41335692213,
+    "headSha": "daae23a29adbdf53f426dc5b07680c7a94086fcd",
+    "updatedAt": "2026-11-01T18:16:09Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41335692213",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T17:42:29Z",
+    "databaseId": 41332841670,
+    "headSha": "dd8227f8540b22748979dc3e64d73043a95a16cb",
+    "updatedAt": "2026-11-01T17:43:38Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41332841670",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T17:00:24Z",
+    "databaseId": 41329199828,
+    "headSha": "9e412c89720a1ebf6fa5fd8b2e7adb98c504ed43",
+    "updatedAt": "2026-11-01T17:00:48Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41329199828",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T16:33:18Z",
+    "databaseId": 41326924917,
+    "headSha": "dae41f4302bd213b11fff0ccc55b8e7219ec957f",
+    "updatedAt": "2026-11-01T16:33:39Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41326924917",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T16:16:35Z",
+    "databaseId": 41325487860,
+    "headSha": "ffaefb72b2635214757aa3b207a7e708cc057c38",
+    "updatedAt": "2026-11-01T16:17:01Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41325487860",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T14:42:13Z",
+    "databaseId": 41317497642,
+    "headSha": "adead6125bd286fa6c1764225b5d4aefe39aa725",
+    "updatedAt": "2026-11-01T14:42:31Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41317497642",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T13:44:17Z",
+    "databaseId": 41312694535,
+    "headSha": "c43727d36fc3afc31d13bdb170c8ebe799393390",
+    "updatedAt": "2026-11-01T13:44:43Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41312694535",
+    "workflowName": "CI Test"
+  },
+  {
+    "conclusion": "success",
+    "createdAt": "2026-11-01T10:45:21Z",
+    "databaseId": 41298858670,
+    "headSha": "fbdb45df64e61bb46c18ea161e236aaccb54a90b",
+    "updatedAt": "2026-11-01T10:45:41Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/41298858670",
+    "workflowName": "CI Test"
+  }
+]
