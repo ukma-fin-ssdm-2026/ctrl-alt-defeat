@@ -11,11 +11,18 @@ updates:
           - "pydantic"
           - "pydantic-core"
           - "pydantic_core"
+      # Lab 10 (DORA plan of improvements): one weekly PR for minor and patch updates instead of a PR
+      # per package, each of which ran the full CI on the shared runners
+      python-minor-patch:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
       interval: "weekly"
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
     ignore:
       # Tailwind CSS 4 needs a configuration migration (@tailwindcss/postcss, CSS-based config);
       # do it deliberately in a dedicated PR instead of an automatic major bump
@@ -26,3 +33,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      actions-minor-patch:
+        update-types: ["minor", "patch"]
