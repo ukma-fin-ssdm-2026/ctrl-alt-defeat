@@ -56,6 +56,10 @@ def verification_link(token: str) -> str:
     return f"{app_base_url()}/verify-email?{urlencode({'token': token})}"
 
 
+def password_reset_link(token: str) -> str:
+    return f"{app_base_url()}/reset-password?{urlencode({'token': token})}"
+
+
 def _sender() -> tuple:
     return os.getenv("EMAIL_FROM", "no-reply@localhost"), os.getenv("EMAIL_FROM_NAME", "Після титрів")
 
@@ -197,3 +201,27 @@ def send_verification_email(to: str, nickname: str, token: str) -> Optional[str]
 
 def _escape(value: str) -> str:
     return html_lib.escape(value, quote=True)
+
+
+def send_password_reset_email(to: str, nickname: str, token: str) -> Optional[str]:
+    """Send the password reset link. Errors are logged, not raised: it runs after the response."""
+    link = password_reset_link(token)
+    subject = "Відновлення пароля — «Після титрів»"
+    text = (
+        f"Вітаємо, {nickname}!\n\n"
+        f"Щоб задати новий пароль на сайті «Після титрів», перейдіть за посиланням (діє 1 годину):\n{link}\n\n"
+        "Якщо ви не просили змінити пароль, просто проігноруйте цей лист: пароль залишиться тим самим."
+    )
+    html = (
+        f"<p>Вітаємо, {_escape(nickname)}!</p>"
+        "<p>Щоб задати новий пароль на сайті «Після титрів», натисніть кнопку (посилання діє 1 годину):</p>"
+        f'<p><a href="{_escape(link)}" style="background:#eab308;color:#111827;padding:10px 18px;'
+        'border-radius:8px;text-decoration:none;font-weight:bold">Задати новий пароль</a></p>'
+        f'<p>Або відкрийте посилання: <a href="{_escape(link)}">{_escape(link)}</a></p>'
+        "<p>Якщо ви не просили змінити пароль, просто проігноруйте цей лист: пароль залишиться тим самим.</p>"
+    )
+    try:
+        return send_email(to, subject, text, html)
+    except EmailError as error:
+        logger.error("Password reset email to %s was not sent: %s", to, error)
+        return None

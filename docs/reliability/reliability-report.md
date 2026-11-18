@@ -67,7 +67,7 @@ return content
 - **Режим відмови:** Швидка відмова (Fast failure) з HTTP 409.
 - **Що бачить користувач:** Зрозуміле повідомлення `This title is already in your watchlist` зі статусом 409 замість Internal Server Error 500.
 - **Відновлення:** Виклик `db.rollback()` повертає сесію бази даних у валідний стан без переривання подальших операцій.
-- **Тести:** `tests/test_watchlist.py::test_adding_duplicate_is_rejected` та `tests/reliability/test_concurrent_writes.py`.
+- **Тести:** `tests/test_watchlist.py::test_adding_duplicate_is_rejected` (послідовний дубль зупиняє перевірка наявності) та `tests/reliability/test_concurrent_writes.py::test_watchlist_integrity_error_returns_409` (одночасний дубль: перевірка наявності нічого не бачить, `commit()` кидає `IntegrityError` → `409 ALREADY_IN_WATCHLIST` і `rollback()`).
 
 #### Знахідка 4. Запис OpenAPI під час старту без обробки `OSError` (B, середня)
 
@@ -102,7 +102,7 @@ def save_openapi_spec(app: FastAPI):
 - **Режим відмови:** Безпечна відмова (Safe failure): неможливість оновити статичний артефакт документації на диску не блокує запуск сервісу та обслуговування користувачів.
 - **Що бачить користувач:** Сервіс успішно стартує і доступний для запитів; вбудована динамічна документація `/api-docs` функціонує в пам'яті.
 - **Відновлення:** Сервіс продовжує нормальну роботу без зупинки процесу.
-- **Тести:** `tests/test_main.py::test_save_openapi_spec` та `tests/reliability/test_startup_retries.py`.
+- **Тести:** `tests/test_main.py::test_save_openapi_spec` (успішний запис) та `tests/reliability/test_openapi_spec_failure.py` (`open()` кидає `PermissionError` або `OSError` read-only ФС, `mkdir()` кидає `PermissionError` → виняток не виходить назовні, у лозі попередження).
 
 #### Знахідка 6. Зведення відгуків падає на оцінці `None` (D, C, низька)
 
@@ -118,7 +118,7 @@ for review in reviews:
 summary["average_rating"] = round(total_score / summary["total_reviews"], 2)
 ```
 
-**Після:** додано захисні перевірки (guard clauses) типу словника, наявності числової оцінки в діапазоні 1–10, а також безпечне ділення:
+**Після:** додано захисні перевірки (guard clauses) типу словника, наявності числової оцінки в діапазоні 1–10 (булеве значення не вважається оцінкою, хоча в Python `bool` — підклас `int`), а також безпечне ділення. Кількість відгуків у зведенні — це кількість врахованих оцінок, тож вона збігається з розподілом і середнім:
 
 ```python
 total_score = 0
@@ -127,22 +127,22 @@ for review in reviews:
     if not isinstance(review, dict):
         continue
     rating = review.get("rating")
-    if isinstance(rating, (int, float)) and 1 <= rating <= 10:
+    # Guard clause: a number from 1 to 10 (bool is a subclass of int in Python, so True is not a rating)
+    if isinstance(rating, (int, float)) and not isinstance(rating, bool) and 1 <= rating <= 10:
         total_score += rating
         summary["distribution"][int(rating)] += 1
         valid_ratings_count += 1
 
-summary["total_reviews"] = len(reviews)
-summary["average_rating"] = (
-    round(total_score / valid_ratings_count, 2) if valid_ratings_count > 0 else 0.0
-)
+# Counted ratings only: the number matches the distribution and the average
+summary["total_reviews"] = valid_ratings_count
+summary["average_rating"] = round(total_score / valid_ratings_count, 2) if valid_ratings_count else 0.0
 ```
 
 - **Патерни:** Guard clauses, Defensive programming, Safe fallback value (`0.0`).
 - **Режим відмови:** Безпечна відмова (Safe failure): відсутні або некоректні оцінки безпечно ігноруються в підрахунку середнього.
 - **Що бачить користувач:** Сторінка зведення фільму `/api/v1/reviews/summary` відображає коректну статистику та розподіл замість 500 помилки.
 - **Відновлення:** Не потребує відновлення; обчислення залишається повністю детермінованим.
-- **Тести:** `tests/test_utils.py` (регресійні тести зведення оцінок).
+- **Тести:** `tests/test_utils.py` (зведення оцінок на звичайних даних) та `tests/reliability/test_review_summary_bad_ratings.py` (оцінки `None`, `"9"`, `True`, `0`, `11`, порожній словник і не-словник пропускаються; без жодної валідної оцінки — нулі без ділення на нуль; межі 1 і 10 враховуються).
 
 ---
 
@@ -169,54 +169,36 @@ if user_id is None:
     raise HTTPException(status_code=401, detail={"code": "AUTH_REQUIRED", "message": "Please log in to leave a comment"})
 ```
 
-**Після:** усунуто небезпечний fallback на тіло запиту. Токен є обов'язковим (HTTP 401 `AUTH_REQUIRED`); помилки токена перехоплюються через `jwt.PyJWTError`, логуються на рівні `WARNING` і повертають HTTP 401 `INVALID_TOKEN`. Якщо користувача за `sub` немає в базі — повертається HTTP 401 `USER_NOT_FOUND`. Автор коментаря (`user_id` та `author_name`) встановлюється виключно із знайденого в базі `auth_user`, а значення з тіла запиту ігноруються.
+**Після:** усунуто небезпечний fallback на тіло запиту. Токен обов'язковий (HTTP 401 `AUTH_REQUIRED`). Його перевіряє спільна функція `user_from_token` з `src/api/routers/auth.py` — та сама, що й для решти API: підпис і термін дії JWT, наявність користувача (`USER_NOT_FOUND`), версія токена після зміни пароля (`TOKEN_REVOKED`). Пошкоджений або підроблений токен (`INVALID_TOKEN`) записується в лог на рівні `WARNING`. Автор коментаря (`user_id` та `author_name`) береться виключно з профілю в базі, а значення з тіла запиту ігноруються.
 
 ```python
+# Resolve user from JWT access token (FR-001, findings 1 and 17): the same checks as every other
+# endpoint (signature, expiry, existing user, token not revoked by a password change)
+token = token_from_request(authorization, access_token_cookie)
 if not token:
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail={"code": "AUTH_REQUIRED", "message": "Please log in to leave a comment"},
     )
-
 try:
-    payload = decode_access_token(token)
-except jwt.PyJWTError as error:
-    logger.warning("Invalid access token provided for comment: %s", error)
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail={"code": "INVALID_TOKEN", "message": "Invalid or expired access token"},
-    )
-
-sub = payload.get("sub")
-if not sub:
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail={"code": "INVALID_TOKEN", "message": "Token missing subject identifier"},
-    )
-
-try:
-    user_uuid = uuid.UUID(sub)
-except (ValueError, AttributeError):
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail={"code": "INVALID_TOKEN", "message": "Token subject is not a valid UUID"},
-    )
-
-auth_user = db.query(models.User).filter(models.User.user_id == user_uuid).first()
-if not auth_user:
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail={"code": "USER_NOT_FOUND", "message": "User associated with token not found"},
-    )
-
+    auth_user = user_from_token(db, token)
+except HTTPException as error:
+    # Reliability (finding 17): a broken or forged token is worth a line in the log
+    if isinstance(error.detail, dict) and error.detail.get("code") == "INVALID_TOKEN":
+        logger.warning("Invalid access token provided for comment")
+    raise
 user_id = auth_user.user_id
 author_name = auth_user.nickname or "Viewer"
+
+# FR-009: a banned user cannot comment (team decision: comments are treated like reviews)
 ensure_can_contribute(db, auth_user)
 ```
 
+Спершу (PR #222) перевірка була власною копією в `comments.py` з вузьким `except jwt.PyJWTError`; у PR #232 її замінено спільною `user_from_token`, щоб коментарі перевіряли токен так само, як решта API.
+
 - **Патерни:** Strict Token Authentication, Identity Isolation, Explicit Logging, Guard Clauses.
 - **Режим відмови:** Швидка відмова (Fast failure) з HTTP 401.
-- **Що бачить користувач:** Клієнт отримує точний статус 401 (`AUTH_REQUIRED`, `INVALID_TOKEN` або `USER_NOT_FOUND`). Неможливо надіслати коментар без автентифікації або від чужого імені.
+- **Що бачить користувач:** Клієнт отримує точний статус 401 (`AUTH_REQUIRED`, `INVALID_TOKEN`, `USER_NOT_FOUND` або `TOKEN_REVOKED`). Неможливо надіслати коментар без автентифікації або від чужого імені.
 - **Відновлення:** Користувач здійснює вхід і надсилає запит із дійсним токеном.
 - **Тести:** `tests/reliability/test_comments_author.py` (4 тести) та `tests/test_comments_api.py`.
 
@@ -330,12 +312,16 @@ def build_engine(url: str):
 
 Тайм-аут запиту задається через `SET LOCAL` на початку кожної транзакції, а не стартовим параметром `options=-c statement_timeout=...`. Пул-рядок підключення Neon (PgBouncer) відхиляє такі стартові параметри з помилкою «unsupported startup parameter», тож сайт лишився б без бази; `SET LOCAL` працює і з пулом, і без нього.
 
-Також у `src/api/main.py` додано глобальний обробник `OperationalError`, який повертає HTTP 503 замість внутрішньої помилки сервера.
+Також у `src/api/main.py` додано глобальний обробник `OperationalError`, який повертає HTTP 503 замість внутрішньої помилки сервера. Той самий обробник зареєстровано і для `sqlalchemy.exc.TimeoutError`: коли за `POOL_TIMEOUT_SECONDS` у пулі немає вільного з'єднання, SQLAlchemy кидає саме його, а він не є `OperationalError`.
 
 ```python
 @app.exception_handler(OperationalError)
-async def database_error_handler(request: Request, exc: OperationalError):
-    logger.error("Database operation failed: %s", exc)
+@app.exception_handler(PoolTimeoutError)  # sqlalchemy.exc.TimeoutError: no free connection in the pool
+async def database_error_handler(request: Request, exc: Exception):
+    # Only the driver message is logged: str(exc) also contains the SQL statement and its parameters
+    logger.error(
+        "Database operation failed on %s: %s", request.url.path, getattr(exc, "orig", None) or type(exc).__name__
+    )
 
     error_content = ErrorResponse(
         error=ErrorPayload(
@@ -356,7 +342,7 @@ async def database_error_handler(request: Request, exc: OperationalError):
 - **Режим відмови:** швидка відмова.
 - **Що бачить користувач:** HTTP 503 із кодом `DATABASE_UNAVAILABLE`.
 - **Відновлення:** після відновлення доступності БД наступні запити можуть виконуватися нормально.
-- **Тести:** `tests/reliability/test_database_failures.py` — ін'єкція `OperationalError` та перевірка HTTP 503; `tests/reliability/test_database_timeouts.py` — тайм-аут запиту через `SET LOCAL`, для PostgreSQL лише параметри, які приймає пул Neon.
+- **Тести:** `tests/reliability/test_database_failures.py` — ін'єкція `OperationalError` і вичерпаного пулу (`sqlalchemy.exc.TimeoutError`) та перевірка HTTP 503; `tests/reliability/test_database_timeouts.py` — тайм-аут запиту через `SET LOCAL`, для PostgreSQL лише параметри, які приймає пул Neon.
 
 #### Знахідка 11. Недоступність БД під час запуску (B, висока)
 
@@ -738,11 +724,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 | Файл | Тип | Знахідка | Що перевіряє |
 |---|---|---|---|
 | [`tests/reliability/test_comments_author.py`](../../tests/reliability/test_comments_author.py) | Обробка помилки | 1, 17 | Коментар без токена або з пошкодженим JWT (`Bearer garbage`) → `401` із записом у `WARNING`-лог замість підміни автора; валідний токен видаленого з БД акаунта → `401 USER_NOT_FOUND`; за валідного токена `user_id` і `author_name` з тіла запиту ігноруються й беруться з профілю БД |
-| [`tests/test_watchlist.py`](../../tests/test_watchlist.py), [`tests/reliability/test_concurrent_writes.py`](../../tests/reliability/test_concurrent_writes.py) | Обробка помилки | 2, 12 | Повторне та конкурентне додавання в «До перегляду» → `409 ALREADY_IN_WATCHLIST` без порушення цілісності; `IntegrityError` під час реєстрації → `409`; під час додавання переглянутого → `200`; перевірка `rollback()` |
+| [`tests/test_watchlist.py`](../../tests/test_watchlist.py), [`tests/reliability/test_concurrent_writes.py`](../../tests/reliability/test_concurrent_writes.py) | Обробка помилки | 2, 12 | Послідовний дубль у «До перегляду» → `409` від перевірки наявності; одночасний дубль (`commit()` кидає `IntegrityError`) → `409 ALREADY_IN_WATCHLIST` і `rollback()`; `IntegrityError` під час реєстрації → `409`; під час додавання переглянутого → `200`; перевірка `rollback()` |
 | [`tests/reliability/test_unexpected_errors.py`](../../tests/reliability/test_unexpected_errors.py) | Обробка помилки (ін'єкція збою) | 3 | Штучний непередбачений виняток (`RuntimeError`) у залежності роутера перехоплюється глобальним обробником → повертається стандартна схема `ErrorResponse` зі статусом `500`, кодом `INTERNAL_SERVER_ERROR` і валідним UUID `request_id`, без витоку внутрішніх деталей і чутливих даних |
-| [`tests/test_main.py`](../../tests/test_main.py) | Зовнішня відмова (I/O) | 4 | Генерація OpenAPI-специфікації під час `lifespan` старту з моком файлової системи; при `OSError` / read-only ФС запис логує попередження і не зупиняє ініціалізацію сервісу |
+| [`tests/test_main.py`](../../tests/test_main.py), [`tests/reliability/test_openapi_spec_failure.py`](../../tests/reliability/test_openapi_spec_failure.py) | Зовнішня відмова (I/O, ін'єкція збою) | 4 | Генерація OpenAPI-специфікації під час старту; `open()` кидає `PermissionError` або `OSError` (read-only ФС), `mkdir()` кидає `PermissionError` → попередження в лозі, ініціалізація сервісу не зупиняється |
 | [`tests/reliability/test_catalog_input_bounds.py`](../../tests/reliability/test_catalog_input_bounds.py) | Граничний | 5, 9 | Пошуковий рядок `> 100` символів → `422` (`<= 100` → `200`); рік поза межами `1888..2100` або величезне число → `422` замість `500`; числовий `movie_id`, що перевищує 32-бітний `INT` (`2147483648`, `99999999999999999999999`), повертає `404 CONTENT_NOT_FOUND` замість `500` |
-| [`tests/test_utils.py`](../../tests/test_utils.py) | Граничний / Обробка помилки | 6 | Підрахунок зведення оцінок (`generate_review_summary`) на порожньому списку та граничних значеннях шкали 1–10 із захисною фільтрацією `None` та нечислових оцінок без `TypeError` чи `ZeroDivisionError` |
+| [`tests/test_utils.py`](../../tests/test_utils.py), [`tests/reliability/test_review_summary_bad_ratings.py`](../../tests/reliability/test_review_summary_bad_ratings.py) | Граничний / Обробка помилки | 6 | Зведення оцінок (`generate_review_summary`) на порожньому списку і межах 1 та 10; оцінки `None`, текст, `True`, `0`, `11`, порожній словник і не-словник пропускаються без `TypeError`; без валідних оцінок — нулі без `ZeroDivisionError` |
 | [`tests/reliability/test_startup_without_tmdb.py`](../../tests/reliability/test_startup_without_tmdb.py) | Зовнішня відмова (ін'єкція збою) | 13 | Кожен запит до TMDB падає з тайм-аутом → сервіс стартує менш ніж за 5 с, жоден запит до TMDB не йде в потоці старту, каталог — вбудовані тайтли, фонове оновлення збережено як `failed` з причиною; на непорожньому каталозі імпорт не запускається |
 | [`tests/reliability/test_interrupted_catalog_update.py`](../../tests/reliability/test_interrupted_catalog_update.py) | Зовнішня відмова (ін'єкція збою) | 16 | «Перезапуск» посеред оновлення → після старту стан `failed` з поясненням і можна запустити нове; збій імпорту видно з іншої сесії (іншого процесу); два одночасні запуски неможливі |
 | [`tests/reliability/test_env_settings.py`](../../tests/reliability/test_env_settings.py) | Граничний | 15 | Порожнє значення, пробіли, межі `1` і `43200`, `0`, `43201`, від'ємне, `"24h"`, `"1.5"`, величезне число; попередження з назвою змінної, валідне значення без попереджень |

@@ -153,3 +153,48 @@ describe('AuthModal login limit', () => {
     expect(await screen.findByText(/Забагато невдалих спроб входу/)).toBeInTheDocument();
   });
 });
+
+describe('AuthModal forgot password', () => {
+  it('sends a reset link to the entered email', async () => {
+    // Trace: T-052
+    vi.mocked(apiClient.post).mockReset();
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { message: 'sent' } });
+    render(<AuthModal close={() => {}} onLogin={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Забули пароль?' }));
+    fireEvent.change(screen.getByPlaceholderText('Email'), { target: { value: ' Me@Example.com ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Надіслати посилання' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('ми надіслали лист');
+    expect(apiClient.post).toHaveBeenCalledWith('/auth/forgot-password', { email: 'me@example.com' });
+    fireEvent.click(screen.getByRole('button', { name: /Повернутися до входу/ }));
+    expect(screen.getByRole('heading', { name: 'Вхід' })).toBeInTheDocument();
+  });
+});
+
+describe('AuthModal registration protection', () => {
+  const registerWith = async email => {
+    render(<AuthModal close={() => {}} onLogin={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Створити' }));
+    fireEvent.change(screen.getByPlaceholderText("Ваш нікнейм (Ім'я)"), { target: { value: 'newbie' } });
+    fireEvent.change(screen.getByPlaceholderText('Email'), { target: { value: email } });
+    fireEvent.change(screen.getByPlaceholderText('Пароль'), { target: { value: 'Password123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Зареєструватись' }));
+  };
+
+  it('explains that throwaway mailboxes are not accepted', async () => {
+    // Trace: T-051
+    vi.mocked(apiClient.post).mockRejectedValue({ response: { status: 400, data: { error: { code: 'DISPOSABLE_EMAIL' } } } });
+    await registerWith('x@mailinator.com');
+
+    expect(await screen.findByText(/Тимчасові \(одноразові\) поштові скриньки/)).toBeInTheDocument();
+  });
+
+  it('asks to wait after too many new accounts', async () => {
+    // Trace: T-051
+    vi.mocked(apiClient.post).mockRejectedValue({ response: { status: 429, data: { error: { code: 'TOO_MANY_ATTEMPTS' } } } });
+    await registerWith('new@example.com');
+
+    expect(await screen.findByText(/Забагато нових акаунтів/)).toBeInTheDocument();
+  });
+});

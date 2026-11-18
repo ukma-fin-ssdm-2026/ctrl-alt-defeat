@@ -4,6 +4,7 @@ from typing import Optional
 
 import jwt
 from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Header, HTTPException, Query, Request, Response, status
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -14,9 +15,11 @@ from src.api.schemas.auth import (
     DeleteAccountRequest,
     DemoAccount,
     DemoAccountsResponse,
+    ForgotPasswordRequest,
     MessageResponse,
     ResendVerificationRequest,
     RegisterResponse,
+    ResetPasswordRequest,
     TokenResponse,
     UserLoginRequest,
     UserRegisterRequest,
@@ -28,16 +31,26 @@ from src.api.services.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
     decode_access_token,
+    as_utc,
     generate_verification_token,
     hash_password,
+    hash_reset_token,
+    password_reset_expired,
     verification_expired,
     verify_password,
 )
-from src.api.services.rate_limit import login_limiter
-from src.api.services.account import change_password, delete_account
+from src.api.services.rate_limit import (
+    AttemptLimiter,
+    login_limiter,
+    password_reset_limiter,
+    register_limiter,
+    resend_limiter,
+)
+from src.api.services.account import change_password, delete_account, remove_user_with_data
 from src.api.services.bans import active_ban
-from src.api.services.demo_accounts import get_public_demo_accounts
-from src.api.services.email import send_verification_email
+from src.api.services.demo_accounts import get_public_demo_accounts, is_seed_account
+from src.api.services.email import send_password_reset_email, send_verification_email
+from src.api.services.email_identity import canonical_email, is_disposable_email
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication & User Management"])
 
@@ -48,6 +61,40 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+# A new activation email for the same account is sent at most once per this many seconds
+RESEND_COOLDOWN_SECONDS = 60
+
+
+def client_address(request: Request) -> str:
+    """The client IP address (behind Render's proxy uvicorn takes it from X-Forwarded-For, see Dockerfile)."""
+    return request.client.host if request.client else "unknown"
+
+
+def ensure_within_limit(limiter: AttemptLimiter, client: str, message: str) -> None:
+    """429 TOO_MANY_ATTEMPTS with Retry-After when the address has used up the limit."""
+    wait = limiter.retry_after(client)
+    if wait is not None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={"code": "TOO_MANY_ATTEMPTS", "message": f"{message} Try again in {wait} seconds."},
+            headers={"Retry-After": str(wait)},
+        )
+
+
+def recently_sent(sent_at: Optional[datetime]) -> bool:
+    """True within RESEND_COOLDOWN_SECONDS of the last email to the account (no mailbox flooding)."""
+    sent_at = as_utc(sent_at)
+    if sent_at is None:
+        return False
+    return (datetime.now(timezone.utc) - sent_at).total_seconds() < RESEND_COOLDOWN_SECONDS
+
+
+def abandoned_registration(user: User) -> bool:
+    """A pending account whose activation link expired: nobody proved the mailbox, so its email and
+    nickname are free for a new registration (otherwise anyone could hold someone else's email forever)."""
+    return not user.email_verified and verification_expired(user.verification_sent_at)
 
 
 def user_response(db: Session, user: User) -> UserResponse:
@@ -189,28 +236,51 @@ def get_current_admin(user: User = Depends(get_current_active_user)) -> User:
     ),
     responses={
         **STANDARD_ERRORS,
-        409: {"model": ErrorResponse, "description": "Email or nickname already registered"},
+        400: {"model": ErrorResponse, "description": "Email of a throwaway mailbox service (DISPOSABLE_EMAIL)"},
+        409: {"model": ErrorResponse, "description": "Email (the same mailbox) or nickname already registered"},
+        429: {"model": ErrorResponse, "description": "Too many new accounts from this address; see Retry-After"},
     },
 )
 def register_user(
     req: UserRegisterRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
+    client = client_address(request)
+    ensure_within_limit(register_limiter, client, "Too many new accounts from this address.")
+
     email_clean = req.email.strip().lower()
     nickname_clean = req.nickname.strip()
 
-    if db.query(User).filter(User.email == email_clean).first():
+    if is_disposable_email(email_clean):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "DISPOSABLE_EMAIL", "message": "Temporary (throwaway) email addresses cannot register"},
+        )
+
+    # One mailbox, one account: `name+tag@...` and Gmail dots are the same mailbox (email_identity.py)
+    same_mailbox = (
+        db.query(User)
+        .filter(or_(User.email == email_clean, User.email_canonical == canonical_email(email_clean)))
+        .all()
+    )
+    # Nicknames differing only in letter case would look the same to other users
+    same_nickname = db.query(User).filter(func.lower(User.nickname) == nickname_clean.lower()).all()
+
+    if any(not abandoned_registration(user) for user in same_mailbox):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": "EMAIL_ALREADY_EXISTS", "message": "An account with this email already exists"},
         )
-
-    if db.query(User).filter(User.nickname == nickname_clean).first():
+    if any(not abandoned_registration(user) for user in same_nickname):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": "NICKNAME_ALREADY_EXISTS", "message": "An account with this nickname already exists"},
         )
+    for stale in {user.user_id: user for user in same_mailbox + same_nickname}.values():
+        remove_user_with_data(db, stale)
+    db.flush()
 
     verification_token = generate_verification_token()
     user = User(
@@ -238,6 +308,7 @@ def register_user(
         )
 
     db.refresh(user)
+    register_limiter.record(client)
 
     # Sent after the response, so a slow mail provider does not delay registration
     background_tasks.add_task(send_verification_email, user.email, user.nickname, verification_token)
@@ -257,20 +328,107 @@ def register_user(
         "Issues a new activation link for an account that is not verified yet. The answer is the same "
         "whether or not the email is registered, so it cannot be used to find accounts."
     ),
-    responses={**STANDARD_ERRORS},
+    responses={
+        **STANDARD_ERRORS,
+        429: {"model": ErrorResponse, "description": "Too many activation emails from this address; see Retry-After"},
+    },
 )
 def resend_verification(
     req: ResendVerificationRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
+    client = client_address(request)
+    ensure_within_limit(resend_limiter, client, "Too many activation emails requested.")
+    resend_limiter.record(client)
+
     user = db.query(User).filter(User.email == req.email.strip().lower()).first()
-    if user is not None and not user.email_verified:
+    if user is not None and not user.email_verified and not recently_sent(user.verification_sent_at):
         user.verification_token = generate_verification_token()
         user.verification_sent_at = datetime.now(timezone.utc)
         db.commit()
         background_tasks.add_task(send_verification_email, user.email, user.nickname, user.verification_token)
     return MessageResponse(message="If the account exists and is not verified yet, a new activation link was sent.")
+
+
+PASSWORD_RESET_SENT = "If an account with this email exists, we sent a link to set a new password."
+
+
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Send a password reset link (forgot password)",
+    description=(
+        "Emails a link to set a new password; it works for one hour. The answer is the same whether or not "
+        "the email is registered, so it cannot be used to find accounts. Demo (seed) accounts get no link."
+    ),
+    responses={
+        **STANDARD_ERRORS,
+        429: {"model": ErrorResponse, "description": "Too many reset emails from this address; see Retry-After"},
+    },
+)
+def forgot_password(
+    req: ForgotPasswordRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    client = client_address(request)
+    ensure_within_limit(password_reset_limiter, client, "Too many password reset emails requested.")
+    password_reset_limiter.record(client)
+
+    user = db.query(User).filter(User.email == req.email.strip().lower()).first()
+    if user is not None and not is_seed_account(user.email) and not recently_sent(user.password_reset_sent_at):
+        token = generate_verification_token()
+        user.password_reset_token = hash_reset_token(token)
+        user.password_reset_sent_at = datetime.now(timezone.utc)
+        db.commit()
+        background_tasks.add_task(send_password_reset_email, user.email, user.nickname, token)
+    return MessageResponse(message=PASSWORD_RESET_SENT)
+
+
+@router.post(
+    "/reset-password",
+    response_model=MessageResponse,
+    summary="Set a new password with the link from the email",
+    description=(
+        "Sets the new password (minimum 8 characters), ends every session of the account and makes the link "
+        "unusable. The link also confirms the mailbox, so a pending account becomes active."
+    ),
+    responses={
+        **STANDARD_ERRORS,
+        400: {"model": ErrorResponse, "description": "Invalid, used or expired reset link"},
+    },
+)
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.password_reset_token == hash_reset_token(req.token)).first()
+    if user is None or is_seed_account(user.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_RESET_TOKEN", "message": "The password reset link is invalid or already used"},
+        )
+    if password_reset_expired(user.password_reset_sent_at):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "RESET_TOKEN_EXPIRED",
+                "message": "The password reset link has expired. Request a new one from the login window.",
+            },
+        )
+
+    user.password_hash = hash_password(req.new_password)
+    user.token_version = (user.token_version or 0) + 1
+    user.password_reset_token = None
+    user.password_reset_sent_at = None
+    if not user.email_verified:
+        user.email_verified = True
+        user.status = "active"
+        user.verification_token = None
+        user.verification_sent_at = None
+    db.commit()
+    return MessageResponse(message="Password changed. You can now log in with the new password.")
 
 
 @router.get(
@@ -337,7 +495,7 @@ def login(
     db: Session = Depends(get_db),
 ):
     # Brute-force protection: a few wrong passwords per minute from one address (rate_limit.py)
-    client = request.client.host if request.client else "unknown"
+    client = client_address(request)
     wait = login_limiter.retry_after(client)
     if wait is not None:
         raise HTTPException(
@@ -417,7 +575,7 @@ def get_current_user_profile(
 ACCOUNT_ERRORS = {
     400: {"model": ErrorResponse, "description": "Wrong current password or invalid new password"},
     401: {"model": ErrorResponse, "description": "Not authenticated"},
-    403: {"model": ErrorResponse, "description": "Demo (seed) or administrator account"},
+    403: {"model": ErrorResponse, "description": "Demo (seed) or administrator account; deletion while banned"},
 }
 
 
@@ -448,7 +606,8 @@ def change_my_password(
     summary="Delete my account and all my data",
     description=(
         "Requires the current password. Removes the account with its reviews, ratings, comments, "
-        "watchlist, watched list and ban history, and clears the session cookie."
+        "watchlist, watched list and ban history, and clears the session cookie. "
+        "Not available while the account is banned (403 ACCOUNT_BANNED)."
     ),
     responses={**STANDARD_ERRORS, **ACCOUNT_ERRORS},
 )

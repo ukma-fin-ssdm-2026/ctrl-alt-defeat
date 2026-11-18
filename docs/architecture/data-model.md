@@ -31,16 +31,19 @@
 |---|---|---|
 | user_id | UUID, PK | Унікальний ідентифікатор користувача |
 | email | varchar | Email користувача [PERSONAL, UNIQUE] |
+| email_canonical | varchar, null | Та сама скринька без `+тегу` (для Gmail ще без крапок і `googlemail.com` → `gmail.com`) [PERSONAL, UNIQUE]: одна скринька — один акаунт (T-051) |
 | password_hash | varchar | Хеш пароля [SENSITIVE] |
 | nickname | varchar | Ім'я, що відображається на платформі [PERSONAL, UNIQUE] |
 | role | enum | user / admin |
 | email_verified | boolean | Ознака підтвердження email |
 | status | enum | Стан акаунта |
+| password_reset_token | varchar(64), null | SHA-256 токена з листа «Забули пароль?» [SENSITIVE]; після використання очищується (T-052) |
+| password_reset_sent_at | datetime, null | Коли надіслано посилання для нового пароля: діє 1 годину (T-052) |
 | created_at | datetime | Дата створення акаунта |
 
 Інваріанти:
-- email та nickname мають бути унікальними;
-- пароль не зберігається у відкритому вигляді;
+- email та nickname мають бути унікальними; nickname — без огляду на регістр літер, email — з урахуванням псевдонімів однієї скриньки (`email_canonical`);
+- пароль не зберігається у відкритому вигляді; новий пароль — щонайменше 8 символів;
 - користувач може авторизуватися тільки після підтвердження email.
 
 ### Content
@@ -51,6 +54,15 @@
 |---|---|---|
 | content_id | UUID, PK | Унікальний ідентифікатор |
 | tmdb_id | integer | Ідентифікатор контенту у зовнішньому API; унікальний разом із `category` (TMDB нумерує фільми й серіали окремо) |
+| img_en | varchar(500), null | Постер для англійського інтерфейсу: англійський або без тексту; `null` — показується `img` (T-050) |
+| trailer_uk, trailer_en | varchar(20), null | Ключ відео YouTube трейлера українською та англійською (US-013) |
+| cast_members | JSON, null | До 10 акторів у порядку титрів: ім'я українською й англійською (`name_en`), роль, фото |
+| crew_members | JSON, null | Режисери, сценаристи (фільми) та автори (серіали), до 3 імен у кожній групі; ті самі люди англійською — у `directors_en`, `writers_en`, `creators_en` |
+| series_details | JSON, null | Для серіалів: статус, кількість сезонів і серій, наступна серія, список сезонів |
+| similar_tmdb_ids | JSON, null | Номери TMDB рекомендованих тайтлів у порядку TMDB (до 20) |
+| collection_id, collection_name, collection_name_en | integer / varchar(255), null | Серія фільмів TMDB (наприклад, «Володар перснів»), назва українською й англійською; за `collection_id` знаходяться інші частини |
+
+Колонки даних сторінки, крім `collection_id`, `collection_name` і `collection_name_en`, завантажуються відкладено (deferred): списки каталогу їх не читають, лише сторінка одного тайтлу. До наявної бази вони додаються автоматично під час старту.
 | title | varchar | Назва |
 | content_type | enum | movie / series |
 | release_year | integer | Рік випуску |

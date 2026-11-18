@@ -7,6 +7,7 @@ import time
 from contextlib import asynccontextmanager
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, status
@@ -153,8 +154,10 @@ app = FastAPI(
 
 
 @app.exception_handler(OperationalError)
-async def database_error_handler(request: Request, exc: OperationalError):
+@app.exception_handler(PoolTimeoutError)
+async def database_error_handler(request: Request, exc: Exception):
     # Reliability (finding 10): fast failure with 503 instead of a 500 or a hanging request.
+    # PoolTimeoutError: no free connection in the pool within POOL_TIMEOUT_SECONDS; it is not an OperationalError.
     # Only the driver message is logged: str(exc) also contains the SQL statement and its parameters.
     logger.error(
         "Database operation failed on %s: %s", request.url.path, getattr(exc, "orig", None) or type(exc).__name__

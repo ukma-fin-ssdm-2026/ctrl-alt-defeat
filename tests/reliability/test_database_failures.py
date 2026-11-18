@@ -31,3 +31,22 @@ def test_database_failure_returns_503():
 
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+def test_pool_timeout_returns_503():
+    """No free connection in the pool within POOL_TIMEOUT_SECONDS: sqlalchemy.exc.TimeoutError is not an
+    OperationalError, but the user still gets 503 DATABASE_UNAVAILABLE, not a 500."""
+    from sqlalchemy.exc import TimeoutError as PoolTimeoutError
+
+    def exhausted_pool():
+        raise PoolTimeoutError("QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 10.00")
+        yield
+
+    app.dependency_overrides[get_db] = exhausted_pool
+    try:
+        response = TestClient(app, raise_server_exceptions=False).get("/api/v1/movies")
+
+        assert response.status_code == 503
+        assert response.json()["error"]["code"] == "DATABASE_UNAVAILABLE"
+    finally:
+        app.dependency_overrides.pop(get_db, None)

@@ -1,4 +1,5 @@
 import { translateGenre } from '../utils/genres';
+import { posterFor } from '../utils/poster';
 
 export default function MovieCard({ movie, onSelect, language = 'UKR', isWatchlisted, onToggleWatchlist }) {
   const isUkr = language === 'UKR';
@@ -28,7 +29,7 @@ export default function MovieCard({ movie, onSelect, language = 'UKR', isWatchli
       >
         <div className="relative aspect-[2/3] overflow-hidden bg-gray-100 dark:bg-gray-700 w-full">
           <img
-            src={movie.img}
+            src={posterFor(movie, language)}
             alt={primaryTitle}
             // Hundreds of posters on one page: load only those near the screen
             loading="lazy"

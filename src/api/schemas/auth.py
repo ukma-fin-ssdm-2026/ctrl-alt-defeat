@@ -6,6 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.api.schemas.ban import BanInfo
 
+# Minimum password length for new passwords (registration, change, reset); older shorter passwords still log in
+PASSWORD_MIN_LENGTH = 8
+
 
 class UserRegisterRequest(BaseModel):
     email: str = Field(
@@ -21,9 +24,9 @@ class UserRegisterRequest(BaseModel):
     )
     password: str = Field(
         ...,
-        min_length=6,
+        min_length=PASSWORD_MIN_LENGTH,
         max_length=100,
-        description="User password (minimum 6 characters)",
+        description="User password (minimum 8 characters)",
     )
 
 
@@ -60,7 +63,9 @@ class RegisterResponse(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., max_length=100, description="Current password for confirmation")
-    new_password: str = Field(..., min_length=6, max_length=100, description="New password (minimum 6 characters)")
+    new_password: str = Field(
+        ..., min_length=PASSWORD_MIN_LENGTH, max_length=100, description="New password (minimum 8 characters)"
+    )
 
 
 class DeleteAccountRequest(BaseModel):
@@ -69,6 +74,17 @@ class DeleteAccountRequest(BaseModel):
 
 class ResendVerificationRequest(BaseModel):
     email: str = Field(..., max_length=255, description="Email the account was registered with")
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., max_length=255, description="Email of the account")
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=1, max_length=255, description="Token from the password reset email")
+    new_password: str = Field(
+        ..., min_length=PASSWORD_MIN_LENGTH, max_length=100, description="New password (minimum 8 characters)"
+    )
 
 
 class MessageResponse(BaseModel):

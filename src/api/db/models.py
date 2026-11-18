@@ -15,12 +15,14 @@ from sqlalchemy import (
     Uuid,
     select,
 )
-from sqlalchemy.orm import column_property, relationship
+from sqlalchemy.orm import column_property, deferred, relationship, validates
 from sqlalchemy.sql import func
 
 from src.api.db.database import Base
+from src.api.services.email_identity import canonical_email
 
 CONTENT_TMDB_UNIQUE = "uq_content_category_tmdb"
+TMDB_DETAILS = "tmdb_details"
 
 
 class Content(Base):
@@ -45,9 +47,24 @@ class Content(Base):
     rating = Column(Float, nullable=False, default=0.0)
     rotten_rating = Column(String(10), nullable=True)
     img = Column(String(500), nullable=True)
+    # Poster with the English title for the English interface; null: the same poster as `img`
+    img_en = Column(String(500), nullable=True)
     description = Column(Text, nullable=True)
     description_en = Column(Text, nullable=True)
     tmdb_id = Column(Integer, nullable=True)
+
+    # Details from TMDB for the page of a title (US-013). Deferred: lists of titles do not load them,
+    # only GET /movies/{id} does (group "tmdb_details").
+    trailer_uk = deferred(Column(String(20), nullable=True), group=TMDB_DETAILS)  # YouTube video key
+    trailer_en = deferred(Column(String(20), nullable=True), group=TMDB_DETAILS)
+    cast_members = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # [{name, name_en, character, photo}]
+    crew_members = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # {directors, writers, creators} and *_en
+    series_details = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # seasons, episodes, status
+    similar_tmdb_ids = deferred(Column(JSON, nullable=True), group=TMDB_DETAILS)  # TMDB recommendations, in order
+    # A film series ("collection" in TMDB), e.g. all parts of The Lord of the Rings
+    collection_id = Column(Integer, nullable=True, index=True)
+    collection_name = Column(String(255), nullable=True)
+    collection_name_en = Column(String(255), nullable=True)
 
 
 # Alias for backward compatibility
@@ -151,6 +168,19 @@ class Review(Base):
     def content_title(self):
         return self.content.title if self.content is not None else None
 
+    # The reviewed title in the English interface and its posters: a review in the profile links to its page
+    @property
+    def content_title_en(self):
+        return self.content.title_en if self.content is not None else None
+
+    @property
+    def content_img(self):
+        return self.content.img if self.content is not None else None
+
+    @property
+    def content_img_en(self):
+        return self.content.img_en if self.content is not None else None
+
 
 class Rating(Base):
     __tablename__ = "ratings"
@@ -201,6 +231,8 @@ class User(Base):
 
     user_id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, index=True, nullable=False)
+    # One mailbox, one account: `email` without `+tag` (and Gmail dots), kept in step by _sync_canonical_email
+    email_canonical = Column(String(255), unique=True, index=True, nullable=True)
     password_hash = Column(String(255), nullable=False)
     nickname = Column(String(100), unique=True, index=True, nullable=False)
     role = Column(String(20), nullable=False, default="user")  # 'user' | 'admin'
@@ -209,6 +241,9 @@ class User(Base):
     verification_token = Column(String(255), nullable=True, index=True)
     # When the current activation link was sent: the link works for VERIFICATION_TOKEN_HOURS (FR-001)
     verification_sent_at = Column(DateTime(timezone=True), nullable=True)
+    # Password reset (forgot password): only the SHA-256 of the emailed token is stored, valid for an hour
+    password_reset_token = Column(String(64), nullable=True, index=True)
+    password_reset_sent_at = Column(DateTime(timezone=True), nullable=True)
     # Written into every access token; a password change increases it, so older tokens stop working
     token_version = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(
@@ -216,6 +251,11 @@ class User(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    @validates("email")
+    def _sync_canonical_email(self, key, value):
+        self.email_canonical = canonical_email(value)
+        return value
 
 
 class WatchlistItem(Base):

@@ -3,6 +3,7 @@
 import json
 import smtplib
 import uuid
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -119,6 +120,10 @@ def test_the_emailed_token_activates_the_account(client, db_session, sent):
 def test_resend_issues_a_new_link_for_an_unverified_account(client, db_session, sent):
     register(client)
     first_token = sent[0][2]
+    # A new email is sent at most once a minute (T-051)
+    user = db_session.query(User).one()
+    user.verification_sent_at = datetime.now(timezone.utc) - timedelta(minutes=2)
+    db_session.commit()
 
     response = client.post("/api/v1/auth/resend-verification", json={"email": " NEW@example.com "})
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import ReviewComments from '../components/ReviewComments';
+import MovieExtras from '../components/MovieExtras';
 import BanNotice from '../components/BanNotice';
 import BanUserDialog from '../components/BanUserDialog';
 import ReviewVotes from '../components/ReviewVotes';
@@ -8,6 +9,7 @@ import { applyVote, nextVote } from '../utils/reviewVotes';
 import { isUuid } from '../utils/uuid';
 import { formatAudienceRating } from '../utils/audienceRating';
 import { translateGenre } from '../utils/genres';
+import { posterFor } from '../utils/poster';
 const MIN_TEXT = 10;
 // Reviews of one title shown on its page (the API answers at most 100 per request, newest first)
 const REVIEWS_LIMIT = 100;
@@ -64,7 +66,8 @@ export default function MovieDetails({
   onToggleWatchlist,
   isWatched = false,
   onToggleWatched,
-  onReviewsChanged
+  onReviewsChanged,
+  onSelectMovie
 }) {
   const [rating, setRating] = useState(10);
   // FR-009: the review author the administrator is banning
@@ -328,7 +331,7 @@ export default function MovieDetails({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
         <div>
-          <img src={movie.img} alt={primaryTitle} className="w-full rounded-xl shadow-md object-cover aspect-[2/3]" />
+          <img src={posterFor(fullMovie, language)} alt={primaryTitle} className="w-full rounded-xl shadow-md object-cover aspect-[2/3]" />
         </div>
         <div className="md:col-span-2 flex flex-col justify-between">
           <div>
@@ -371,6 +374,9 @@ export default function MovieDetails({
           </div>
         </div>
       </div>
+
+      {/* Trailer, crew and cast, seasons, film series and similar titles from TMDB (US-013) */}
+      <MovieExtras movie={fullMovie} isUkr={isUkr} onSelectMovie={onSelectMovie} />
 
       <section className="mb-12 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
         <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white border-l-4 border-yellow-500 pl-3">

@@ -2,8 +2,9 @@
 Reliability, finding 16 (fault injection): a restart in the middle of a catalog update is not lost.
 
 Fault injected: the process "dies" while an update is running (a row left in the "running" state), and an
-update whose import crashes. Chosen reaction: safe failure with recovery — the state lives in the
-database, the interrupted run is reported as failed on the next startup and a new update can be started.
+update whose import crashes. Chosen reaction: fast failure, as in the reliability report — the state lives in
+the database, the interrupted run is reported as failed on the next startup instead of continuing on its own,
+and a new update can be started.
 """
 
 from datetime import UTC, datetime

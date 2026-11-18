@@ -5,9 +5,10 @@ import pytest
 from fastapi import BackgroundTasks, HTTPException, Response
 from sqlalchemy.exc import IntegrityError
 
-from src.api.routers import auth, watched
+from src.api.routers import auth, watched, watchlist
 from src.api.schemas.auth import UserRegisterRequest
 from src.api.schemas.watched import WatchedItemCreate
+from src.api.schemas.watchlist import WatchlistAddRequest
 
 
 def make_integrity_error():
@@ -25,6 +26,7 @@ def test_registration_integrity_error_returns_409(monkeypatch):
 
     # Email and nickname are not found during initial checks.
     db.query.return_value.filter.return_value.first.return_value = None
+    db.query.return_value.filter.return_value.all.return_value = []
 
     # Simulate a concurrent insert violating a UNIQUE constraint.
     db.commit.side_effect = make_integrity_error()
@@ -50,6 +52,7 @@ def test_registration_integrity_error_returns_409(monkeypatch):
     with pytest.raises(HTTPException) as exc_info:
         auth.register_user(
             req=request,
+            request=MagicMock(client=MagicMock(host="203.0.113.7")),
             background_tasks=BackgroundTasks(),
             db=db,
         )
@@ -132,5 +135,27 @@ def test_watched_integrity_error_without_existing_record(monkeypatch):
             current_user=current_user,
         )
 
+    db.rollback.assert_called_once()
+    db.commit.assert_called_once()
+
+
+def test_watchlist_integrity_error_returns_409():
+    """Finding 2: two simultaneous requests both pass the "already added?" check; the UNIQUE constraint stops the
+    second one at commit. The IntegrityError branch answers 409 ALREADY_IN_WATCHLIST and rolls back."""
+
+    db = MagicMock()
+    user = MagicMock()
+    user.user_id = uuid.uuid4()
+    content = MagicMock()
+
+    # The title exists; the duplicate check sees nothing because the other request has not committed yet
+    db.query.return_value.filter.return_value.first.side_effect = [content, None]
+    db.commit.side_effect = make_integrity_error()
+
+    with pytest.raises(HTTPException) as exc_info:
+        watchlist.add_to_watchlist(payload=WatchlistAddRequest(content_id=uuid.uuid4()), user=user, db=db)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail["code"] == "ALREADY_IN_WATCHLIST"
     db.rollback.assert_called_once()
     db.commit.assert_called_once()

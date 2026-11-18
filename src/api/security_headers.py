@@ -1,9 +1,10 @@
 """
 HTTP security headers of every response (threat model: clickjacking, MIME sniffing, injected scripts).
 
-The Content-Security-Policy allows only this site's own scripts, styles and requests, and posters from
-image.tmdb.org. The interactive API docs (/api-docs, /redoc) load Swagger UI / ReDoc from a CDN with
-inline scripts, so they get every header except the CSP.
+The Content-Security-Policy allows only this site's own scripts, styles and requests, posters and photos
+from image.tmdb.org and the YouTube player (youtube-nocookie.com) for trailers. The interactive API docs
+(/api-docs, /redoc) load Swagger UI / ReDoc from a CDN with inline scripts, so they get every header
+except the CSP.
 """
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -16,6 +17,8 @@ CONTENT_SECURITY_POLICY = "; ".join(
         "style-src 'self' 'unsafe-inline'",
         "script-src 'self'",
         "connect-src 'self'",
+        # Trailers on the page of a title (US-013): the YouTube player without tracking cookies
+        "frame-src https://www.youtube-nocookie.com",
         "font-src 'self' data:",
         "object-src 'none'",
         "base-uri 'self'",

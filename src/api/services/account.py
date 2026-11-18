@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from src.api.db import models
 from src.api.services.auth import hash_password, verify_password
+from src.api.services.bans import active_ban, ban_message
 from src.api.services.demo_accounts import is_seed_account
 
 INVALID_PASSWORD = {"code": "INVALID_PASSWORD", "message": "The current password is incorrect"}
@@ -45,6 +46,16 @@ def delete_account(db: Session, user: models.User, password: str) -> None:
             detail={"code": "ADMIN_ACCOUNT", "message": "Administrator accounts cannot be deleted from the profile"},
         )
     _check_password(user, password)
+    # A banned user could otherwise delete the account and register again with the same email (FR-009)
+    ban = active_ban(db, user)
+    if ban is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "ACCOUNT_BANNED",
+                "message": f"The account cannot be deleted while it is banned. {ban_message(ban)}",
+            },
+        )
     remove_user_with_data(db, user)
 
 

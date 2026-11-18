@@ -1,7 +1,11 @@
+import logging
 import os
 
-from sqlalchemy import create_engine, event, inspect
+from sqlalchemy import create_engine, event, inspect, text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_database_url(url: str) -> str:
@@ -82,25 +86,88 @@ def upgrade_content_tmdb_uniqueness(bind) -> bool:
 USER_COLUMNS = {
     "verification_sent_at": ("TIMESTAMP WITH TIME ZONE", "DATETIME"),
     "token_version": ("INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"),
+    "email_canonical": ("VARCHAR(255)", "VARCHAR(255)"),
+    "password_reset_token": ("VARCHAR(64)", "VARCHAR(64)"),
+    "password_reset_sent_at": ("TIMESTAMP WITH TIME ZONE", "DATETIME"),
 }
 
 
-def upgrade_user_columns(bind) -> list:
-    """Add the missing USER_COLUMNS to an existing users table. Returns the names of the added columns."""
-    existing = {column["name"] for column in inspect(bind).get_columns("users")}
-    missing = [name for name in USER_COLUMNS if name not in existing]
+# Columns of the content table for the TMDB details of a title (US-013)
+CONTENT_COLUMNS = {
+    "img_en": ("VARCHAR(500)", "VARCHAR(500)"),
+    "trailer_uk": ("VARCHAR(20)", "VARCHAR(20)"),
+    "trailer_en": ("VARCHAR(20)", "VARCHAR(20)"),
+    "cast_members": ("JSON", "JSON"),
+    "crew_members": ("JSON", "JSON"),
+    "series_details": ("JSON", "JSON"),
+    "similar_tmdb_ids": ("JSON", "JSON"),
+    "collection_id": ("INTEGER", "INTEGER"),
+    "collection_name": ("VARCHAR(255)", "VARCHAR(255)"),
+    "collection_name_en": ("VARCHAR(255)", "VARCHAR(255)"),
+}
+
+
+def add_missing_columns(bind, table: str, columns: dict) -> list:
+    """Add the missing `columns` to an existing `table`. Returns the names of the added columns."""
+    existing = {column["name"] for column in inspect(bind).get_columns(table)}
+    missing = [name for name in columns if name not in existing]
     if not missing:
         return []
     postgres = bind.dialect.name == "postgresql"
     with bind.begin() as connection:
         for name in missing:
-            column_type = USER_COLUMNS[name][0 if postgres else 1]
-            # Names and types come from USER_COLUMNS above, never from input
-            connection.exec_driver_sql(f"ALTER TABLE users ADD COLUMN {name} {column_type}")
+            column_type = columns[name][0 if postgres else 1]
+            # Table, names and types come from the constants above, never from input
+            connection.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {name} {column_type}")
     return missing
+
+
+def upgrade_user_columns(bind) -> list:
+    """Add the missing USER_COLUMNS to an existing users table. Returns the names of the added columns."""
+    return add_missing_columns(bind, "users", USER_COLUMNS)
+
+
+def backfill_canonical_emails(bind) -> int:
+    """
+    Fill users.email_canonical for accounts created before the column existed and make it unique.
+    Accounts that already share a mailbox keep working: the first one gets the value, the others stay empty
+    (and the unique index then holds). Returns the number of filled rows.
+    """
+    from src.api.services.email_identity import canonical_email
+
+    filled = 0
+    with bind.begin() as connection:
+        taken = {
+            row[0]
+            for row in connection.execute(text("SELECT email_canonical FROM users WHERE email_canonical IS NOT NULL"))
+        }
+        rows = connection.execute(
+            text("SELECT user_id, email FROM users WHERE email_canonical IS NULL ORDER BY created_at")
+        ).fetchall()
+        for user_id, email in rows:
+            value = canonical_email(email)
+            if value in taken:
+                logger.warning("Account %s shares a mailbox with an older account", user_id)
+                continue
+            taken.add(value)
+            connection.execute(
+                text("UPDATE users SET email_canonical = :value WHERE user_id = :user_id"),
+                {"value": value, "user_id": user_id},
+            )
+            filled += 1
+    try:
+        with bind.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email_canonical ON users (email_canonical)"
+            )
+    except DBAPIError:
+        logger.warning("Could not create the unique index on users.email_canonical", exc_info=True)
+    return filled
 
 
 def upgrade_schema(bind) -> None:
     """One-time upgrades of an existing database, run on every startup (each step is idempotent)."""
     upgrade_content_tmdb_uniqueness(bind)
     upgrade_user_columns(bind)
+    backfill_canonical_emails(bind)
+    add_missing_columns(bind, "content", CONTENT_COLUMNS)
