@@ -3,7 +3,6 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from src.api import main
 from src.api.db.database import Base
