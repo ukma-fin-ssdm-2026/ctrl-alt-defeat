@@ -86,6 +86,23 @@ def test_password_hashing_and_verification_sec001():
     assert verify_password("WrongPassword!", hashed) is False
 
 
+def test_bcrypt_cost_is_configurable_and_any_cost_verifies(monkeypatch):
+    """
+    Tests hash with the cheapest cost (tests/conftest.py, Lab 10); production keeps 12, and a hash keeps
+    its own cost, so passwords stored with cost 12 still verify after the setting changes (SEC-001).
+    """
+    import bcrypt
+
+    assert hash_password("Password123").startswith("$2b$04$")
+    stored_with_production_cost = bcrypt.hashpw(b"Password123", bcrypt.gensalt(rounds=12)).decode()
+    assert verify_password("Password123", stored_with_production_cost) is True
+
+    monkeypatch.delenv("BCRYPT_ROUNDS")
+    assert auth_service.env_int("BCRYPT_ROUNDS", 12, minimum=4, maximum=16) == 12
+    monkeypatch.setenv("BCRYPT_ROUNDS", "2")  # below the minimum: the default instead of a weak cost
+    assert auth_service.env_int("BCRYPT_ROUNDS", 12, minimum=4, maximum=16) == 12
+
+
 def test_register_user_success(client: TestClient, db_session):
     """
     FR-001 / US-011: Register new account in pending state with verification token.

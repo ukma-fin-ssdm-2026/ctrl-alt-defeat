@@ -21,6 +21,10 @@ if not os.getenv("JWT_SECRET_KEY"):
 JWT_ALGORITHM = "HS256"
 # Modular crypt format of bcrypt: $2b$<cost>$<22 chars of salt><31 chars of hash>
 BCRYPT_HASH = re.compile(r"\$2[abxy]\$\d{2}\$[./A-Za-z0-9]{53}")
+# Cost of bcrypt (2^rounds iterations). 12 for real passwords; the test suite sets BCRYPT_ROUNDS=4
+# (tests/conftest.py), because hashing with cost 12 in every test took most of the CI time (Lab 10).
+# Hashes keep their own cost, so passwords hashed with any cost are still verified.
+BCRYPT_ROUNDS = env_int("BCRYPT_ROUNDS", 12, minimum=4, maximum=16)
 # 24 hours; a wrong value falls back to the default instead of stopping the API (reliability, finding 15)
 ACCESS_TOKEN_EXPIRE_MINUTES = env_int("ACCESS_TOKEN_EXPIRE_MINUTES", 1440, minimum=1, maximum=60 * 24 * 30)
 
@@ -30,7 +34,7 @@ def hash_password(password: str) -> str:
     Hash a plain password using bcrypt with a unique salt (SEC-001).
     """
     password_bytes = password.encode("utf-8")
-    salt = bcrypt.gensalt()
+    salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
     return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
 
 
