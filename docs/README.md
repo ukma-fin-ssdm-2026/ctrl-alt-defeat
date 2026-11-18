@@ -52,7 +52,6 @@
 ### 9. [Аналітика CI/CD (CI/CD)](./ci-cd/README.md) — Лабораторна робота 10
 - [Звіт DORA: метрики, черга й виконання, аналіз парами, план покращень, бонуси](./ci-cd/dora-summary.md)
 - [Сирі дані запусків CI на main](./ci-cd/metrics-raw.md) і [докази (експорт GitHub Actions)](./ci-cd/evidence/)
-- [Автоматичний підрахунок метрик](./ci-cd/dora-auto.md) скриптом [`scripts/dora_metrics.py`](../scripts/dora_metrics.py)
 
 ---
 [AI-assisted]
