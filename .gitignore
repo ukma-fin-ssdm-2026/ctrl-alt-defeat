@@ -33,5 +33,7 @@ env/
 
 .antigravityignore
 
+flaky-results/
+
 # Written by scripts/release_notes.py in the release workflow
 release-notes.md
