@@ -11,17 +11,31 @@ from src.api.services import catalog_sync
 
 
 @pytest.fixture
-def startup_db(monkeypatch):
+def startup_db(monkeypatch, tmp_path):
     """
-    A fresh in-memory database used by the application startup (lifespan) and the background catalog update,
-    so the tests never touch the database of other tests or of the developer.
+    A fresh temporary database used by the application startup
+    and the background catalog update.
     """
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db_path = tmp_path / "startup.db"
+
+    engine = create_engine(
+        f"sqlite:///{db_path}",
+        connect_args={"check_same_thread": False},
+    )
+
+    session_factory = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine,
+    )
+
     Base.metadata.create_all(bind=engine)
+
     monkeypatch.setattr(main, "engine", engine)
     monkeypatch.setattr(main, "SessionLocal", session_factory)
     monkeypatch.setattr(catalog_sync, "SessionLocal", session_factory)
     monkeypatch.delenv("AUTO_SEED_CATALOG", raising=False)
+
     yield session_factory
+
     engine.dispose()

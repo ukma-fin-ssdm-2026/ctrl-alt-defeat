@@ -83,10 +83,20 @@ def test_login_with_a_damaged_hash_is_an_ordinary_401(client, caplog, email, sto
         ("Password123!", "", True),
         ("", VALID_HASH, False),  # empty password
         (None, VALID_HASH, False),
-        ("Password123!", "$2b$12$short", True),  # truncated hash: bcrypt itself would panic
+        ("Password123!", "$2b$12$short", True),  # truncated hash
         ("Password123!", VALID_HASH[:-1], True),  # one character missing
         ("Password123!", VALID_HASH + "x", True),  # one character too many
         ("Password123!", 12345, True),  # not text at all
+    ],
+    ids=[
+        "missing-hash",
+        "empty-hash",
+        "empty-password",
+        "none-password",
+        "truncated-hash",
+        "shortened-hash",
+        "extended-hash",
+        "non-string-hash",
     ],
 )
 def test_bad_inputs_never_raise(caplog, password, stored, logged):
