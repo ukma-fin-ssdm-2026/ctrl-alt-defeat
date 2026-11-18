@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 # Cheapest bcrypt cost for the tests (production keeps 12): set before the application is imported,
-# hashing with cost 12 in every test took most of the CI time (Lab 10, docs/ci-cd/bonus-faster-tests.md)
+# hashing with cost 12 in every test took most of the CI time (Lab 10, "Бонуси" in docs/ci-cd/dora-summary.md)
 os.environ.setdefault("BCRYPT_ROUNDS", "4")
 
 api_dir = Path(__file__).resolve().parent.parent
