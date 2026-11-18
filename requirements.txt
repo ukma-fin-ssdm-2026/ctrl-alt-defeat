@@ -4,7 +4,7 @@ anyio==4.16.0
 bandit==1.9.4
 bcrypt==5.0.0
 black==26.10.1
-click==8.5.0
+click==8.5.1
 fastapi==0.162.2
 h11==0.16.0
 httpcore2==2.16.0
