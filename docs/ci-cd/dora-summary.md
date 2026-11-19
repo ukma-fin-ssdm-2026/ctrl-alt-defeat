@@ -104,6 +104,7 @@
 | **Частота розгортань** *(Deployment Frequency)* | Версії в `pyproject.toml`, `package.json`, `CHANGELOG.md` і релізний тег готувалися вручну | Workflow [`release.yml`](../../.github/workflows/release.yml) сам створює тег і GitHub Release, коли в `main` потрапляє нова версія в `CHANGELOG.md`; так вийшли релізи [v1.0.0–v1.1.0](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/releases) | 12–14.11.2026 |
 | **Час виконання змін** *(Change Lead Time)* | Кожен тест хешував паролі bcrypt з вартістю 12; крок тестів бекенду в CI займав до 185 с | Тести використовують вартість 4 (`BCRYPT_ROUNDS`), продакшн — 12; [#258](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/pull/258), ефект — у розділі «Бонуси» | 18.11.2026 |
 | **Частота розгортань** *(Deployment Frequency)* | Dependabot відкривав окремий PR на кожен пакет: 18.11 за пів години злито шість таких PR, кожен з повним CI | Мінорні й патч-оновлення pip, npm і GitHub Actions групуються в один PR на екосистему щотижня (`.github/dependabot.yml`) | 18.11.2026 |
+| **Час відновлення** *(Recovery Time)* / **Частота розгортань** | Релізні контейнери не зберігалися; розгортання та відкат вимагали повторної збірки коду | Workflow [`publish-container.yml`](../../.github/workflows/publish-container.yml) автоматично збирає та публікує перевірений Docker-образ у `ghcr.io` за тегом SHA коміту після кожного зеленого запуску на `main`; [#267](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/pull/267), див. «Бонуси» | 19.11.2026 |
 
 ---
 
