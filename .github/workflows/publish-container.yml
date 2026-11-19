@@ -1,0 +1,69 @@
+name: Publish Container Image
+
+# Bonus 5: Release container artifact from every green run on main.
+# Once CI Test completes with success on main (or on manual trigger), this workflow builds
+# the Docker image of the application and publishes it to GitHub Container Registry (ghcr.io)
+# tagged with the commit SHA and latest.
+on:
+  workflow_run:
+    workflows: ['CI Test']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (defaults to commit SHA)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-container-image
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ (github.event_name == 'workflow_dispatch') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Resolve image metadata
+        id: meta
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            SHA="$INPUT_TAG"
+          else
+            SHA="$(git rev-parse HEAD)"
+          fi
+          REPO_LOWER="$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          echo "image=ghcr.io/${REPO_LOWER}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+
+      - name: Build and push container image
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          SHA: ${{ steps.meta.outputs.sha }}
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${SHA}" \
+            --label "org.opencontainers.image.description=Production release container artifact for ctrl-alt-defeat" \
+            -t "$IMAGE:$SHA" \
+            -t "$IMAGE:latest" .
+          docker push "$IMAGE:$SHA"
+          docker push "$IMAGE:latest"
