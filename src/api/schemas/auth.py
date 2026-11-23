@@ -91,6 +91,10 @@ class MessageResponse(BaseModel):
     message: str = Field(..., description="Status message")
 
 
+class SessionResponse(BaseModel):
+    user: Optional[UserResponse] = Field(None, description="Signed-in user; null for a guest or an ended session")
+
+
 class VerifyEmailResponse(BaseModel):
     message: str = Field(..., description="Status message")
     email: str = Field(..., description="Verified email address")

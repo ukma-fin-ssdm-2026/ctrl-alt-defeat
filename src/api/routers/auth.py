@@ -20,6 +20,7 @@ from src.api.schemas.auth import (
     ResendVerificationRequest,
     RegisterResponse,
     ResetPasswordRequest,
+    SessionResponse,
     TokenResponse,
     UserLoginRequest,
     UserRegisterRequest,
@@ -570,6 +571,33 @@ def get_current_user_profile(
     db: Session = Depends(get_db),
 ):
     return user_response(db, current_user)
+
+
+@router.get(
+    "/session",
+    response_model=SessionResponse,
+    summary="Current session: the signed-in user or null for a guest",
+    description=(
+        "Used by the site on startup. Unlike GET /auth/me it answers 200 for a guest, an expired or revoked "
+        "token and an unverified account (`user: null`), so a visit without a session logs no 401 error."
+    ),
+    responses=STANDARD_ERRORS,
+)
+def get_session(
+    authorization: Optional[str] = Header(None),
+    access_token_cookie: Optional[str] = Cookie(None, alias="access_token"),
+    db: Session = Depends(get_db),
+):
+    token = token_from_request(authorization, access_token_cookie)
+    if not token:
+        return SessionResponse(user=None)
+    try:
+        user = user_from_token(db, token)
+    except HTTPException:
+        return SessionResponse(user=None)
+    if not user.email_verified:
+        return SessionResponse(user=None)
+    return SessionResponse(user=user_response(db, user))
 
 
 ACCOUNT_ERRORS = {

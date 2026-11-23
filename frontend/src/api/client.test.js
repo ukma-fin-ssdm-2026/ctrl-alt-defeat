@@ -50,7 +50,7 @@ describe('apiClient (FR-001)', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['/auth/login', '/auth/me'])('does not treat 401 from %s as an expired session', async url => {
+  it.each(['/auth/login', '/auth/me', '/auth/session'])('does not treat 401 from %s as an expired session', async url => {
     // Trace: T-037
     setStoredAuth('token', { user_id: 'u-1' });
 

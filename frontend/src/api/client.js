@@ -47,7 +47,7 @@ apiClient.interceptors.request.use((config) => {
 });
 
 // Requests that answer 401 by design and must not be treated as an expired session
-const AUTH_ENDPOINTS = ['/auth/login', '/auth/me', '/auth/register', '/auth/logout'];
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/me', '/auth/session', '/auth/register', '/auth/logout'];
 
 apiClient.interceptors.response.use(
   (response) => response,

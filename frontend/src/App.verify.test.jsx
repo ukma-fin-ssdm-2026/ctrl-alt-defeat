@@ -11,7 +11,7 @@ vi.mock('./api/client', () => ({
 const mockApi = (verify) => {
   apiClient.get.mockImplementation((url) => {
     if (url === '/auth/verify') return verify();
-    if (url === '/auth/me') return Promise.reject({ response: { status: 401 } });
+    if (url === '/auth/session') return Promise.resolve({ data: { user: null } });
     return Promise.resolve({ data: { items: [], enabled: false, accounts: [] } });
   });
 };
@@ -47,8 +47,37 @@ describe('App email confirmation link (FR-001)', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/auth/me'));
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/auth/session'));
+    expect(apiClient.get).not.toHaveBeenCalledWith('/auth/me');
     expect(apiClient.get).not.toHaveBeenCalledWith('/auth/verify', expect.anything());
+  });
+});
+
+describe('App session on startup (issue #276)', () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it('restores the signed-in user from /auth/session', async () => {
+    apiClient.get.mockImplementation((url) => {
+      if (url === '/auth/session') {
+        return Promise.resolve({ data: { user: { user_id: 'u1', nickname: 'cinephile', role: 'user' } } });
+      }
+      return Promise.resolve({ data: { items: [], enabled: false, accounts: [] } });
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: 'Мій профіль' })).toBeInTheDocument();
+    expect(screen.queryByText('Увійти')).not.toBeInTheDocument();
+  });
+
+  it('shows the login button for a guest', async () => {
+    mockApi(() => Promise.resolve({ data: {} }));
+
+    render(<App />);
+
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/auth/session'));
+    expect((await screen.findAllByRole('button', { name: 'Увійти' })).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Мій профіль' })).not.toBeInTheDocument();
   });
 });
 

@@ -134,11 +134,18 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Validate session on startup with backend via HttpOnly cookie (FR-001, US-011)
-    apiClient.get('/auth/me')
+    // Validate session on startup with backend via HttpOnly cookie (FR-001, US-011).
+    // /auth/session answers 200 with user: null for a guest, so a visit without a session logs no 401
+    apiClient.get('/auth/session')
       .then(res => {
-        setUser(res.data);
-        setStoredAuth(null, res.data);
+        const sessionUser = res.data?.user;
+        if (!sessionUser) {
+          clearStoredAuth();
+          setUser(null);
+          return;
+        }
+        setUser(sessionUser);
+        setStoredAuth(null, sessionUser);
       })
       .catch(() => {
         clearStoredAuth();
