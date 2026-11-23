@@ -37,9 +37,10 @@ jobs:
           ruff check .
           bandit -r src/api -ll
 
+      # Fast suite on every pull request: everything except the tests marked `slow` (pyproject.toml)
       - name: Run Fast Tests with Coverage Gate
         run: |
-          pytest --ignore=tests/test_watchlist.py --cov=src.api --cov-report=term --cov-fail-under=80 tests/
+          pytest -m "not slow" --cov=src.api --cov-report=term --cov-fail-under=80 tests/
 
       - name: Verify RTM <-> Test Traceability
         run: |
@@ -55,9 +56,31 @@ jobs:
           fi
           echo "OpenAPI specification is synchronized with application code."
 
+  # Slow suite (Lab 10): only after a merge into main. Integration tests run the application against a real
+  # PostgreSQL in a service container (tests/integration), plus the full watchlist scenarios
   slow:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ci
+      JWT_SECRET_KEY: ci-integration-tests-only-not-a-real-secret
 
     steps:
       - name: Checkout repository
@@ -73,9 +96,9 @@ jobs:
         run: |
           python -m pip install --require-hashes --only-binary :all: -r requirements-lock.txt
 
-      - name: Run Slow Integration Tests
+      - name: Run Slow Integration Tests (PostgreSQL)
         run: |
-          pytest tests/test_watchlist.py -v
+          pytest -m slow -v --durations=5 tests/
 
   # Lab 9 (reliability): the reliability tests run as a job of their own, so the check "reliability" can be
   # required for merging into main (Settings -> Branches -> main -> Require status checks)
