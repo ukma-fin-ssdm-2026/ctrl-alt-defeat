@@ -71,7 +71,8 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-40 bg-white dark:bg-gray-800 shadow-md transition-colors duration-300">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      {/* Narrow screens: logo and buttons in the first row, the search field takes the whole second row */}
+      <div className="container mx-auto px-4 py-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-2 gap-y-3 sm:gap-4">
         
         <button
           type="button"
@@ -84,7 +85,7 @@ export default function Header({
           </span>
         </button>
 
-        <div className="flex-1 max-w-md relative" ref={searchRef}>
+        <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1 sm:max-w-md relative" ref={searchRef}>
           <input 
             type="text" 
             value={searchQuery}
@@ -127,7 +128,7 @@ export default function Header({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button 
             onClick={onToggleLanguage} 
             className="flex items-center font-bold text-xs bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition shadow-sm"
@@ -187,9 +188,12 @@ export default function Header({
         </div>
       </div>
 
-      {}
-      <nav className="border-t border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-md hidden md:block">
-        <div className="container mx-auto px-4 flex gap-8 relative">
+      {/* Categories on every screen; the genre and year menu opens on hover from the md breakpoint */}
+      <nav
+        aria-label={isUkr ? 'Категорії' : 'Categories'}
+        className="border-t border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-md"
+      >
+        <div className="container mx-auto px-4 flex gap-6 md:gap-8 relative">
           {categories.map((cat) => {
             const isMenuOpen = activeDropdown === cat.key;
 
@@ -217,11 +221,11 @@ export default function Header({
                   className="flex items-center gap-1 font-bold text-gray-800 dark:text-gray-100 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors text-sm"
                 >
                   {cat.name}
-                  <span className={`text-xs transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}>▾</span>
+                  <span className={`hidden md:inline text-xs transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}>▾</span>
                 </button>
                 
                 {isMenuOpen && (
-                  <div className="absolute left-0 top-full w-[640px] bg-white dark:bg-gray-800 shadow-2xl rounded-2xl border border-gray-100 dark:border-gray-700 p-5 z-50">
+                  <div className="hidden md:block absolute left-0 top-full w-[640px] bg-white dark:bg-gray-800 shadow-2xl rounded-2xl border border-gray-100 dark:border-gray-700 p-5 z-50">
                     
                     <div className="pb-4 mb-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
                       <span className="text-xs font-black text-gray-400 uppercase tracking-wider whitespace-nowrap">

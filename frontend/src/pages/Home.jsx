@@ -116,24 +116,30 @@ export default function Home({ selectedCategory, selectedGenre, selectedYear, on
     return cat.toLowerCase();
   };
 
+  const filterTitle = [
+    selectedCategory ? getCategoryTitle(selectedCategory) : (isUkr ? 'Фільтри' : 'Filters'),
+    filterGenre ? `— ${getGenreLabel(filterGenre)}` : '',
+    filterYear ? `(${filterYear})` : '',
+  ].filter(Boolean).join(' ');
+  // Only the first letter is capitalized: CSS `capitalize` turned "Нещодавно додані" into "Нещодавно Додані"
   const titleText = filterGenre || filterYear || selectedCategory
-    ? `${selectedCategory ? getCategoryTitle(selectedCategory) : (isUkr ? 'Фільтри' : 'Filters')} ${filterGenre ? `— ${getGenreLabel(filterGenre)}` : ''} ${filterYear ? `(${filterYear})` : ''}`
+    ? filterTitle.charAt(0).toUpperCase() + filterTitle.slice(1)
     : (isUkr ? 'Нещодавно додані' : 'Recently Added');
 
   return (
     <section className="py-6">
       {}
-      <div className="flex items-center justify-between mb-6 border-b border-gray-100 dark:border-gray-800 pb-4">
-        <h2 className="text-xl font-black text-gray-900 dark:text-white border-l-4 border-yellow-500 pl-3 capitalize">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 border-b border-gray-100 dark:border-gray-800 pb-4">
+        <h2 className="text-xl font-black text-gray-900 dark:text-white border-l-4 border-yellow-500 pl-3">
           {titleText}
         </h2>
-        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 max-w-full">
           <span className="hidden sm:inline">{isUkr ? 'Сортувати:' : 'Sort by:'}</span>
           <select
             aria-label={isUkr ? 'Сортування' : 'Sorting'}
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value)}
-            className="px-3 py-1.5 border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm"
+            className="max-w-full min-w-0 px-3 py-1.5 border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm"
           >
             {SORT_OPTIONS.map(option => (
               <option key={option.key || 'default'} value={option.key}>
