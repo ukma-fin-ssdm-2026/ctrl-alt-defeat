@@ -14,6 +14,9 @@ from src.api.main import app
 from src.api.routers.auth import get_db
 from src.api.services.auth import create_access_token, hash_password
 
+# Slow suite (Lab 10): full watchlist scenarios over the API; run after a merge into main (.github/workflows/ci.yml)
+pytestmark = pytest.mark.slow
+
 engine_test = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
 

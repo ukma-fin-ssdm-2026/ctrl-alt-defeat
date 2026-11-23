@@ -20,3 +20,6 @@ ignore = []
 [tool.pytest.ini_options]
 pythonpath = ["src/api", "."]
 testpaths = ["tests"]
+markers = [
+    "slow: slow suite (Lab 10): runs after a merge into main, not on every pull request; includes the integration tests against a real PostgreSQL",
+]
