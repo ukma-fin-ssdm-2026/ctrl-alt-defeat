@@ -109,6 +109,14 @@ def test_collection_suffix_is_removed(name, cleaned):
     assert clean_collection_name(name) == cleaned
 
 
+def test_long_name_is_cleaned_in_linear_time():
+    # Trace: T-049
+    # Many spaces before a word that is not "колекція": a backtracking regular expression would hang here (SonarCloud)
+    name = "Серія |" + " " * 50_000 + "x"
+    assert clean_collection_name(name) == name.strip()
+    assert clean_collection_name("Сутінки |" + " " * 50_000 + "Колекція") == "Сутінки"
+
+
 def test_collection_name_in_another_script_is_replaced_with_english():
     # Trace: T-049
     assert collection_names("ソードアート・オンライン プログレッシブ", "Sword Art Online Progressive Collection") == (

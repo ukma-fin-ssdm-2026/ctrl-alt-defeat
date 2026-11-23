@@ -861,23 +861,32 @@ def ukrainian_title(title_uk: Optional[str], title_en: Optional[str], original: 
 
 
 # Suffixes of TMDB film series names: "Сутінки | Колекція", "Тарзан | Анімаційна колекція",
-# "Смертельна битва. Легенди (Колекція)", "Twilight Collection", "ドラゴンボールZシリーズ"
-COLLECTION_SUFFIXES = (
-    re.compile(r"\s*\|\s*[^|]*колекція\s*$", re.IGNORECASE),
-    re.compile(r"\s*\([^()]*колекція\)\s*$", re.IGNORECASE),
-    re.compile(r"\s+collection\s*$", re.IGNORECASE),
-    re.compile(r"\s*(シリーズ|（系列）|\(系列\))\s*$"),
-)
+# "Смертельна битва. Легенди (Колекція)", "Twilight Collection", "ドラゴンボールZシリーズ".
+# Plain string operations, no regular expressions: nothing to backtrack on a long name (SonarCloud).
+UKRAINIAN_COLLECTION_WORD = "колекція"
+ENGLISH_COLLECTION_SUFFIX = " collection"
+CJK_COLLECTION_SUFFIXES = ("シリーズ", "（系列）", "(系列)")
 
 
 def clean_collection_name(name: Optional[str]) -> Optional[str]:
     """A film series name without the "Collection" suffix: the page already says "All parts of the series"."""
     if not name:
         return None
-    cleaned = name.strip()
-    for suffix in COLLECTION_SUFFIXES:
-        cleaned = suffix.sub("", cleaned).strip()
-    return cleaned or name.strip()
+    original = name.strip()
+    cleaned = original
+    head, separator, tail = cleaned.rpartition("|")
+    if separator and tail.strip().lower().endswith(UKRAINIAN_COLLECTION_WORD):
+        cleaned = head.strip()
+    elif cleaned.endswith(")"):
+        head, bracket, inside = cleaned[:-1].rpartition("(")
+        if bracket and inside.strip().lower().endswith(UKRAINIAN_COLLECTION_WORD):
+            cleaned = head.strip()
+    if cleaned.lower().endswith(ENGLISH_COLLECTION_SUFFIX):
+        cleaned = cleaned[: -len(ENGLISH_COLLECTION_SUFFIX)].strip()
+    for suffix in CJK_COLLECTION_SUFFIXES:
+        if cleaned.endswith(suffix):
+            cleaned = cleaned[: -len(suffix)].strip()
+    return cleaned or original
 
 
 def collection_names(name: Optional[str], name_en: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
