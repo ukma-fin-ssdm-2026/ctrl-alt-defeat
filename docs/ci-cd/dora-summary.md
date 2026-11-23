@@ -274,7 +274,7 @@ PR: [#258](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/pull/258), зл
 
 ### Бонус 3. Розділення тестів на швидкий і повільний набори
 
-PR: [#265](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/pull/265) (розділення наборів); інтеграційні тести на PostgreSQL додано окремим PR.
+PR: [#265](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/pull/265) (розділення наборів) і [#273](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/pull/273) (інтеграційні тести на PostgreSQL).
 
 **Метрика:** час виконання змін (Change Lead Time) — зворотний зв'язок у PR без повільних перевірок.
 
@@ -308,10 +308,14 @@ DATABASE_URL=postgresql://postgres@localhost:5432/ci python -m pytest -m slow -v
 
 #### Запуски в GitHub Actions
 
-| Запуск | Що виконано | Тривалість наборів |
-|---|---|---|
-| _PR з інтеграційними тестами — лише швидкий набір (завдання `slow` пропущено)_ | заповнити після запуску | |
-| _`main` після злиття цього PR — обидва набори_ | заповнити після злиття | |
+PR з інтеграційними тестами — [#273](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/pull/273).
+
+| Запуск | Подія | Що виконано | Швидкий набір (`build`) | Повільний набір (`slow`) |
+|---|---|---|---|---|
+| [CI Test #950](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/45271546259) | PR #273 | лише швидкий набір; завдання `slow` пропущено (skipped) | 521 тест, крок тестів 109 с (завдання 2 хв 8 с) | — |
+| [CI Test #951](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/actions/runs/45271999174) | `main` після злиття #273 | обидва набори | 521 тест, крок тестів 84 с (завдання 1 хв 43 с) | 19 тестів за 4,4 с pytest (крок 6 с, завдання з запуском PostgreSQL 16 — 38 с) |
+
+У запуску #951 три інтеграційні тести справді виконалися на PostgreSQL 16 із сервісного контейнера (`PASSED`, а не `SKIPPED`): у лозі завдання `slow` видно `docker pull postgres:16` і рядки `tests/integration/test_postgres_flow.py::… PASSED`.
 
 ### Бонус 4. Автоматичне виявлення нестабільних тестів (Flaky Tests Detection)
 
