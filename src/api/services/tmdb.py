@@ -840,6 +840,75 @@ def page_details(kind: str, details: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def is_readable_title(text: Optional[str]) -> bool:
+    """
+    Letters only in the Latin (with accents) or Cyrillic script. Without a Ukrainian translation TMDB gives
+    the original title, e.g. in Japanese or Korean, which the Ukrainian interface cannot show (issue #276).
+    """
+    if not text:
+        return False
+    return all(
+        not char.isalpha() or char < "\u0250" or "\u0400" <= char <= "\u04ff" or "\u1e00" <= char <= "\u1eff"
+        for char in text
+    )
+
+
+def ukrainian_title(title_uk: Optional[str], title_en: Optional[str], original: Optional[str]) -> str:
+    """The title for the Ukrainian interface: the English one when the Ukrainian one is in another script."""
+    if title_uk and not is_readable_title(title_uk) and is_readable_title(title_en):
+        return title_en
+    return title_uk or title_en or original or "Без назви"
+
+
+# Suffixes of TMDB film series names: "Сутінки | Колекція", "Тарзан | Анімаційна колекція",
+# "Смертельна битва. Легенди (Колекція)", "Twilight Collection", "ドラゴンボールZシリーズ"
+COLLECTION_SUFFIXES = (
+    re.compile(r"\s*\|\s*[^|]*колекція\s*$", re.IGNORECASE),
+    re.compile(r"\s*\([^()]*колекція\)\s*$", re.IGNORECASE),
+    re.compile(r"\s+collection\s*$", re.IGNORECASE),
+    re.compile(r"\s*(シリーズ|（系列）|\(系列\))\s*$"),
+)
+
+
+def clean_collection_name(name: Optional[str]) -> Optional[str]:
+    """A film series name without the "Collection" suffix: the page already says "All parts of the series"."""
+    if not name:
+        return None
+    cleaned = name.strip()
+    for suffix in COLLECTION_SUFFIXES:
+        cleaned = suffix.sub("", cleaned).strip()
+    return cleaned or name.strip()
+
+
+def collection_names(name: Optional[str], name_en: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+    """Ukrainian and English names of a film series for display; the English one stands in for another script."""
+    name, name_en = clean_collection_name(name), clean_collection_name(name_en)
+    if name and not is_readable_title(name) and is_readable_title(name_en):
+        name = name_en
+    return name, name_en
+
+
+def fix_unreadable_titles(db: Session) -> int:
+    """
+    Startup: titles imported before issue #276 that kept a Japanese, Chinese or Korean title in the Ukrainian
+    interface get their English title. Returns the number of fixed titles.
+    """
+    fixed = 0
+    try:
+        for content in db.query(Content).filter(Content.title_en.isnot(None)).all():
+            title = ukrainian_title(content.title, content.title_en, None)
+            if title != content.title:
+                content.title = title
+                fixed += 1
+        if fixed:
+            db.commit()
+    except SQLAlchemyError as error:  # never block the startup
+        db.rollback()
+        logger.warning("Fixing titles in another script failed: %s", error)
+        return 0
+    return fixed
+
+
 def build_catalog_item(category: str, kind: str, item: Dict[str, Any], details: Dict[str, Any]) -> Optional[Dict]:
     """
     Catalog fields of one TMDB title (list entry + details in Ukrainian with English translations).
@@ -865,7 +934,7 @@ def build_catalog_item(category: str, kind: str, item: Dict[str, Any], details: 
     return {
         "tmdb_id": data["id"],
         "category": category,
-        "title": data.get(title_key) or title_en or original or "Без назви",
+        "title": ukrainian_title(data.get(title_key), title_en, original),
         "title_en": title_en or original,
         "genre": genres[0],
         "genres": genres,
@@ -991,7 +1060,9 @@ def add_english_collection_names(pool: ThreadPoolExecutor, catalog: List[Dict[st
     names = dict(zip(ids, pool.map(lambda collection_id: _collection_name_en(collection_id, api_key), ids)))
     for item in catalog:
         if item.get("collection_id") is not None:
-            item["collection_name_en"] = names.get(item["collection_id"])
+            item["collection_name"], item["collection_name_en"] = collection_names(
+                item.get("collection_name"), names.get(item["collection_id"])
+            )
 
 
 def fetch_tmdb_movies(api_key: Optional[str] = None) -> List[Dict[str, Any]]:
