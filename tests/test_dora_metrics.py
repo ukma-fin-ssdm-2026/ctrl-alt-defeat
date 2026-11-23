@@ -130,7 +130,7 @@ def test_summary_levels_and_shares(report):
     total = result["queue_share_percent"] + result["execution_share_percent"] + result["review_share_percent"]
     assert total == pytest.approx(100, abs=0.05)
     text = render(report, result)
-    assert "| Частота збоїв змін | 40.0% (2 з 5) |" in text
+    assert "| Частка збоїв змін | 40.0% (2 з 5) |" in text
     assert "## Збої на main" in text
 
 
