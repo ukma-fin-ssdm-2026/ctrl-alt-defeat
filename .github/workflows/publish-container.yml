@@ -3,7 +3,9 @@ name: Publish Container Image
 # Bonus 5: Release container artifact from every green run on main.
 # Once CI Test completes with success on main (or on manual trigger), this workflow builds
 # the Docker image of the application and publishes it to GitHub Container Registry (ghcr.io)
-# tagged with the commit SHA and latest.
+# tagged with the commit SHA and latest. The image is built from the commit that CI checked
+# (workflow_run.head_sha), not from the newest commit of main: when two PRs are merged one after
+# another, each green run still publishes its own commit under its own tag.
 on:
   workflow_run:
     workflows: ['CI Test']
@@ -32,14 +34,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          # The commit CI checked; empty for a manual run (then the selected branch)
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Resolve image metadata
         id: meta
         env:
           INPUT_TAG: ${{ inputs.tag }}
+          CHECKED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           if [ -n "$INPUT_TAG" ]; then
             SHA="$INPUT_TAG"
+          elif [ -n "$CHECKED_SHA" ]; then
+            SHA="$CHECKED_SHA"
           else
             SHA="$(git rev-parse HEAD)"
           fi

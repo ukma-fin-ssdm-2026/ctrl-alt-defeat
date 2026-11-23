@@ -391,7 +391,7 @@ def render(report: Report, result: dict) -> str:
     lead = "—"
     if result.get("lead_time_median_min") is not None:
         lead = f"медіана {result['lead_time_median_min']} хв, середнє {result['lead_time_mean_min']} хв"
-    recovery = "збоїв на main не було"
+    recovery = "немає даних (збоїв на main не було)"
     if result.get("recovery_median_min") is not None:
         recovery = f"медіана {result['recovery_median_min']} хв, середнє {result['recovery_mean_min']} хв"
     back_to_green = "main не ламалася"
@@ -413,7 +413,7 @@ def render(report: Report, result: dict) -> str:
         f"| Частота розгортань | {result['deployment_frequency_per_week']} на тиждень "
         f"({runs['green']} за {result['period']['weeks']} тиж.) | {fmt_level(result['deployment_frequency_level'])} |",
         f"| Час виконання змін | {lead} | {fmt_level(result.get('lead_time_level'))} |",
-        f"| Частота збоїв змін | {result['change_fail_rate_percent']}% ({runs['red']} з {runs['green'] + runs['red']}) "
+        f"| Частка збоїв змін | {result['change_fail_rate_percent']}% ({runs['red']} з {runs['green'] + runs['red']}) "
         f"| {fmt_level(result['change_fail_rate_level'])} |",
         f"| Час відновлення | {recovery} | {fmt_level(result.get('recovery_level'))} |",
         "",
