@@ -295,8 +295,8 @@ PR: [#265](https://github.com/ukma-fin-ssdm-2026/ctrl-alt-defeat/pull/265) (ро
 # швидкий набір
 python -m pytest -m "not slow" --cov=src.api --cov-report=term --cov-fail-under=80 tests/
 
-# повільний набір (потрібна PostgreSQL, наприклад docker run -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=ci postgres:16)
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ci python -m pytest -m slow -v tests/
+# повільний набір (потрібна PostgreSQL, наприклад docker run -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=ci postgres:16)
+DATABASE_URL=postgresql://postgres@localhost:5432/ci python -m pytest -m slow -v tests/
 ```
 
 #### Локальні результати (PostgreSQL 16)

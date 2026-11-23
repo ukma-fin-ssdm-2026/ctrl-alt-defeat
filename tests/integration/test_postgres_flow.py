@@ -6,7 +6,7 @@ seed) on the database from DATABASE_URL, and a user goes through registration, e
 watchlist, watched list, review and recommendations over HTTP. Unlike the rest of the suite, nothing is
 replaced by SQLite: PostgreSQL types (UUID, JSON), unique indexes and constraints are the real ones.
 
-    DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ci python -m pytest -m slow
+    DATABASE_URL=postgresql://postgres@localhost:5432/ci python -m pytest -m slow
 
 In CI the database is a postgres:16 service container of the job `slow` (.github/workflows/ci.yml).
 Without a PostgreSQL DATABASE_URL (local runs, the fast suite) the tests are skipped.

@@ -66,9 +66,10 @@ jobs:
     services:
       postgres:
         image: postgres:16
+        # A throwaway database that lives only for this job and is reachable only from it:
+        # no password at all (trust authentication), so there is no credential to keep in the workflow
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: ci
         ports:
           - 5432:5432
@@ -79,8 +80,8 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ci
-      JWT_SECRET_KEY: ci-integration-tests-only-not-a-real-secret
+      # Without JWT_SECRET_KEY the application uses a random key for the run, which is all the tests need
+      DATABASE_URL: postgresql://postgres@localhost:5432/ci
 
     steps:
       - name: Checkout repository
