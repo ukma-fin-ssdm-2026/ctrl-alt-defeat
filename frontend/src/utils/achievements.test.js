@@ -8,6 +8,7 @@ const NOW = new Date('2026-11-05T12:00:00Z').getTime();
 
 describe('profile achievements', () => {
   it('locks every badge for a brand-new account', () => {
+    // Trace: T-054
     const badges = computeAchievements({ createdAt: '2026-11-05T10:00:00Z', now: NOW });
 
     expect(badges).toHaveLength(ACHIEVEMENTS.length);
@@ -15,6 +16,7 @@ describe('profile achievements', () => {
   });
 
   it('counts reviews and caps progress at the target', () => {
+    // Trace: T-054
     const one = byId(computeAchievements({ reviews: [review()], now: NOW }));
     expect(one['first-review']).toMatchObject({ unlocked: true, progress: 1 });
     expect(one.reviewer).toMatchObject({ unlocked: false, progress: 1, target: 10 });
@@ -24,6 +26,7 @@ describe('profile achievements', () => {
   });
 
   it('needs a long text for the detailed review badge', () => {
+    // Trace: T-054
     const short = byId(computeAchievements({ reviews: [review('x'.repeat(DETAILED_REVIEW_LENGTH - 1)), { review_text: null }], now: NOW }));
     expect(short.detailed.unlocked).toBe(false);
 
@@ -32,6 +35,7 @@ describe('profile achievements', () => {
   });
 
   it('uses the watchlist and the watched list', () => {
+    // Trace: T-054
     const badges = byId(computeAchievements({
       watchlist: Array.from({ length: 5 }, () => movie('Драма')),
       watched: Array.from({ length: 9 }, () => movie('Драма')),
@@ -43,6 +47,7 @@ describe('profile achievements', () => {
   });
 
   it('counts distinct genres of watched titles', () => {
+    // Trace: T-054
     const watched = [movie('Драма', 'Трилер'), movie('Драма', 'Комедія'), { genre: 'Жахи' }, movie()];
     const four = byId(computeAchievements({ watched, now: NOW }));
     expect(four.omnivore).toMatchObject({ unlocked: false, progress: 4 });
@@ -52,6 +57,7 @@ describe('profile achievements', () => {
   });
 
   it('counts full days since registration', () => {
+    // Trace: T-054
     const fresh = byId(computeAchievements({ createdAt: '2026-10-06T13:00:00Z', now: NOW }));
     expect(fresh.veteran).toMatchObject({ unlocked: false, progress: 29 });
 
