@@ -488,6 +488,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/session:
+    get:
+      tags:
+      - Authentication & User Management
+      summary: 'Current session: the signed-in user or null for a guest'
+      description: 'Used by the site on startup. Unlike GET /auth/me it answers 200
+        for a guest, an expired or revoked token and an unverified account (`user:
+        null`), so a visit without a session logs no 401 error.'
+      operationId: get_session_api_v1_auth_session_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: access_token
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '422':
+          description: Validation Error (Unprocessable Entity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/auth/change-password:
     post:
       tags:
@@ -3889,6 +3940,15 @@ components:
           title: Seasons
       type: object
       title: SeriesInfo
+    SessionResponse:
+      properties:
+        user:
+          anyOf:
+          - $ref: '#/components/schemas/UserResponse'
+          - type: 'null'
+          description: Signed-in user; null for a guest or an ended session
+      type: object
+      title: SessionResponse
     SortOrder:
       type: string
       enum:
