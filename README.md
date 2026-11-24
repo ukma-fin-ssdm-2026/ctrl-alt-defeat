@@ -31,7 +31,7 @@
 - [Конфігурація CI/CD конвеєра (.github/workflows/ci.yml)](.github/workflows/ci.yml)
 - [Відеопрезентація команди](./Labs/Lab01/)
 
-### Лабораторна робота 2: Інженерія вимог
+### Лабораторна робота 2: Артефакти вимог
 - [Вимоги до системи (FR та NFR за ISO 25010)](./docs/requirements/requirements.md)
 - [Користувацькі історії з INVEST-аналізом (User Stories)](./docs/requirements/user-stories.md)
 - [Матриця простежуваності вимог (RTM)](./docs/requirements/rtm.md)
