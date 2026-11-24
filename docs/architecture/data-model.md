@@ -10,16 +10,19 @@
 
 ## 2. Функції, які покриває модель
 
-Модель підтримує такі ключові функції системи:
+Модель відповідає фінальній версії системи (v1.2.0) і таблицям у `src/api/db/models.py`. Вона підтримує такі ключові функції:
 
 1. Реєстрація, авторизація та керування обліковим записом — User.
 2. Перегляд, пошук, фільтрація та сортування каталогу — Content, Genre, ContentGenre.
 3. Ведення списку "До перегляду" (Watchlist) — WatchlistItem.
 4. Ведення історії переглянутого контенту (Watched List) — WatchedItem.
-5. Оцінювання контенту — Rating.
-6. Публікація рецензій — Review.
-7. Коментування рецензій — Comment.
-8. Персоналізовані рекомендації та модерація — Recommendation, Ban, ModerationReport.
+5. Оцінювання та рецензування контенту — Review (оцінка 1–10 і необов'язковий текст), Rating.
+6. Голоси «Підтримую» / «Не підтримую» за рецензії — ReviewVote.
+7. Коментування рецензій із відповідями — Comment.
+8. Модерація — Ban (блокування користувачів адміністратором), Review.status.
+9. Оновлення каталогу з TMDB — CatalogSyncRun.
+
+Рекомендації (FR-007) окремої таблиці не мають: їх обчислює сервіс `src/api/services/recommendations.py` під час запиту з Review, WatchedItem, ContentGenre та `Content.similar_tmdb_ids`. Ранги й досягнення (FR-013) так само обчислюються з наявних даних (рецензії, голоси, коментарі) і окремо не зберігаються.
 
 ## 3. Сутності
 
@@ -36,9 +39,12 @@
 | nickname | varchar | Ім'я, що відображається на платформі [PERSONAL, UNIQUE] |
 | role | enum | user / admin |
 | email_verified | boolean | Ознака підтвердження email |
-| status | enum | Стан акаунта |
+| status | varchar | pending (email не підтверджено) / active / banned |
+| verification_token | varchar, null | Токен посилання для підтвердження email [SENSITIVE] |
+| verification_sent_at | datetime, null | Коли надіслано лист підтвердження (обмеження повторних листів) |
 | password_reset_token | varchar(64), null | SHA-256 токена з листа «Забули пароль?» [SENSITIVE]; після використання очищується (T-052) |
 | password_reset_sent_at | datetime, null | Коли надіслано посилання для нового пароля: діє 1 годину (T-052) |
+| token_version | integer | Версія токенів: збільшується при зміні пароля, і всі раніше видані JWT стають недійсними |
 | created_at | datetime | Дата створення акаунта |
 
 Інваріанти:
@@ -48,13 +54,24 @@
 
 ### Content
 
-Представляє фільм або серіал.
+Представляє фільм або серіал, імпортований з TMDB.
 
 | Атрибут | Тип | Опис |
 |---|---|---|
-| content_id | UUID, PK | Унікальний ідентифікатор |
-| tmdb_id | integer | Ідентифікатор контенту у зовнішньому API; унікальний разом із `category` (TMDB нумерує фільми й серіали окремо) |
+| id | integer, PK | Внутрішній ключ рядка |
+| content_id | UUID, UNIQUE | Публічний ідентифікатор: на нього посилаються рецензії, списки й жанри |
+| category | varchar | Movie / Series |
+| tmdb_id | integer, null | Ідентифікатор у TMDB; унікальний разом із `category` (TMDB нумерує фільми й серіали окремо) |
+| title, title_en | varchar(255) | Назва українською та англійською |
+| genre | varchar(100) | Основний жанр (копія для відповідей API) |
+| genres | JSON, null | Усі жанри тайтлу (копія для відповідей API) |
+| year | integer | Рік випуску |
+| runtime | integer, null | Тривалість, хв |
+| rating | float | Оцінка TMDB |
+| rotten_rating | varchar(10), null | Оцінка Rotten Tomatoes, якщо відома |
+| img | varchar(500), null | Постер для українського інтерфейсу |
 | img_en | varchar(500), null | Постер для англійського інтерфейсу: англійський або без тексту; `null` — показується `img` (T-050) |
+| description, description_en | text, null | Опис українською та англійською |
 | trailer_uk, trailer_en | varchar(20), null | Ключ відео YouTube трейлера українською та англійською (US-013) |
 | cast_members | JSON, null | До 10 акторів у порядку титрів: ім'я українською й англійською (`name_en`), роль, фото |
 | crew_members | JSON, null | Режисери, сценаристи (фільми) та автори (серіали), до 3 імен у кожній групі; ті самі люди англійською — у `directors_en`, `writers_en`, `creators_en` |
@@ -62,16 +79,7 @@
 | similar_tmdb_ids | JSON, null | Номери TMDB рекомендованих тайтлів у порядку TMDB (до 20) |
 | collection_id, collection_name, collection_name_en | integer / varchar(255), null | Серія фільмів TMDB (наприклад, «Володар перснів»), назва українською й англійською; за `collection_id` знаходяться інші частини |
 
-Колонки даних сторінки, крім `collection_id`, `collection_name` і `collection_name_en`, завантажуються відкладено (deferred): списки каталогу їх не читають, лише сторінка одного тайтлу. До наявної бази вони додаються автоматично під час старту.
-| title | varchar | Назва |
-| content_type | enum | movie / series |
-| release_year | integer | Рік випуску |
-| synopsis | text | Опис |
-| poster_url | varchar | URL постера |
-| popularity | decimal | Показник популярності |
-| average_rating | decimal | Середня оцінка |
-| rating_count | integer | Кількість оцінок |
-| last_synced_at | datetime | Час останньої синхронізації із зовнішнім API |
+Колонки `trailer_*`, `cast_members`, `crew_members`, `series_details` і `similar_tmdb_ids` завантажуються відкладено (deferred): списки каталогу їх не читають, лише сторінка одного тайтлу. До наявної бази вони додаються автоматично під час старту.
 
 ### Genre
 
@@ -102,12 +110,11 @@
 
 | Атрибут | Тип | Опис |
 |---|---|---|
-| watchlist_item_id | UUID, PK | Унікальний ідентифікатор |
-| user_id | UUID, FK | Власник списку [PERSONAL] |
-| content_id | UUID, FK | Збережений контент |
+| user_id | UUID, PK, FK | Власник списку [PERSONAL] |
+| content_id | UUID, PK, FK | Збережений контент (`Content.content_id`) |
 | added_at | datetime | Час додавання [PERSONAL] |
 
-Інваріант: пара (user_id, content_id) має бути унікальною.
+Інваріант: пара (user_id, content_id) — первинний ключ, тож тайтл у списку один раз.
 
 ### WatchedItem
 
@@ -115,31 +122,26 @@
 
 | Атрибут | Тип | Опис |
 |---|---|---|
-| watched_item_id | UUID, PK | Унікальний ідентифікатор |
+| id | UUID, PK | Унікальний ідентифікатор |
 | user_id | UUID, FK | Користувач [PERSONAL] |
-| content_id | UUID, FK | Переглянутий контент |
-| watched_at | datetime | Час перегляду [PERSONAL] |
+| content_id | UUID | Переглянутий контент (`Content.content_id`) |
+| created_at | datetime | Коли позначено як переглянуте [PERSONAL] |
 
 Інваріант: пара (user_id, content_id) має бути унікальною.
 
 ### Rating
 
-Числова оцінка контенту від користувача.
+Окрема числова оцінка контенту.
 
 | Атрибут | Тип | Опис |
 |---|---|---|
 | rating_id | UUID, PK | Унікальний ідентифікатор |
-| user_id | UUID, FK | Автор оцінки [PERSONAL] |
-| content_id | UUID, FK | Оцінений контент |
-| score | integer | Оцінка від 1 до 10 |
+| user_id | UUID | Автор оцінки [PERSONAL] |
+| content_id | UUID | Оцінений контент |
+| score | integer | Оцінка |
 | created_at | datetime | Час виставлення оцінки |
-| updated_at | datetime | Час оновлення оцінки |
 
-Інваріанти:
-- score ∈ [1; 10];
-- пара (user_id, content_id) має бути унікальною;
-- виставити оцінку можна лише для контенту, який уже додано до списку переглянутого (WatchedItem);
-- виставлення оцінки можливе автономно без необхідності створення текстової рецензії.
+У фінальній версії оцінка 1–10 виставляється разом із рецензією й зберігається в `Review.rating` (текст рецензії необов'язковий). Таблиця `ratings` лишилася в схемі; її записи видаляються разом з акаунтом користувача (`services/account.py`) і з тайтлом під час очищення каталогу.
 
 ### Review
 
@@ -151,16 +153,29 @@
 | user_id | UUID, FK | Автор [PERSONAL] |
 | content_id | UUID, FK | Контент |
 | rating | integer | Оцінка від 1 до 10 (опціонально синхронізується з Rating) |
-| review_text | text | Текст рецензії [PERSONAL] |
+| review_text | text, null | Текст рецензії [PERSONAL]; без тексту — лише оцінка |
 | contains_spoilers | boolean | Позначка про спойлери |
-| status | enum | published / hidden / deleted |
+| status | varchar | published / hidden (приховано модератором) |
 | created_at | datetime | Дата публікації |
 
 Інваріанти:
-- довжина review_text — 10–5000 символів;
-- одна активна рецензія користувача на один об'єкт контенту;
+- якщо review_text є, його довжина — 10–5000 символів (`ck_reviews_text_length`);
+- одна рецензія користувача на один об'єкт контенту (`uq_reviews_user_content`);
 - залишити рецензію можна лише для контенту, що є у WatchedItem;
-- користувач має можливість поставити виключно числову оцінку через сутність Rating без обов'язку писати текстовий відгук.
+- кількість голосів «за» й «проти» (`likes`, `dislikes`) обчислюється з ReviewVote під час читання.
+
+### ReviewVote
+
+Голос користувача за рецензію: «Підтримую» (+1) або «Не підтримую» (−1), FR-014.
+
+| Атрибут | Тип | Опис |
+|---|---|---|
+| review_id | UUID, PK, FK | Рецензія |
+| user_id | UUID, PK, FK | Хто проголосував [PERSONAL] |
+| value | integer | +1 або −1 (`ck_review_votes_value`) |
+| created_at | datetime | Час голосу |
+
+Інваріанти: один голос користувача на рецензію (складений первинний ключ); за власну рецензію голосувати не можна (перевірка в API); значення 0 у запиті знімає голос.
 
 ### Comment
 
@@ -170,25 +185,14 @@
 |---|---|---|
 | comment_id | UUID, PK | Унікальний ідентифікатор |
 | review_id | UUID, FK | Рецензія |
-| user_id | UUID, FK | Автор [PERSONAL] |
-| comment_text | text | Текст коментаря [PERSONAL] |
+| parent_id | UUID, FK, null | Коментар, на який це відповідь; `null` — коментар до рецензії |
+| user_id | UUID | Автор [PERSONAL] |
+| author_name | varchar(50) | Нікнейм автора на момент публікації [PERSONAL] |
+| text | text | Текст коментаря [PERSONAL] |
+| depth | integer | Рівень вкладеності: 0 — коментар до рецензії |
 | created_at | datetime | Час публікації |
 
-Інваріант: comment_text не може бути порожнім.
-
-### Recommendation
-
-Збережений результат роботи рекомендаційної системи.
-
-| Атрибут | Тип | Опис |
-|---|---|---|
-| recommendation_id | UUID, PK | Унікальний ідентифікатор |
-| user_id | UUID, FK | Одержувач рекомендації [PERSONAL] |
-| content_id | UUID, FK | Рекомендований контент |
-| score | decimal | Релевантність рекомендації |
-| reason | varchar | Причина/ознаки рекомендації [PERSONAL] |
-| algorithm_version | varchar | Версія алгоритму або ID моделі |
-| generated_at | datetime | Час генерації |
+Інваріанти: довжина тексту 1–2000 символів (`ck_comments_text_length`); глибина відповідей не більша за 4; кількість коментарів користувача обмежена за хвилину й годину (захист від спаму).
 
 ### Ban
 
@@ -198,25 +202,27 @@
 |---|---|---|
 | ban_id | UUID, PK | Унікальний ідентифікатор |
 | user_id | UUID, FK | Заблокований користувач [PERSONAL] |
-| admin_id | UUID, FK | Адміністратор [PERSONAL] |
-| ban_type | enum | temporary / permanent |
-| reason | text | Причина блокування [SENSITIVE] |
+| admin_id | UUID, FK, null | Адміністратор [PERSONAL]; `null`, якщо акаунт адміністратора видалено |
+| ban_type | varchar | temporary / permanent (`ck_bans_type`) |
+| reason | text, null | Причина блокування [SENSITIVE] |
 | starts_at | datetime | Початок блокування |
 | ends_at | datetime, nullable | Завершення тимчасового блокування |
 | is_active | boolean | Чи активне блокування |
 
-### ModerationReport
+### CatalogSyncRun
 
-Скарга на рецензію.
+Журнал запусків оновлення каталогу з TMDB (FR-012). Зберігається в базі, щоб перезапуск сервісу посеред імпорту не загубився: під час старту незавершений запуск позначається як перерваний.
 
 | Атрибут | Тип | Опис |
 |---|---|---|
-| report_id | UUID, PK | Унікальний ідентифікатор |
-| review_id | UUID, FK | Рецензія, на яку поскаржилися |
-| reporter_user_id | UUID, FK | Автор скарги [PERSONAL] |
-| reason | text | Причина скарги [SENSITIVE] |
-| status | enum | pending / accepted / rejected |
-| created_at | datetime | Дата створення |
+| run_id | integer, PK | Номер запуску |
+| state | varchar | running / done / failed (`ck_catalog_sync_runs_state`) |
+| started_at, finished_at | datetime | Початок і завершення |
+| added, updated, skipped | integer | Скільки тайтлів додано, оновлено, пропущено |
+| placeholders_removed, placeholders_kept | integer | Скільки тайтлів-заглушок прибрано або залишено (на них є рецензії чи списки) |
+| error | text, null | Текст помилки, якщо запуск не вдався |
+
+Персональних даних не містить.
 
 ## 4. Зв'язки та кардинальність
 
@@ -230,13 +236,16 @@
 | Content — Rating | 1 : 0..N | Контент може отримати багато оцінок від різних користувачів |
 | User — Review | 1 : 0..N | Користувач може створити багато рецензій |
 | Content — Review | 1 : 0..N | Контент може мати багато рецензій |
+| Review — ReviewVote | 1 : 0..N | Рецензія може мати багато голосів |
+| User — ReviewVote | 1 : 0..N | Користувач голосує за різні рецензії, по одному голосу на кожну |
 | Review — Comment | 1 : 0..N | Одна рецензія може мати багато коментарів |
+| Comment — Comment | 1 : 0..N | Коментар може мати відповіді (до глибини 4) |
 | User — Comment | 1 : 0..N | Користувач може залишити багато коментарів |
 | Content — Genre | N : M | Контент може мати кілька жанрів, жанр — багато одиниць контенту |
-| User — Recommendation | 1 : 0..N | Для користувача формується набір рекомендацій |
-| Content — Recommendation | 1 : 0..N | Один контент може рекомендуватися різним користувачам |
 | User — Ban | 1 : 0..N | Користувач може мати історію блокувань |
-| Review — ModerationReport | 1 : 0..N | На одну рецензію може надійти кілька скарг |
+| User (адміністратор) — Ban | 0..1 : 0..N | Адміністратор накладає блокування |
+
+CatalogSyncRun ні з чим не пов'язаний: це журнал фонової задачі.
 
 ## 5. Персональні та чутливі дані
 
@@ -244,33 +253,33 @@
 
 ### Персональні дані
 
-- email і nickname користувача;
-- зв'язок записів Watchlist (`added_at`) та Watched List (`watched_at`) з конкретним user_id;
-- виставлені користувачем оцінки (`Rating`) та дата їх збереження;
-- авторство рецензій та коментарів;
-- індивідуальні рекомендації та профіль інтересів;
-- інформація про автора скарги та адміністратора, який застосував блокування.
+- email, `email_canonical` і nickname користувача;
+- зв'язок записів Watchlist (`added_at`) та Watched List (`created_at`) з конкретним user_id;
+- оцінки й тексти рецензій, голоси за рецензії (ReviewVote), коментарі та їх авторство;
+- адміністратор, який застосував блокування.
 
 ### Чутливі дані
 
-- password_hash;
-- причини блокувань;
-- текст причин скарг у системі модерації.
-Окремо слід врахувати, що історія переглядів, оцінки та рекомендаційний профіль є поведінковими даними. Навіть якщо вони не є спеціальною категорією персональних даних самі по собі, їх витік може розкрити інтереси та вподобання користувача, тому для аналізу загроз їх варто розглядати як дані підвищеної конфіденційності.
+- password_hash (bcrypt);
+- verification_token і password_reset_token (зберігається лише SHA-256 токена; посилання діє 1 годину й одноразове);
+- причини блокувань.
+
+Окремо слід врахувати, що історія переглядів, оцінки та голоси є поведінковими даними. Навіть якщо вони не є спеціальною категорією персональних даних самі по собі, їх витік може розкрити інтереси та вподобання користувача, тому для аналізу загроз їх варто розглядати як дані підвищеної конфіденційності.
 
 ## 6. Основні обмеження цілісності
 
 1. Кожна сутність має первинний ключ.
-2. User.email та User.nickname — унікальні.
-3. WatchlistItem(user_id, content_id) — унікальна пара.
-4. WatchedItem(user_id, content_id) — унікальна пара.
-5. Rating(user_id, content_id) — унікальна пара (один користувач має не більше однієї оцінки на контент).
-6. Rating.score може мати значення тільки від 1 до 10.
-7. Review(user_id, content_id) — не більше однієї активної рецензії.
-8. Review.rating може мати значення тільки від 1 до 10.
-9. Рецензію та оцінку можна створити лише для контенту, позначеного користувачем як переглянутий (WatchedItem).
-10. Заблокований користувач не може створювати нові рецензії та оцінки.
-11. Для `temporary`-бану має бути задане `ends_at`; для `permanent` воно може бути NULL.
+2. User.email, User.email_canonical та User.nickname — унікальні.
+3. Content(category, tmdb_id) — унікальна пара; Content.content_id — унікальний.
+4. WatchlistItem(user_id, content_id) — первинний ключ; WatchedItem(user_id, content_id) — унікальна пара.
+5. Review(user_id, content_id) — одна рецензія на тайтл; Review.rating — від 1 до 10 (перевірка в API); текст, якщо є, — 10–5000 символів.
+6. ReviewVote(review_id, user_id) — первинний ключ; value ∈ {1, −1}.
+7. Comment.text — 1–2000 символів; глибина відповідей ≤ 4.
+8. Рецензію можна створити лише для контенту, позначеного користувачем як переглянутий (WatchedItem).
+9. Заблокований користувач не може створювати рецензії, коментарі й голоси.
+10. Ban.ban_type ∈ {temporary, permanent}; для `temporary`-бану задається `ends_at`, для `permanent` воно NULL.
+11. CatalogSyncRun.state ∈ {running, done, failed}.
+12. Видалення акаунта видаляє всі пов'язані записи користувача (ON DELETE CASCADE і `services/account.py`).
 
 [AI-assisted]
 
