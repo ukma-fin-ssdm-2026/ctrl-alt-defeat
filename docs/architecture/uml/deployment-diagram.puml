@@ -1,63 +1,93 @@
 @startuml
-package "Зона 1: Недовірена (Public Internet)" {
-    node "Client Device" <<Desktop/Mobile>> {
-        node "Web Browser" {
-            artifact "React Application" <<Frontend>>
+' Діаграма розгортання фінальної версії (v1.2.0): https://pislya-tytriv.onrender.com
+left to right direction
+skinparam nodesep 40
+skinparam ranksep 60
+
+package "Зона 1: Недовірена (Інтернет)" {
+    node "Пристрій користувача" <<Desktop/Mobile>> {
+        node "Веббраузер" as Browser {
+            artifact "React Application (SPA)" <<Frontend>>
         }
     }
 }
 
-package "Зона 2: Захищена (Internal VPC)" {
-    node "Application Server" <<Docker Container>> {
-        node "Web Server (Uvicorn)" {
+package "Зона 2: Хостинг застосунку (Render, регіон Frankfurt)" {
+    node "Render Web Service «pislya-tytriv»" as Render <<Docker Container, free plan>> {
+        node "Uvicorn" as Uvicorn {
             artifact "FastAPI Application" <<Backend>>
-            artifact "Built React App (static)" <<Frontend dist>>
+            artifact "Зібраний React (frontend/dist)" <<Static files>>
+            artifact "Rate limiter (in-memory)" <<Process memory>>
         }
     }
-
-    node "Database Server" <<Managed DB>> {
-        database "PostgreSQL Instance" {
-            artifact "Persistent Data"
-        }
-    }
-
+    note right of Render
+      Render сам завершує TLS для *.onrender.com
+      і сам розгортає кожен коміт у main
+      (render.yaml, autoDeployTrigger: commit).
+      Секрети (DATABASE_URL, JWT_SECRET_KEY,
+      GOOGLE_SCRIPT_*, TMDB_API_KEY) — лише
+      в Environment на Render.
+    end note
 }
 
-package "Зона 3: Зовнішня (Third-Party Services)" {
-    node "TMDB API" <<External Service>> {
-        artifact "External Metadata"
-    }
-
-    node "CI/CD Environment" <<GitHub Cloud>> {
-        node "GitHub Actions Runner" {
-            artifact "Automated Tests & Deploy Workflow"
+package "Зона 3: Керована база даних (Neon)" {
+    node "Neon Serverless PostgreSQL 16" as Neon <<Managed DB, eu-central>> {
+        node "PgBouncer (pooled endpoint)" as Pooler
+        database "PostgreSQL" as Postgres {
+            artifact "Таблиці users, content, reviews, ..."
         }
     }
 }
 
-' Зв'язки та межі довіри на них
-"Web Browser" --> "Web Server (Uvicorn)" : HTTPS (REST API, HttpOnly Cookie)
+package "Зона 4: Зовнішні сервіси" {
+    node "TMDB API" as TMDB <<External API>> {
+        artifact "Метадані фільмів і серіалів"
+    }
+    node "Google Apps Script (mailer.gs)" as Mailer <<Mail relay>>
+    node "Gmail" as Gmail <<Email provider>>
+}
+
+package "Зона 5: CI/CD (GitHub)" {
+    node "GitHub Actions" as Actions <<Runner>> {
+        artifact "CI Test (ci.yml)"
+        artifact "Production deployment"
+        artifact "Keep-alive (кожні 10 хв)"
+        artifact "Publish Container / Release"
+    }
+    node "GitHub Container Registry (ghcr.io)" as GHCR <<Image registry>>
+}
+
+Browser --> Uvicorn : HTTPS (REST /api/v1, HttpOnly cookie з JWT)
 note on link
-  TB-01: Публічна межа 
-  (Браузер ↔ Сервер)
+  TB-01: Публічна межа
+  (браузер ↔ сервер)
 end note
 
-"Web Server (Uvicorn)" --> "PostgreSQL Instance" : TCP (Port 5432)
+Uvicorn --> Pooler : TLS (sslmode=require), порт 5432
 note on link
-  TB-02: Внутрішня межа 
-  (Сервер ↔ БД)
+  TB-02: Межа даних
+  (сервер ↔ Neon через Інтернет)
+end note
+Pooler --> Postgres
+
+Uvicorn --> TMDB : HTTPS (API key)
+note on link
+  TB-03: Зовнішній API
 end note
 
-"Web Server (Uvicorn)" --> "TMDB API" : HTTPS
+Uvicorn --> Mailer : HTTPS POST (спільний секрет)
 note on link
-  TB-03: Зовнішня межа 
-  (Сервер ↔ Зовнішній API)
+  TB-04: Поштовий ретранслятор
+  (листи підтвердження й
+  відновлення пароля)
 end note
+Mailer --> Gmail : MailApp
+Gmail ..> Browser : лист із посиланням
 
-"GitHub Actions Runner" ..> "Application Server" : Docker image build & smoke test (CI/CD Pipeline)
+Actions ..> Uvicorn : HTTPS /health/live
 note on link
-  Автоматизоване розгортання
-  після успішних перевірок
+  TB-05: CI/CD ↔ Production
 end note
+Actions --> GHCR : docker push (GITHUB_TOKEN)
 
 @enduml

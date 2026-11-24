@@ -1,32 +1,32 @@
 @startuml
+' Пошук і фільтрація каталогу (FR-002, FR-010): GET /api/v1/movies
 skinparam swimlaneWidth same
 
 |Client|
 start
-:User enters search query;
-:Send search request;
+:Користувач вводить назву\nабо обирає фільтри;
+:Надіслати GET /api/v1/movies\n(search, category, genre, year,\nsort_by, skip, limit);
 
 |API Server|
-:Check cache for data;
+:Перевірити параметри (Pydantic);
+if (Параметри коректні?) then (Так)
+  :Екранувати %, _ і \\ у пошуковому рядку;
+  :Скласти запит: ILIKE за title / title_en,\nкатегорія, жанр через ContentGenre, рік;
+  :Додати сортування і пагінацію (skip, limit ≤ 100);
 
-if (Data in Cache?) then (Yes)
-  |Cache|
-  :Retrieve results;
-else (No)
   |Database|
-  :Query Database;
-  :Retrieve search results;
-  
+  :Виконати індексований запит\n(statement_timeout);
+  :Повернути сторінку тайтлів і загальну кількість;
+
   |API Server|
-  :Save results to Cache;
+  :Сформувати відповідь JSON\n(легкі поля каталогу, без deferred-колонок);
+else (Ні)
+  :Повернути 422 з описом помилки;
 endif
 
-|API Server|
-:Generate API response;
-
 |Client|
-:Update User Interface;
-:User views results;
+:Оновити каталог і пагінацію;
+:Користувач переглядає результати;
 
 stop
 @enduml

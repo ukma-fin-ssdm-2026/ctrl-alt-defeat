@@ -31,7 +31,7 @@
 - [Конфігурація CI/CD конвеєра (.github/workflows/ci.yml)](.github/workflows/ci.yml)
 - [Відеопрезентація команди](./Labs/Lab01/)
 
-### Лабораторна робота 2: Інженерія вимог
+### Лабораторна робота 2: Артефакти вимог
 - [Вимоги до системи (FR та NFR за ISO 25010)](./docs/requirements/requirements.md)
 - [Користувацькі історії з INVEST-аналізом (User Stories)](./docs/requirements/user-stories.md)
 - [Матриця простежуваності вимог (RTM)](./docs/requirements/rtm.md)
@@ -45,7 +45,7 @@
 - [Матриця простежуваності архітектури](./docs/architecture/traceability-matrix.md)
 - [Модель загроз безпеки за методологією STRIDE](./docs/architecture/threat-model.md)
 - [Доменна модель даних (Data Model)](./docs/architecture/data-model.md)
-- [Архітектурні рішення (ADR-001, ADR-002)](./docs/architecture/decisions/)
+- [Архітектурні рішення (ADR-001, ADR-002, ADR-003)](./docs/architecture/decisions/)
 - [Діаграми UML та модель сутностей](./docs/architecture/uml/)
 - [Індекс артефактів архітектури](./docs/architecture/README.md)
 - [Відеопрезентація Лаб 3](./Labs/Lab03/)

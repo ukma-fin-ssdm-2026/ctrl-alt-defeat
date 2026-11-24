@@ -1,80 +1,98 @@
 @startuml
+' Модель даних фінальної версії (v1.2.0): відповідає src/api/db/models.py
 hide circle
 skinparam linetype ortho
 
 entity "User" as User {
   * user_id : UUID <<PK>>
   --
-  email : varchar <<PERSONAL, UNIQUE>>
-  password_hash : varchar <<SENSITIVE>>
-  nickname : varchar <<PERSONAL, UNIQUE>>
-  role : enum
+  email : varchar(255) <<PERSONAL, UNIQUE>>
+  email_canonical : varchar(255) <<PERSONAL, UNIQUE>>
+  password_hash : varchar(255) <<SENSITIVE>>
+  nickname : varchar(100) <<PERSONAL, UNIQUE>>
+  role : varchar (user / admin)
   email_verified : boolean
-  status : enum
+  status : varchar (pending / active / banned)
+  verification_token : varchar <<SENSITIVE>>
+  verification_sent_at : datetime
+  password_reset_token : varchar(64) <<SENSITIVE>>
+  password_reset_sent_at : datetime
+  token_version : integer
   created_at : datetime
 }
 
 entity "Content" as Content {
-  * content_id : UUID <<PK>>
+  * id : integer <<PK>>
   --
+  content_id : UUID <<UNIQUE>>
+  category : varchar (Movie / Series)
   tmdb_id : integer
-  title : varchar
-  content_type : enum
-  release_year : integer
-  synopsis : text
-  poster_url : varchar
-  popularity : decimal
-  average_rating : decimal
-  rating_count : integer
-  last_synced_at : datetime
+  title : varchar(255)
+  title_en : varchar(255)
+  genre : varchar(100)
+  genres : JSON
+  year : integer
+  runtime : integer
+  rating : float
+  rotten_rating : varchar(10)
+  img : varchar(500)
+  img_en : varchar(500)
+  description : text
+  description_en : text
+  trailer_uk, trailer_en : varchar(20)
+  cast_members, crew_members : JSON
+  series_details, similar_tmdb_ids : JSON
+  collection_id : integer
+  collection_name, collection_name_en : varchar(255)
 }
 
 entity "Genre" as Genre {
   * genre_id : integer <<PK>>
   --
-  name : varchar
+  name : varchar(100) <<UNIQUE>>
+  name_en : varchar(100)
+  tmdb_id : integer <<UNIQUE>>
 }
 
 entity "ContentGenre" as ContentGenre {
   * content_id : UUID <<PK, FK>>
   * genre_id : integer <<PK, FK>>
+  --
+  position : integer
 }
 
 entity "WatchlistItem" as WatchlistItem {
-  * watchlist_item_id : UUID <<PK>>
+  * user_id : UUID <<PK, FK>> <<PERSONAL>>
+  * content_id : UUID <<PK, FK>>
   --
-  user_id : UUID <<FK, PERSONAL>>
-  content_id : UUID <<FK>>
   added_at : datetime <<PERSONAL>>
 }
 
 entity "WatchedItem" as WatchedItem {
-  * watched_item_id : UUID <<PK>>
+  * id : UUID <<PK>>
   --
-  user_id : UUID <<FK, PERSONAL>>
-  content_id : UUID <<FK>>
-  watched_at : datetime <<PERSONAL>>
-}
-
-entity "Rating" as Rating {
-  * rating_id : UUID <<PK>>
-  --
-  user_id : UUID <<FK, PERSONAL>>
-  content_id : UUID <<FK>>
-  score : integer
-  created_at : datetime
-  updated_at : datetime
+  user_id : UUID <<FK>> <<PERSONAL>>
+  content_id : UUID
+  created_at : datetime <<PERSONAL>>
 }
 
 entity "Review" as Review {
   * review_id : UUID <<PK>>
   --
-  user_id : UUID <<FK, PERSONAL>>
-  content_id : UUID <<FK>>
+  user_id : UUID <<PERSONAL>>
+  content_id : UUID
   rating : integer
   review_text : text <<PERSONAL>>
   contains_spoilers : boolean
-  status : enum
+  status : varchar
+  created_at : datetime
+}
+
+entity "ReviewVote" as ReviewVote {
+  * review_id : UUID <<PK, FK>>
+  * user_id : UUID <<PK, FK>> <<PERSONAL>>
+  --
+  value : integer (+1 / -1)
   created_at : datetime
 }
 
@@ -82,90 +100,97 @@ entity "Comment" as Comment {
   * comment_id : UUID <<PK>>
   --
   review_id : UUID <<FK>>
-  user_id : UUID <<FK, PERSONAL>>
-  comment_text : text <<PERSONAL>>
+  parent_id : UUID <<FK>>
+  user_id : UUID <<PERSONAL>>
+  author_name : varchar(50) <<PERSONAL>>
+  text : text <<PERSONAL>>
+  depth : integer
   created_at : datetime
 }
 
-entity "Recommendation" as Recommendation {
-  * recommendation_id : UUID <<PK>>
+entity "Rating" as Rating {
+  * rating_id : UUID <<PK>>
   --
-  user_id : UUID <<FK, PERSONAL>>
-  content_id : UUID <<FK>>
-  score : decimal
-  reason : varchar <<PERSONAL>>
-  algorithm_version : varchar
-  generated_at : datetime
+  user_id : UUID <<PERSONAL>>
+  content_id : UUID
+  score : integer
+  created_at : datetime
 }
 
 entity "Ban" as Ban {
   * ban_id : UUID <<PK>>
   --
-  user_id : UUID <<FK, PERSONAL>>
-  admin_id : UUID <<FK, PERSONAL>>
-  ban_type : enum
+  user_id : UUID <<FK>> <<PERSONAL>>
+  admin_id : UUID <<FK>> <<PERSONAL>>
+  ban_type : varchar (temporary / permanent)
   reason : text <<SENSITIVE>>
   starts_at : datetime
   ends_at : datetime
   is_active : boolean
 }
 
-entity "ModerationReport" as ModerationReport {
-  * report_id : UUID <<PK>>
+entity "CatalogSyncRun" as CatalogSyncRun {
+  * run_id : integer <<PK>>
   --
-  review_id : UUID <<FK>>
-  reporter_user_id : UUID <<FK, PERSONAL>>
-  reason : text <<SENSITIVE>>
-  status : enum
-  created_at : datetime
+  state : varchar (running / done / failed)
+  started_at : datetime
+  finished_at : datetime
+  added, updated, skipped : integer
+  placeholders_removed, placeholders_kept : integer
+  error : text
 }
 
-User ||--o{ WatchlistItem : has
-Content ||--o{ WatchlistItem : included_in
-
-User ||--o{ WatchedItem : has
-Content ||--o{ WatchedItem : marked_as
-
-User ||--o{ Rating : rates
-Content ||--o{ Rating : rated_by
-
+User ||--o{ WatchlistItem : saves
+Content ||--o{ WatchlistItem : saved_in
+User ||--o{ WatchedItem : marks
+Content ||--o{ WatchedItem : watched_as
 User ||--o{ Review : writes
-Content ||--o{ Review : receives
-
+Content ||--o{ Review : reviewed_in
+Review ||--o{ ReviewVote : receives
+User ||--o{ ReviewVote : casts
 Review ||--o{ Comment : has
+Comment ||--o{ Comment : replies
 User ||--o{ Comment : writes
-
-Content ||--o{ ContentGenre : classified_as
-Genre ||--o{ ContentGenre : includes
-
-User ||--o{ Recommendation : receives
-Content ||--o{ Recommendation : recommended_as
-
-User ||--o{ Ban : subject
-User ||--o{ Ban : issued_by
-
-Review ||--o{ ModerationReport : reported_in
-User ||--o{ ModerationReport : submits
+User ||--o{ Rating : rates
+Content ||--o{ Rating : rated_in
+Content ||--o{ ContentGenre : classified_by
+Genre ||--o{ ContentGenre : groups
+User ||--o{ Ban : receives
+User |o--o{ Ban : issues
 
 note right of User
-  PERSONAL:
-  email, nickname
-
-  SENSITIVE:
-  password_hash
-
-  UNIQUE:
-  email, nickname
+  PERSONAL: email, email_canonical, nickname
+  SENSITIVE: password_hash,
+  verification_token, password_reset_token (SHA-256)
+  token_version: +1 при зміні пароля
+  відкликає всі видані JWT
 end note
 
 note bottom of WatchedItem
-  Viewing history is personal
-  behavioral data.
+  Історія переглядів — персональні
+  поведінкові дані.
 end note
 
-note bottom of Recommendation
-  Recommendation profile may reveal
-  user preferences and interests.
+note bottom of ReviewVote
+  Один голос користувача на рецензію;
+  value IN (1, -1); за власну рецензію
+  голосувати не можна.
+end note
+
+note bottom of Comment
+  Відповіді до глибини 4;
+  length(text) 1..2000.
+end note
+
+note bottom of Rating
+  Таблиця збережена в схемі; оцінка
+  виставляється разом із рецензією
+  (Review.rating, 1..10).
+end note
+
+note bottom of CatalogSyncRun
+  Журнал оновлень каталогу з TMDB
+  (FR-012); без персональних даних.
 end note
 
 @enduml

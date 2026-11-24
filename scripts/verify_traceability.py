@@ -3,7 +3,8 @@
 Automated RTM ↔ Test Traceability Verification Script.
 
 Parses docs/requirements/rtm.md for test case IDs (T-NNN) and scans
-test files for '# Trace: T-NNN' comments. Fails (exit 1) if:
+test files for '# Trace: T-NNN' comments (tests/) and '// Trace: T-NNN' comments
+(frontend/src/**/*.test.js[x]). Fails (exit 1) if:
   - A required T-ID from RTM has no matching test in code
   - A test references a T-ID not found in RTM
 
@@ -70,6 +71,14 @@ def scan_tests():
         content = js_file.read_text(encoding="utf-8")
         for match in re.finditer(r"\bT-(\d+)\b", content):
             traced.add(f"T-{match.group(1)}")
+
+    # Frontend tests (Vitest) mark their requirement with a `// Trace: T-NNN` comment
+    frontend_src = PROJECT_ROOT / "frontend" / "src"
+    for pattern in ("*.test.js", "*.test.jsx"):
+        for js_file in frontend_src.rglob(pattern):
+            content = js_file.read_text(encoding="utf-8")
+            for match in re.finditer(r"//\s*Trace:\s*(T-\d+)", content):
+                traced.add(match.group(1))
 
     return traced
 
