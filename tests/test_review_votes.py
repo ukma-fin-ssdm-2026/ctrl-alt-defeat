@@ -102,6 +102,7 @@ def fan(db_session):
 
 
 def test_support_is_counted_once_per_user(client, db_session, author, fan):
+    # Trace: T-055
     review_id = add_review(db_session, author)
 
     first = vote(client, fan, review_id, 1)
@@ -115,6 +116,7 @@ def test_support_is_counted_once_per_user(client, db_session, author, fan):
 
 
 def test_switching_to_dont_support_and_taking_the_vote_back(client, db_session, author, fan):
+    # Trace: T-055
     review_id = add_review(db_session, author)
     other = make_user(db_session, "other")
     vote(client, other, review_id, -1)
@@ -131,6 +133,7 @@ def test_switching_to_dont_support_and_taking_the_vote_back(client, db_session, 
 
 
 def test_author_cannot_vote_for_own_review(client, db_session, author):
+    # Trace: T-055
     review_id = add_review(db_session, author)
 
     response = vote(client, author, review_id, 1)
@@ -140,6 +143,7 @@ def test_author_cannot_vote_for_own_review(client, db_session, author):
 
 
 def test_guest_and_unknown_review(client, db_session, fan):
+    # Trace: T-055
     assert client.put(VOTES, json={"review_id": str(uuid.uuid4()), "value": 1}).status_code == 401
 
     response = vote(client, fan, uuid.uuid4(), 1)
@@ -149,11 +153,13 @@ def test_guest_and_unknown_review(client, db_session, fan):
 
 @pytest.mark.parametrize("value", [2, -2, "yes", None])
 def test_invalid_vote_value_returns_422(client, db_session, author, fan, value):
+    # Trace: T-055
     review_id = add_review(db_session, author)
     assert vote(client, fan, review_id, value).status_code == 422
 
 
 def test_banned_user_cannot_vote(client, db_session, author, fan):
+    # Trace: T-055
     review_id = add_review(db_session, author)
     admin = make_user(db_session, "moderator", role="admin")
     client.post(
@@ -187,6 +193,7 @@ def test_my_votes_for_a_movie(client, db_session, author, fan):
 
 
 def test_votes_go_away_with_the_review_and_with_the_account(client, db_session, author, fan):
+    # Trace: T-055
     first = add_review(db_session, author)
     second = add_review(db_session, author, OTHER_MOVIE)
     vote(client, fan, first, 1)
@@ -200,6 +207,7 @@ def test_votes_go_away_with_the_review_and_with_the_account(client, db_session, 
 
 
 def test_deleting_the_author_removes_votes_under_their_reviews(client, db_session, author, fan):
+    # Trace: T-055
     review_id = add_review(db_session, author)
     vote(client, fan, review_id, 1)
 
