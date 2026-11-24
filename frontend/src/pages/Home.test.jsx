@@ -166,3 +166,21 @@ describe('Home shows the whole catalog', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Каталог тимчасово недоступний');
   });
 });
+
+describe('Home section heading (issue #276)', () => {
+  beforeEach(() => {
+    apiClient.get.mockReset();
+    apiClient.get.mockResolvedValue({ data: { items: catalog } });
+  });
+
+  it('capitalizes only the first word of "Нещодавно додані"', async () => {
+    render(<Home onSelectMovie={() => {}} />);
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Нещодавно додані' });
+    expect(heading).not.toHaveClass('capitalize');
+  });
+
+  it('builds the filter heading without extra spaces', async () => {
+    render(<Home selectedCategory="Фільми" selectedGenre="Драма" selectedYear="2019" onSelectMovie={() => {}} />);
+    expect(await screen.findByRole('heading', { level: 2, name: 'Фільми — Драма (2019)' })).toBeInTheDocument();
+  });
+});

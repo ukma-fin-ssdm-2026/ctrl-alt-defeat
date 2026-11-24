@@ -15,7 +15,7 @@ from src.api.schemas.movie import (
     RelatedContentResponse,
     SortOrder,
 )
-from src.api.services.tmdb import tmdb_kind
+from src.api.services.tmdb import collection_names, tmdb_kind
 
 # Maps public sort keys to DB columns (FR-010). "release_date" uses the release year.
 SORT_COLUMNS = {
@@ -170,7 +170,9 @@ def find_content(db: Session, movie_id: str, with_details: bool = False) -> Cont
 def collection_of(content: Content) -> Optional[CollectionInfo]:
     if content.collection_id is None or not content.collection_name:
         return None
-    return CollectionInfo(id=content.collection_id, name=content.collection_name, name_en=content.collection_name_en)
+    # Without the "Collection" suffix; a name in Japanese or Chinese is replaced with the English one (issue #276)
+    name, name_en = collection_names(content.collection_name, content.collection_name_en)
+    return CollectionInfo(id=content.collection_id, name=name, name_en=name_en)
 
 
 @router.get(

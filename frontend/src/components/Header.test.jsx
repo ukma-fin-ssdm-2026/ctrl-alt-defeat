@@ -139,3 +139,23 @@ describe('Header search suggestions follow the interface language', () => {
     expect(screen.queryByText(/Захар Беркут •/)).not.toBeInTheDocument();
   });
 });
+
+describe('Header on narrow screens (issue #276)', () => {
+  it('keeps the categories in the navigation and opens one with a tap', async () => {
+    const onSelectCategory = vi.fn();
+    render(<Header {...baseProps} user={null} onSelectCategory={onSelectCategory} />);
+
+    const nav = screen.getByRole('navigation', { name: 'Категорії' });
+    expect(nav).not.toHaveClass('hidden');
+
+    await userEvent.click(screen.getByRole('button', { name: /^Серіали/ }));
+    expect(onSelectCategory).toHaveBeenCalledWith('Серіали');
+  });
+
+  it('puts the search field on its own row below sm', () => {
+    render(<Header {...baseProps} user={null} />);
+
+    const searchBox = screen.getByPlaceholderText('Пошук ...').parentElement;
+    expect(searchBox).toHaveClass('order-last', 'w-full', 'sm:flex-1');
+  });
+});

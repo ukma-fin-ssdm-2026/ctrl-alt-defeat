@@ -195,9 +195,10 @@ def test_english_names_of_film_series_one_request_each(monkeypatch):
         tmdb.add_english_collection_names(pool, catalog, "key")
 
     assert sorted(calls) == [("/collection/119", "en-US"), ("/collection/404", "en-US")]
+    # Issue #276: stored without the "Collection" suffix
     assert [item.get("collection_name_en") for item in catalog] == [
-        "The Lord of the Rings Collection",
-        "The Lord of the Rings Collection",
+        "The Lord of the Rings",
+        "The Lord of the Rings",
         None,
         None,
     ]
@@ -267,7 +268,11 @@ def test_movie_page_returns_the_details_and_lists_stay_light(client, db_session)
     assert (page["trailer_uk"], page["trailer_en"]) == ("ukTrailer2", "enNew00001")
     assert page["cast"][0] == {"name": "Елайджа Вуд", "name_en": "Elijah Wood", "character": "Frodo", "photo": None}
     assert (page["crew"]["directors"], page["crew"]["directors_en"]) == (["Пітер Джексон"], ["Peter Jackson"])
-    assert page["collection"] == {"id": 119, "name": "Володар перснів (Колекція)", "name_en": None}
+    assert page["collection"] == {
+        "id": 119,
+        "name": "Володар перснів",
+        "name_en": None,
+    }  # issue #276: shown without the suffix
     assert page["series"] is None
     listed = client.get("/api/v1/movies").json()["items"][0]
     assert "cast" not in listed and "trailer_uk" not in listed

@@ -28,7 +28,7 @@ from src.api.frontend import mount_frontend
 from src.api.services.demo_accounts import seed_default_users
 from src.api.services import catalog_sync
 from src.api.services.genres import link_catalog_genres
-from src.api.services.tmdb import seed_catalog_if_empty
+from src.api.services.tmdb import fix_unreadable_titles, seed_catalog_if_empty
 from src.api.db.database import SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -119,6 +119,10 @@ async def lifespan(app: FastAPI):
             seeded = seed_catalog_if_empty(db)
             # Genre dictionary + links for titles added before the genre tables existed (issue #61)
             link_catalog_genres(db)
+            # Issue #276: titles kept in Japanese, Chinese or Korean get their English title
+            fixed_titles = fix_unreadable_titles(db)
+            if fixed_titles:
+                logger.info("Replaced %s titles in another script with English ones.", fixed_titles)
             # Reliability (findings 13, 16): an update cut off by a restart is reported as failed, and the real
             # catalog of a fresh database is imported from TMDB in the background, not while the service starts
             catalog_sync.mark_interrupted_runs(db)
