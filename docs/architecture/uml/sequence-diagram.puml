@@ -1,65 +1,88 @@
 @startuml
+' Оцінювання контенту: оцінка 1–10 з необов'язковим текстом рецензії (FR-003, FR-004)
 actor "User" as User
 participant "Frontend\n(React)" as UI
-participant "API Router\n(FastAPI)" as Router
+participant "API Router\n(FastAPI /api/v1/reviews)" as Router
 participant "Security\n(JWT Validator)" as Sec
-participant "Rating Service\n(Business Logic)" as Service
-participant "Data Access\n(PostgreSQL)" as DB
+participant "Review Logic\n(bans, watched, policy)" as Service
+participant "Data Access\n(SQLAlchemy → PostgreSQL)" as DB
 
-User -> UI : Clicks rating score (e.g., 9/10)
+User -> UI : Обирає оцінку (наприклад, 9/10)\nі, за бажанням, пише текст
 activate UI
 
-UI -> Router : POST /api/ratings {content_id, score}\n[Cookie: access_token]
+UI -> Router : POST /api/v1/reviews\n{content_id, rating, review_text?, contains_spoilers}\n[Cookie: access_token]
 activate Router
 
-Router -> Sec : validate_token(cookie/header)
-activate Sec
-alt #MistyRose Token invalid or expired
-    Sec --> Router : TokenExpired / Invalid
-    Router --> UI : 401 Unauthorized
-    UI --> User : Prompt login / redirect
-else #LightCyan Token valid
-    Sec --> Router : current_user {user_id}
-    deactivate Sec
+    Router -> Sec : get_current_active_user(cookie/header)
+    activate Sec
+    alt #MistyRose Токен недійсний, прострочений або token_version застарів
+        Sec --> Router : 401 Unauthorized
+        Router --> UI : 401 Unauthorized
+        UI --> User : Відкрити вікно входу
+    else #MistyRose Email не підтверджено
+        Sec --> Router : 403 EMAIL_NOT_VERIFIED
+        Router --> UI : 403 Forbidden
+        UI --> User : Нагадати підтвердити email
+    else #LightCyan Токен дійсний, email підтверджено
+        Sec --> Router : current_user {user_id, nickname}
+        deactivate Sec
 
-    Router -> Service : rate_content(user_id, content_id, score)
-    activate Service
-
-    Service -> DB : Check if content in WatchedItem(user_id, content_id)
-    activate DB
-    DB --> Service : watched_status
-    deactivate DB
-
-    alt #MistyRose FR-003 Violation: Content not in Watched List
-        Service --> Router : ContentNotWatchedError
-        Router --> UI : 403 Forbidden ("Must be in Watched List to rate")
-        UI --> User : Show notification ("Add to Watched first")
-    else #LightCyan Content is watched
-        alt #MistyRose Invalid score (not in 1..10)
-            Service --> Router : ValidationError
+        break #MistyRose Pydantic: rating поза 1..10 або текст не 10..5000
             Router --> UI : 422 Unprocessable Entity
-            UI --> User : Show validation error
-        else #LightGreen Valid input & watched
-            Service -> DB : BEGIN TRANSACTION\nUPSERT Rating(user_id, content_id, score)\nUPDATE Content average_rating, rating_count\nCOMMIT
-            activate DB
-            alt #MistyRose Database Error / Conflict
-                DB --> Service : DBException / Timeout
-                Service -> DB : ROLLBACK
-                Service --> Router : DatabaseError
-                Router --> UI : 500 Internal Server Error
-                UI --> User : Show server error message
-            else #LightGreen Transaction committed
-                DB --> Service : Rating saved & aggregates updated
-                deactivate DB
+            UI --> User : Показати помилку валідації
+        end
 
-                Service --> Router : RatingResponse
-                Router --> UI : 201 Created {rating_id, score}
-                UI --> User : Update UI rating widget
+        Router -> Service : ensure_can_contribute(user)
+        activate Service
+        Service -> DB : Активний Ban для user_id?
+        activate DB
+        DB --> Service : ban / none
+        deactivate DB
+
+        alt #MistyRose FR-009: користувача заблоковано
+            Service --> Router : 403 ACCOUNT_BANNED
+            Router --> UI : 403 Forbidden
+            UI --> User : Показати строк і причину блокування
+        else Не заблоковано
+            Service -> DB : Чи є WatchedItem(user_id, content_id)?
+            activate DB
+            DB --> Service : watched_status
+            deactivate DB
+
+            alt #MistyRose FR-003: тайтл не позначено переглянутим
+                Service --> Router : 403 CONTENT_NOT_WATCHED
+                Router --> UI : 403 Forbidden
+                UI --> User : «Спершу позначте як переглянуте»
+            else Переглянуто
+                alt #MistyRose Текст порушує правила (POLICY_VIOLATION)
+                    Service --> Router : 400 Bad Request
+                    Router --> UI : 400 Bad Request
+                    UI --> User : Показати причину
+                else #MistyRose Рецензія на цей тайтл уже є
+                    Service --> Router : 409 DUPLICATE_REVIEW
+                    Router --> UI : 409 Conflict
+                    UI --> User : Запропонувати редагувати наявну
+                else #LightGreen Можна зберегти
+                    Service -> DB : INSERT Review(user_id, content_id, rating, review_text)\nCOMMIT
+                    activate DB
+                    alt #MistyRose Помилка БД або одночасний дубль (UNIQUE)
+                        DB --> Service : IntegrityError / Timeout
+                        Service -> DB : ROLLBACK
+                        Service --> Router : 409 / 500
+                        Router --> UI : Помилка
+                        UI --> User : Показати повідомлення
+                    else #LightGreen Транзакцію зафіксовано
+                        DB --> Service : Review збережено
+                        deactivate DB
+                        Service --> Router : ReviewResponse
+                        Router --> UI : 201 Created {review_id, rating, likes, dislikes}
+                        UI --> User : Оновити оцінку, рецензії і прогрес рангу
+                    end
+                end
             end
         end
+        deactivate Service
     end
-end
-deactivate Service
 deactivate Router
 deactivate UI
 @enduml

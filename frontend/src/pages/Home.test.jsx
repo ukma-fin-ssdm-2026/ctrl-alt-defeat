@@ -113,7 +113,12 @@ describe('Home shows the whole catalog', () => {
       observers.splice(observers.indexOf(this), 1);
     }
   }
-  const scrollToEnd = () => act(() => observers.forEach(o => o.callback([{ isIntersecting: true }])));
+  // The observer is attached in an effect that may run after the cards appear: wait for it, then "scroll"
+  // (CI run 45278636203 failed when the end was reported before the observer existed)
+  const scrollToEnd = async () => {
+    await waitFor(() => expect(observers).toHaveLength(1));
+    act(() => observers.forEach(o => o.callback([{ isIntersecting: true }])));
+  };
 
   it('loads every page and draws the cards in portions while scrolling, without a button', async () => {
     vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
@@ -126,12 +131,12 @@ describe('Home shows the whole catalog', () => {
     expect(screen.queryByText(`Фільм ${RENDER_STEP + 1}`)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Показати ще/ })).not.toBeInTheDocument();
 
-    scrollToEnd();
+    await scrollToEnd();
     expect(screen.getByText(`Фільм ${RENDER_STEP * 2}`)).toBeInTheDocument();
-    scrollToEnd();
+    await scrollToEnd();
     expect(screen.getByText('Фільм 130')).toBeInTheDocument();
     // Everything is drawn: nothing is observed any more
-    expect(observers).toHaveLength(0);
+    await waitFor(() => expect(observers).toHaveLength(0));
     vi.unstubAllGlobals();
   });
 

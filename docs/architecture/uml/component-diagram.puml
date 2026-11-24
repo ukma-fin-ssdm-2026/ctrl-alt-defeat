@@ -1,13 +1,16 @@
 @startuml
+' Компоненти фінальної версії (v1.2.0)
 skinparam componentStyle uml2
 
-package "Presentation Tier (Frontend)" {
-    [UI Components & Views] as UI_Comp
-    [Client State Management] as UI_State
+package "Presentation Tier (Frontend, React 19 + Vite)" {
+    [UI Components & Pages] as UI_Comp
+    [Current User & Hooks] as UI_State
     [API Client (Axios)] as UI_Client
+    [Ranks & Achievements (utils)] as UI_Ranks
 
-    UI_Comp --> UI_State : manages
-    UI_Comp --> UI_Client : dispatches requests
+    UI_Comp --> UI_State : uses
+    UI_Comp --> UI_Ranks : computes rank, badges
+    UI_Comp --> UI_Client : requests
 }
 
 package "Application Tier (FastAPI Backend)" {
@@ -17,59 +20,74 @@ package "Application Tier (FastAPI Backend)" {
         [API Routers & Handlers] as Controllers
         note right of Controllers
           /api/v1/auth
-          /api/v1/movies
-          /api/v1/reviews
+          /api/v1/movies, /api/v1/genres
+          /api/v1/reviews (+ votes)
+          /api/v1/comments
           /api/v1/watchlist
           /api/v1/users/me/watched
           /api/v1/recommendations
+          /api/v1/admin
+          /health, /health/live
         end note
     }
 
     package "Security & Auth Module" {
-        [JWT & Security Middleware] as Security
+        [JWT & Security Headers] as Security
+        [Rate Limiter (in-memory)] as RateLimit
         note bottom of Security
-          Stateless JWT validation
-          from HttpOnly Cookie
-          / Bearer header
+          Stateless JWT з HttpOnly cookie
+          / Bearer; token_version;
+          CSP, HSTS, X-Frame-Options
         end note
     }
 
     package "Business Logic Layer (Services)" {
         () "Service Interface" as Service_Interface
-        [Rating & Review Services] as Logic_Review
-        [Content & Search Service] as Logic_Content
+        [Review, Vote & Comment Logic] as Logic_Review
+        [Content & Search] as Logic_Content
         [Recommendation Engine] as Logic_Rec
-        [TMDB Sync Client] as Logic_TMDB
+        [Account, Email & Bans] as Logic_Account
+        [TMDB Sync & Catalog Cleanup] as Logic_TMDB
     }
 
     package "Data Access Layer (DAL)" {
         () "Repository Interface" as Repo_Interface
-        [ORM Repositories (SQLAlchemy)] as DAL
+        [SQLAlchemy ORM & Session Pool] as DAL
     }
+
+    [Static Frontend Serving] as Static
 
     HTTP_Interface - Controllers
     Controllers ..> Security : authenticate & authorize
+    Controllers ..> RateLimit : limit login, emails, comments
     Controllers --> Service_Interface : invokes
     Service_Interface - Logic_Review
     Service_Interface - Logic_Content
     Service_Interface - Logic_Rec
+    Service_Interface - Logic_Account
+    Service_Interface - Logic_TMDB
 
     Logic_Review --> Repo_Interface : persists & queries
     Logic_Content --> Repo_Interface : queries
-    Logic_Rec --> Repo_Interface : reads history & ratings
+    Logic_Rec --> Repo_Interface : reads reviews, watched, genres
+    Logic_Account --> Repo_Interface : users, bans
+    Logic_TMDB --> Repo_Interface : upserts content, sync runs
     Repo_Interface - DAL
 }
 
 package "Data Tier" {
-    database "PostgreSQL (Primary DB)" as DB {
-        [Tables: Users, Content, Ratings, Reviews, Watched, Watchlist]
+    database "PostgreSQL 16 (Neon)" as DB {
+        [users, content, genres, reviews,\nreview_votes, comments, watchlist,\nwatched_items, bans, catalog_sync_runs]
     }
 }
 
 cloud "TMDB External API" as TMDB
+cloud "Google Apps Script → Gmail" as Mailer
 
 UI_Client --> HTTP_Interface : HTTPS / JSON (Cookie / Bearer)
-DAL --> DB : SQL over TCP (:5432)
+Static --> UI_Comp : serves built bundle
+DAL --> DB : SQL over TLS (:5432)
 Logic_TMDB --> TMDB : HTTPS (REST API)
+Logic_Account --> Mailer : HTTPS (verification, password reset)
 
 @enduml
